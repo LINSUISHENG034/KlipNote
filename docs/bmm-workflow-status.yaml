@@ -30,7 +30,7 @@ workflow_path: "greenfield-level-2.yaml"
 
 workflow_status:
   # Phase 1: Analysis
-  brainstorm-project: optional
+  brainstorm-project: docs/bmm-brainstorming-session-2025-11-02.md
   research: optional
   product-brief: recommended
 
