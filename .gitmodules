@@ -1,0 +1,3 @@
+[submodule "backend/ai_services/whisperx"]
+	path = backend/ai_services/whisperx
+	url = https://github.com/m-bain/whisperX.git

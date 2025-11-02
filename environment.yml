@@ -1,0 +1,25 @@
+# AudioAlchemist 简化环境配置
+# 完整配置请查看 config/environments/ 目录
+
+name: audioalchemist
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+
+  - pip:
+    # 基础依赖 - 完整列表请查看 config/requirements/requirements.txt
+    - fastapi[standard]>=0.114.2
+    - uvicorn[standard]>=0.24.0
+    - celery>=5.3.6
+    - redis>=5.0.4
+    - structlog>=23.2.0
+    
+    # 提示用户使用完整配置
+    - setuptools  # 占位符，实际请运行 python scripts/setup_conda_environment.py
+
+# 注意：这是简化版本，推荐使用自动配置脚本：
+# python scripts/setup_conda_environment.py
