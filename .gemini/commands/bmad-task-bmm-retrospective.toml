@@ -1,0 +1,8 @@
+description = "Executes the Retrospective task from the BMad Method."
+prompt = """
+Execute the following BMad Method task workflow:
+
+@bmad/bmm/tasks/retrospective.xml
+
+Follow all instructions and complete the task as defined.
+"""
