@@ -35,7 +35,7 @@ workflow_status:
   product-brief: docs/bmm-product-brief-KlipNote-2025-11-03.md
 
   # Phase 2: Planning
-  prd: required
+  prd: docs/PRD.md
   validate-prd: optional
   create-design: conditional
   tech-spec: optional
