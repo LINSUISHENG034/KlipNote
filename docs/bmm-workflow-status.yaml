@@ -32,7 +32,7 @@ workflow_status:
   # Phase 1: Analysis
   brainstorm-project: docs/bmm-brainstorming-session-2025-11-02.md
   research: optional
-  product-brief: recommended
+  product-brief: docs/bmm-product-brief-KlipNote-2025-11-03.md
 
   # Phase 2: Planning
   prd: required
