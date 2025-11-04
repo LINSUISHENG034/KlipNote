@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "klipnote-backend"
+version = "0.1.0"
+description = "KlipNote backend - Audio transcription service with WhisperX"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.120.0",
+    "uvicorn[standard]==0.32.1",
+    "celery[redis]==5.5.3",
+    "redis==5.2.1",
+    "flower==2.0.1",
+    "pydantic==2.10.3",
+    "pydantic-settings==2.7.0",
+    "python-multipart==0.0.20",
+    "python-ffmpeg==1.0.16",
+    "pytest==7.4.4",
+    "pytest-mock==3.12.0",
+    "pytest-cov==4.1.0",
+    "httpx==0.28.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
