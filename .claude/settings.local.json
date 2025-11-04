@@ -14,7 +14,18 @@
       "Bash(if not exist \"E:\\Projects\\KlipNote\\docs\\stories\" mkdir \"E:\\Projects\\KlipNote\\docs\\stories\")",
       "Bash(findstr:*)",
       "Bash(dir:*)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(git submodule add:*)",
+      "Bash(git submodule update:*)",
+      "Bash(git submodule status:*)",
+      "Bash(git commit:*)",
+      "Bash(uv venv:*)",
+      "Bash(uv pip install:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

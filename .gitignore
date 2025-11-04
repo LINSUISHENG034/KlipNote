@@ -1,44 +1,69 @@
+# 忽略 docs 文件夹下（不含子目录）所有 bmm- 开头、.md 结尾的文件
+docs/bmm-*.md
+docs/implementation-*.md
+docs/validation-*.md
+
+# Development Tools
 acli.exe
 _backend_old/
 .vscode
-node_modules/
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
 
-# 忽略所有名为 "archive" 的文件夹
-archive/
+# Python Virtual Environments (Backend)
+# uv-managed environment
+backend/.venv/
+.venv/
+.venv
+env/
+venv/
 
-# 忽略上传文件和临时文件
-uploads/
-*.db
-*.log
+# Python Compiled Files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-env/
-venv/
-.env
-.venv
 
-# 忽略模型缓存
+# Node.js Dependencies (Frontend)
+node_modules/
+frontend/node_modules/
+
+# Environment Variables
+.env
+backend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Test and Build Artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+frontend/dist/
+
+# Database and Logs
+*.db
+*.log
+logs/
+
+# Upload Files and Temporary Files
+uploads/
+backend/uploads/
+
+# AI Model Caches
 models/
 *.bin
 *.safetensors
 *.onnx
+backend/.cache/
+backend/app/ai_services/whisperx/.cache/
 
-# 忽略日志文件
-logs/
-*.log
-
-# 忽略自动生成的配置文件
+# Auto-generated Configuration Files
 config/.env.auto
 config/environment_detection.json
 config/docker/docker-compose.auto.yml
 activate_env.bat
 activate_env.sh
 
+# Archive Folders
+archive/
 

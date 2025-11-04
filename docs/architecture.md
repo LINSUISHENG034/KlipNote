@@ -102,6 +102,133 @@ klipnote-backend/
 
 ---
 
+## Development Environment Requirements
+
+### Platform & Tooling
+
+- **Development Platform:** Windows 10/11
+- **Python Version:** 3.12.x (managed via `uv`)
+- **Python Environment Manager:** `uv` (NOT global Python, NOT conda, NOT venv)
+- **Node.js Version:** 20.x LTS (for frontend)
+- **Package Managers:**
+  - Backend: `uv pip` (Python dependencies)
+  - Frontend: `npm` (Node dependencies)
+
+### Environment Isolation Strategy
+
+**Backend (Python):**
+- **Virtual Environment Tool:** `uv` (Astral's fast Python package installer)
+- **Environment Location:** `backend/.venv/` (local to backend directory)
+- **Activation Required:** YES - all backend commands MUST run inside uv environment
+- **Installation Commands (Windows):**
+  ```bash
+  # Create virtual environment
+  cd backend
+  uv venv --python 3.12
+
+  # Activate (Git Bash)
+  source .venv/Scripts/activate
+
+  # OR Activate (PowerShell)
+  .venv\Scripts\Activate.ps1
+
+  # OR Activate (CMD)
+  .venv\Scripts\activate.bat
+
+  # Install dependencies
+  uv pip install -r requirements.txt
+  ```
+
+**Frontend (Node.js):**
+- **Virtual Environment Tool:** `npm` (Node's built-in package manager)
+- **Environment Location:** `frontend/node_modules/` (local to frontend directory)
+- **Activation Required:** NO - npm manages isolation automatically
+- **Installation Command:**
+  ```bash
+  cd frontend
+  npm install
+  ```
+
+### Why uv for Backend?
+
+1. **Speed:** 10-100x faster than pip for dependency resolution
+2. **Consistency:** Reproducible builds across team members and AI agents
+3. **Isolation:** Prevents global Python pollution
+4. **Windows-friendly:** Works seamlessly on Windows without WSL
+5. **Future-proof:** Modern tool aligned with Python ecosystem direction
+6. **GPU Library Compatibility:** Full pip compatibility for WhisperX, torch, CUDA packages
+
+### Environment Setup Validation
+
+**Story 1.1 (Project Initialization) MUST verify:**
+- [ ] `uv --version` succeeds (uv installed globally on Windows)
+- [ ] `backend/.venv/` directory exists after setup
+- [ ] `python --version` inside .venv shows 3.12.x
+- [ ] `which python` (or `where python` in CMD) points to `backend/.venv/Scripts/python.exe`
+- [ ] `frontend/node_modules/` exists after npm install
+- [ ] Docker Desktop installed and GPU support configured
+
+### Cross-Cutting Rule for ALL AI Agents
+
+**CRITICAL - Backend Environment Activation:**
+
+Every backend story implementation MUST:
+1. **Activate uv virtual environment BEFORE running Python commands:**
+   ```bash
+   cd backend
+   source .venv/Scripts/activate  # Git Bash
+   # Verify: which python should show .venv/Scripts/python
+   ```
+2. **Use `uv pip install <package>` for new dependencies** (NOT `pip install`)
+3. **Update `requirements.txt` after adding dependencies:**
+   ```bash
+   uv pip freeze > requirements.txt
+   ```
+4. **Verify commands run in `.venv` context:**
+   ```bash
+   which python  # Must show: backend/.venv/Scripts/python
+   python --version  # Must show: 3.12.x
+   ```
+
+**Frontend Environment (No Activation Needed):**
+- Use `npm install <package>` for dependencies
+- `package.json` automatically updated by npm
+
+**Docker Environment:**
+- Docker containers use their OWN isolated Python environment
+- `Dockerfile` installs dependencies from `requirements.txt`
+- Development `.venv` is for LOCAL testing only (NOT copied to Docker)
+
+### Environment Isolation Verification Pattern
+
+**Before running backend tests or commands:**
+```bash
+# Check current Python environment
+which python
+# Expected: /e/Projects/KlipNote/backend/.venv/Scripts/python
+
+# If NOT in virtual environment:
+cd backend
+source .venv/Scripts/activate
+
+# Verify packages are isolated:
+python -m pip list
+# Should show ONLY project dependencies, not global packages
+```
+
+**Before running frontend commands:**
+```bash
+# Check Node.js version
+node --version
+# Expected: v20.x.x
+
+# Verify project dependencies installed
+npm list --depth=0
+# Should show: vue@3.x, typescript@5.x, vue-router@4.x, pinia
+```
+
+---
+
 ## Technology Stack Decisions
 
 ### Core Technology Versions (Verified 2025-11-03)
@@ -1510,6 +1637,8 @@ class ExportRequest(BaseModel):
 6. **Comments:** Only for complex logic, not obvious code
 7. **Async/Await:** Use async/await, not .then() chains (frontend)
 8. **Imports:** Group by type (Vue, libraries, local), alphabetize within groups
+9. **Environment Isolation (Backend):** ALWAYS activate uv virtual environment before Python commands. Verify activation: `which python` must show `.venv/Scripts/python`. Use `uv pip install` for new dependencies (NOT global `pip`)
+10. **Environment Verification (All Agents):** Backend stories: Check `python --version` shows 3.12.x from .venv. Frontend stories: Check `npm list --depth=0` shows expected packages. NEVER install packages globally on Windows system Python
 
 **Example (Frontend):**
 
