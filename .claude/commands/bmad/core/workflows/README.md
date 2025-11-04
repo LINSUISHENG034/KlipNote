@@ -10,6 +10,14 @@
 - Path: `bmad/core/workflows/party-mode/workflow.yaml`
 - Orchestrates group discussions between all installed BMAD agents, enabling natural multi-agent conversations
 
+**brainstorming**
+- Path: `bmad/core/workflows/brainstorming/workflow.yaml`
+- Facilitate interactive brainstorming sessions using diverse creative techniques. This workflow facilitates interactive brainstorming sessions using diverse creative techniques. The session is highly interactive, with the AI acting as a facilitator to guide the user through various ideation methods to generate and refine creative solutions.
+
+**party-mode**
+- Path: `bmad/core/workflows/party-mode/workflow.yaml`
+- Orchestrates group discussions between all installed BMAD agents, enabling natural multi-agent conversations
+
 
 ## Execution
 

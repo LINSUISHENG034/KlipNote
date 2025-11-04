@@ -63,6 +63,7 @@ KlipNote solves this by combining WhisperX's state-of-the-art transcription accu
 - **FR017:** System shall store uploaded media files on server for playback and future reference
 - **FR018:** System shall persist original transcription outputs with timestamps
 - **FR019:** System shall store human-edited transcription versions to enable data flywheel analysis
+- **FR020:** System shall persist user edits to browser localStorage to prevent data loss during browser refresh or accidental navigation
 
 ### Non-Functional Requirements
 
@@ -70,9 +71,9 @@ KlipNote solves this by combining WhisperX's state-of-the-art transcription accu
 
 - **NFR002: Usability** - Non-technical users shall complete the upload → review → export workflow without documentation or technical assistance. System shall provide clear error messages and visual feedback throughout all operations.
 
-- **NFR003: Reliability** - System shall achieve 90%+ transcription completion rate (successful upload → export). Browser-based state shall prevent data loss during normal operation, with clear warnings for potentially destructive actions.
+- **NFR003: Reliability** - System shall achieve 90%+ transcription completion rate (successful upload → export). Browser-based state shall prevent data loss during normal operation including page refresh and accidental navigation, with clear warnings for potentially destructive actions like leaving during upload.
 
-- **NFR004: Compatibility** - Web interface shall function on desktop, tablet, and mobile browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. System shall handle files up to 2 hours duration without errors.
+- **NFR004: Compatibility** - Web interface shall function on desktop, tablet, and mobile browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. System shall handle media files up to 2 hours duration (primary constraint for GPU processing). File size limit of 2GB serves as practical upload boundary, though actual constraint is processing duration.
 
 ---
 
@@ -201,12 +202,12 @@ KlipNote solves this by combining WhisperX's state-of-the-art transcription accu
 ## Out of Scope
 
 **Phase 2 Enhancements (Deferred to Post-MVP):**
-- localStorage edit recovery and crash protection
-- Server-Sent Events (SSE) for real-time progress streaming
+- Server-Sent Events (SSE) for real-time progress streaming (polling sufficient for MVP)
 - Composables architecture refactor for code maintainability
 - Edit analytics dashboard and quality metrics
 - Multi-job management and concurrent transcription UI
 - VTT export format support
+- Advanced crash recovery and offline mode support
 
 **Advanced Features (Long-term Vision):**
 - Automated model fine-tuning pipeline using collected training data

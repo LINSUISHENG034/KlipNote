@@ -10,6 +10,24 @@
 <critical>Generate all documents in {document_output_language}</critical>
 <critical>This workflow replaces architecture with a conversation-driven approach</critical>
 
+## 📚 Input Document Discovery
+
+This workflow requires: PRD and epics/stories, and may reference UX design specifications or brownfield project documentation.
+
+**Discovery Process** (execute for each referenced document):
+
+1. **Search for whole document first** - Use fuzzy file matching to find the complete document
+2. **Check for sharded version** - If whole document not found, look for `{doc-name}/index.md`
+3. **If sharded version found**:
+   - Read `index.md` to understand the document structure
+   - Read ALL section files listed in the index
+   - Treat the combined content as if it were a single document
+4. **Brownfield projects**: The `document-project` workflow always creates `{output_folder}/docs/index.md`
+
+**Priority**: If both whole and sharded versions exist, use the whole document.
+
+**Fuzzy matching**: Be flexible with document names - users may use variations in naming conventions.
+
 <step n="0" goal="Validate workflow readiness" tag="workflow-status">
 <action>Check if {output_folder}/bmm-workflow-status.yaml exists</action>
 
@@ -35,7 +53,7 @@
   <check if="project_level < 3">
     <output>**Note: Level {{project_level}} Project**
 
-Decision Architecture is typically for Level 3-4 projects, but can be used for any project that needs architectural planning.
+The Detailed Architecture is typically for Level 3-4 projects, but can be used for any project that needs architectural planning.
 
 For Level {{project_level}}, we'll keep the architecture appropriately scoped.
 </output>
@@ -70,11 +88,11 @@ For Level {{project_level}}, we'll keep the architecture appropriately scoped.
 
 Decision Architecture works from your Product Requirements Document (PRD).
 
-Looking for: bmm-PRD.md, PRD.md, or product-requirements.md in {output_folder}
+Looking for: _PRD_, PRD.md, or prd/index.md + files in {output_folder}
 
 Please run the PRD workflow first to define your requirements.
 
-Run: `workflow prd`
+Architect: `create-prd`
 </output>
 <action>Exit workflow - PRD required</action>
 </check>
@@ -82,7 +100,7 @@ Run: `workflow prd`
 </step>
 
 <step n="1" goal="Load and understand project context">
-  <action>Load the PRD using fuzzy matching: {prd_file}</action>
+  <action>Load the PRD using fuzzy matching: {prd_file}, if the PRD is mulitple files in a folder, load the index file and all files associated with the PRD</action>
   <action>Load epics file using fuzzy matching: {epics_file}</action>
 
 <action>Check for UX specification using fuzzy matching:
@@ -96,7 +114,7 @@ Run: `workflow prd`
 <action>Extract and understand from PRD: - Functional Requirements (what it must do) - Non-Functional Requirements (performance, security, compliance, etc.) - Epic structure and user stories - Acceptance criteria - Any technical constraints mentioned
 </action>
 
-<action>Count and assess project scale: - Number of epics: {{epic_count}} - Number of stories: {{story_count}} - Complexity indicators (real-time, multi-tenant, regulated, etc.) - UX complexity level (if UX spec exists)
+<action>Count and assess project scale: - Number of epics: {{epic_count}} - Number of stories: {{story_count}} - Complexity indicators (real-time, multi-tenant, regulated, etc.) - UX complexity level (if UX spec exists) - Novel features
 </action>
 
 <action>Reflect understanding back to {user_name}:
@@ -135,8 +153,8 @@ I see {{epic_count}} epics with {{story_count}} total stories.
     </action>
   </check>
 
-<action>Search for relevant starter templates:
-<WebSearch>{{primary_technology}} starter template CLI create command latest 2024</WebSearch>
+<action>Search for relevant starter templates with websearch, examples:
+<WebSearch>{{primary_technology}} starter template CLI create command latest {date}</WebSearch>
 <WebSearch>{{primary_technology}} boilerplate generator latest options</WebSearch>
 </action>
 
@@ -206,7 +224,7 @@ I see {{epic_count}} epics with {{story_count}} total stories.
 
   <check if="no_starter_found_or_applicable">
     <action>Note: No standard starter template found for this project type.
-            Will need to make all architectural decisions explicitly.</action>
+            We will make all architectural decisions explicitly.</action>
   </check>
 
 <template-output>starter_template_decision</template-output>
@@ -285,34 +303,39 @@ Let's work through the remaining {{remaining_count}} decisions."
 <action>Present the decision based on mode:
 <check if="mode == 'EXPERT'">
 "{{Decision_Category}}: {{Specific_Decision}}
-Options: {{concise_option_list_with_tradeoffs}}
-Recommendation: {{recommendation}} for {{reason}}"
-</check>
 
-    <check if="mode == 'INTERMEDIATE'">
-      "Next decision: {{Human_Friendly_Category}}
+    Options: {{concise_option_list_with_tradeoffs}}
 
-       We need to choose {{Specific_Decision}}.
+    Recommendation: {{recommendation}} for {{reason}}"
 
-       Common options:
-       {{option_list_with_brief_explanations}}
+  </check>
 
-       For your project, {{recommendation}} would work well because {{reason}}."
-    </check>
+  <check if="mode == 'INTERMEDIATE'">
+    "Next decision: {{Human_Friendly_Category}}
 
-    <check if="mode == 'BEGINNER'">
-      "Let's talk about {{Human_Friendly_Category}}.
+      We need to choose {{Specific_Decision}}.
 
-       {{Educational_Context_About_Why_This_Matters}}
+      Common options:
+      {{option_list_with_brief_explanations}}
 
-       Think of it like {{real_world_analogy}}.
+      For your project, {{recommendation}} would work well because {{reason}}."
 
-       Your main options:
-       {{friendly_options_with_pros_cons}}
+  </check>
 
-       My suggestion: {{recommendation}}
-       This is good for you because {{beginner_friendly_reason}}."
-    </check>
+  <check if="mode == 'BEGINNER'">
+    "Let's talk about {{Human_Friendly_Category}}.
+
+      {{Educational_Context_About_Why_This_Matters}}
+
+      Think of it like {{real_world_analogy}}.
+
+      Your main options:
+      {{friendly_options_with_pros_cons}}
+
+      My suggestion: {{recommendation}}
+      This is good for you because {{beginner_friendly_reason}}."
+
+  </check>
 
   </action>
 
@@ -365,11 +388,7 @@ Provided by Starter: {{yes_if_from_starter}}
 </action>
 
   <check if="{user_skill_level} == 'beginner'">
-    <action>Explain why these matter:
-      "These are rules that EVERY part of your app must follow.
-       If we don't decide now, each AI agent will do it differently,
-       and your app won't work properly when the pieces come together."
-    </action>
+    <action>Explain why these matter why its critical to go through and decide these things now.</action>
   </check>
 
 <template-output>cross_cutting_decisions</template-output>

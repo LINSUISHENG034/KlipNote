@@ -51,4 +51,24 @@ recommended_inputs:
   - tech_spec: "Epic technical specification document (auto-discovered)"
   - story_context_file: "Story context file (.context.xml) (auto-discovered)"
 
+# Smart input file references - handles both whole docs and sharded docs
+# Priority: Whole document first, then sharded version
+# Strategy: SELECTIVE LOAD - only load the specific epic needed for this story review
+input_file_patterns:
+  architecture:
+    whole: "{output_folder}/*architecture*.md"
+    sharded: "{output_folder}/*architecture*/index.md"
+
+  ux_design:
+    whole: "{output_folder}/*ux*.md"
+    sharded: "{output_folder}/*ux*/index.md"
+
+  epics:
+    whole: "{output_folder}/*epic*.md"
+    sharded_index: "{output_folder}/*epic*/index.md"
+    sharded_single: "{output_folder}/*epic*/epic-{{epic_num}}.md"
+
+  document_project:
+    sharded: "{output_folder}/docs/index.md"
+
 standalone: true

@@ -7,6 +7,35 @@
 <critical>This workflow creates or updates the next user story from epics/PRD and architecture context, saving to the configured stories directory and optionally invoking Story Context.</critical>
 <critical>DOCUMENT OUTPUT: Concise, technical, actionable story specifications. Use tables/lists for acceptance criteria and tasks.</critical>
 
+## 📚 Document Discovery - Selective Epic Loading
+
+**Strategy**: This workflow needs only ONE specific epic and its stories, not all epics. This provides huge efficiency gains when epics are sharded.
+
+**Epic Discovery Process (SELECTIVE OPTIMIZATION):**
+
+1. **Determine which epic** you need (epic_num from story context - e.g., story "3-2-feature-name" needs Epic 3)
+2. **Check for sharded version**: Look for `epics/index.md`
+3. **If sharded version found**:
+   - Read `index.md` to understand structure
+   - **Load ONLY `epic-{epic_num}.md`** (e.g., `epics/epic-3.md` for Epic 3)
+   - DO NOT load all epic files - only the one needed!
+   - This is the key efficiency optimization for large multi-epic projects
+4. **If whole document found**: Load the complete `epics.md` file and extract the relevant epic
+
+**Other Documents (prd, architecture, ux-design) - Full Load:**
+
+1. **Search for whole document first** - Use fuzzy file matching
+2. **Check for sharded version** - If whole document not found, look for `{doc-name}/index.md`
+3. **If sharded version found**:
+   - Read `index.md` to understand structure
+   - Read ALL section files listed in the index
+   - Treat combined content as single document
+4. **Brownfield projects**: The `document-project` workflow creates `{output_folder}/docs/index.md`
+
+**Priority**: If both whole and sharded versions exist, use the whole document.
+
+**UX-Heavy Projects**: Always check for ux-design documentation as it provides critical context for UI-focused stories.
+
 <workflow>
 
   <step n="1" goal="Load config and initialize">

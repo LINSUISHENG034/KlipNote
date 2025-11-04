@@ -9,7 +9,12 @@
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "SlashCommand(/bmad:bmm:workflows:workflow-init)"
+      "SlashCommand(/bmad:bmm:workflows:workflow-init)",
+      "WebSearch",
+      "Bash(if not exist \"E:\\Projects\\KlipNote\\docs\\stories\" mkdir \"E:\\Projects\\KlipNote\\docs\\stories\")",
+      "Bash(findstr:*)",
+      "Bash(dir:*)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

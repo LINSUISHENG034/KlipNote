@@ -33,6 +33,14 @@ variables:
   # Output configuration
   status_file: "{output_folder}/sprint-status.yaml"
 
+# Smart input file references - handles both whole docs and sharded docs
+# Priority: Whole document first, then sharded version
+# Strategy: FULL LOAD - sprint planning needs ALL epics to build complete status
+input_file_patterns:
+  epics:
+    whole: "{output_folder}/*epic*.md"
+    sharded: "{output_folder}/*epic*/index.md"
+
 # Output configuration
 default_output_file: "{status_file}"
 

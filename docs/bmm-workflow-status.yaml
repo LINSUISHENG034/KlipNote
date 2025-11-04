@@ -41,9 +41,9 @@ workflow_status:
   tech-spec: optional
 
   # Phase 3: Solutioning
-  create-architecture: required
+  create-architecture: docs/architecture.md
   validate-architecture: optional
-  solutioning-gate-check: required
+  solutioning-gate-check: docs/implementation-readiness-report-2025-11-04.md
 
   # Phase 4: Implementation
   sprint-planning: required

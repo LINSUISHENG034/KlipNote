@@ -4,6 +4,24 @@
 <critical>You MUST have already loaded and processed: {project-root}/bmad/bmm/workflows/3-solutioning/solutioning-gate-check/workflow.yaml</critical>
 <critical>Communicate all findings and analysis in {communication_language} throughout the assessment</critical>
 
+## 📚 Input Document Discovery
+
+This workflow validates: PRD, epics/stories, architecture, and may reference UX design, tech specs, or brownfield project documentation.
+
+**Discovery Process** (execute for each referenced document):
+
+1. **Search for whole document first** - Use fuzzy file matching to find the complete document
+2. **Check for sharded version** - If whole document not found, look for `{doc-name}/index.md`
+3. **If sharded version found**:
+   - Read `index.md` to understand the document structure
+   - Read ALL section files listed in the index
+   - Treat the combined content as if it were a single document
+4. **Brownfield projects**: The `document-project` workflow always creates `{output_folder}/docs/index.md`
+
+**Priority**: If both whole and sharded versions exist, use the whole document.
+
+**Fuzzy matching**: Be flexible with document names - users may use variations in naming conventions.
+
 <workflow>
 
 <step n="0" goal="Validate workflow readiness" tag="workflow-status">

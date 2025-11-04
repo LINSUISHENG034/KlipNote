@@ -2,7 +2,17 @@
 
 <critical>The workflow execution engine is governed by: {project_root}/bmad/core/tasks/workflow.xml</critical>
 <critical>You MUST have already loaded and processed: {installed_path}/workflow.yaml</critical>
-<critical>Communicate all responses in {communication_language}</critical>
+<critical>Communicate in {communication_language}, generate documents in {document_output_language}</critical>
+<critical>Web research is ENABLED - always use current {{current_year}} data</critical>
+
+<critical>🚨 ANTI-HALLUCINATION PROTOCOL - MANDATORY 🚨</critical>
+<critical>NEVER present information without a verified source - if you cannot find a source, say "I could not find reliable data on this"</critical>
+<critical>ALWAYS cite sources with URLs when presenting data, statistics, or factual claims</critical>
+<critical>REQUIRE at least 2 independent sources for critical claims (market size, growth rates, competitive data)</critical>
+<critical>When sources conflict, PRESENT BOTH views and note the discrepancy - do NOT pick one arbitrarily</critical>
+<critical>Flag any data you are uncertain about with confidence levels: [High Confidence], [Medium Confidence], [Low Confidence - verify]</critical>
+<critical>Distinguish clearly between: FACTS (from sources), ANALYSIS (your interpretation), and SPECULATION (educated guesses)</critical>
+<critical>When using WebSearch results, ALWAYS extract and include the source URL for every claim</critical>
 
 <!-- IDE-INJECT-POINT: research-subagents -->
 
@@ -49,43 +59,25 @@
 </check>
 </step>
 
-<step n="2" goal="Welcome and Research Type Selection">
-<action>Welcome the user to the Research Workflow</action>
+<step n="2" goal="Discover research needs through conversation">
 
-**The Research Workflow supports multiple research types:**
+<action>Welcome {user_name} warmly. Position yourself as their research partner who uses live {{current_year}} web data. Ask what they're looking to understand or research.</action>
 
-Present the user with research type options:
+<action>Listen and collaboratively identify the research type based on what they describe:
 
-**What type of research do you need?**
+- Market/Business questions → Market Research
+- Competitor questions → Competitive Intelligence
+- Customer questions → User Research
+- Technology questions → Technical Research
+- Industry questions → Domain Research
+- Creating research prompts for AI platforms → Deep Research Prompt Generator
 
-1. **Market Research** - Comprehensive market analysis with TAM/SAM/SOM calculations, competitive intelligence, customer segments, and go-to-market strategy
-   - Use for: Market opportunity assessment, competitive landscape analysis, market sizing
-   - Output: Detailed market research report with financials
+Confirm your understanding of what type would be most helpful and what it will produce.
+</action>
 
-2. **Deep Research Prompt Generator** - Create structured, multi-step research prompts optimized for AI platforms (ChatGPT, Gemini, Grok, Claude)
-   - Use for: Generating comprehensive research prompts, structuring complex investigations
-   - Output: Optimized research prompt with framework, scope, and validation criteria
+<action>Capture {{research_type}} and {{research_mode}}</action>
 
-3. **Technical/Architecture Research** - Evaluate technology stacks, architecture patterns, frameworks, and technical approaches
-   - Use for: Tech stack decisions, architecture pattern selection, framework evaluation
-   - Output: Technical research report with recommendations and trade-off analysis
-
-4. **Competitive Intelligence** - Deep dive into specific competitors, their strategies, products, and market positioning
-   - Use for: Competitor deep dives, competitive strategy analysis
-   - Output: Competitive intelligence report
-
-5. **User Research** - Customer insights, personas, jobs-to-be-done, and user behavior analysis
-   - Use for: Customer discovery, persona development, user journey mapping
-   - Output: User research report with personas and insights
-
-6. **Domain/Industry Research** - Deep dive into specific industries, domains, or subject matter areas
-   - Use for: Industry analysis, domain expertise building, trend analysis
-   - Output: Domain research report
-
-<ask>Select a research type (1-6) or describe your research needs:</ask>
-
-<action>Capture user selection as {{research_type}}</action>
-
+<template-output>research_type_discovery</template-output>
 </step>
 
 <step n="3" goal="Route to Appropriate Research Instructions">

@@ -30,4 +30,18 @@ recommended_inputs:
   - narrative_design: "{output_folder}/narrative-design.md"
   - market_research: "{output_folder}/market-research.md"
 
+# Smart input file references - handles both whole docs and sharded docs
+# Priority: Whole document first, then sharded version
+input_file_patterns:
+  game_brief:
+    whole: "{output_folder}/*game-brief*.md"
+    sharded: "{output_folder}/*game-brief*/index.md"
+
+  research:
+    whole: "{output_folder}/*research*.md"
+    sharded: "{output_folder}/*research*/index.md"
+
+  document_project:
+    sharded: "{output_folder}/docs/index.md"
+
 standalone: true

@@ -22,22 +22,43 @@ so that {{benefit}}.
 
 {{technical_summary}}
 
+### Tech-Spec Reference
+
+**Full details:** See [tech-spec.md](../tech-spec.md)
+
+The tech-spec contains comprehensive context including:
+
+- Brownfield codebase analysis (if applicable)
+- Framework and library details with versions
+- Existing patterns to follow
+- Integration points and dependencies
+- Complete implementation guidance
+
 ### Project Structure Notes
 
-- Files to modify: {{files_to_modify}}
-- Expected test locations: {{test_locations}}
-- Estimated effort: {{story_points}} story points ({{time_estimate}})
+- **Files to modify:** {{files_to_modify}}
+- **Expected test locations:** {{test_locations}}
+- **Estimated effort:** {{story_points}} story points ({{time_estimate}})
+- **Dependencies:** {{dependencies}}
+
+### Key Code References
+
+{{existing_code_references}}
 
 ### References
 
-- **Tech Spec:** See tech-spec.md for detailed implementation
+- **Tech Spec:** [tech-spec.md](../tech-spec.md) - Primary context document
 - **Architecture:** {{architecture_references}}
+
+---
 
 ## Dev Agent Record
 
 ### Context Reference
 
-<!-- Path(s) to story context XML will be added here by context workflow -->
+**Primary Context:** [tech-spec.md](../tech-spec.md) - Contains all brownfield analysis, framework details, and implementation guidance
+
+<!-- Additional context XML paths will be added here if story-context workflow is run -->
 
 ### Agent Model Used
 
@@ -54,3 +75,13 @@ so that {{benefit}}.
 ### File List
 
 <!-- Will be populated during dev-story execution -->
+
+### Test Results
+
+<!-- Will be populated during dev-story execution -->
+
+---
+
+## Review Notes
+
+<!-- Will be populated during code review -->
