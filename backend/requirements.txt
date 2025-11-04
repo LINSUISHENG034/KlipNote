@@ -1,0 +1,28 @@
+# FastAPI and Web Server
+fastapi==0.120.0
+uvicorn[standard]==0.32.1
+
+# Task Queue
+celery[redis]==5.5.3
+redis==5.2.1
+flower==2.0.1
+
+# Data Validation and Settings
+pydantic==2.10.3
+pydantic-settings==2.7.0
+
+# File Handling
+python-multipart==0.0.20
+
+# Media Processing (wrapper - ffmpeg binary installed via apt-get in Dockerfile)
+python-ffmpeg==1.0.16
+
+# Testing
+pytest==7.4.4
+pytest-mock==3.12.0
+pytest-cov==4.1.0
+httpx==0.28.1  # For testing FastAPI endpoints
+
+# Note: torch==2.1.2 and torchaudio==2.1.2 are installed in Dockerfile
+# with CUDA 11.8-specific index URL: --index-url https://download.pytorch.org/whl/cu118
+# This ensures GPU acceleration is properly configured

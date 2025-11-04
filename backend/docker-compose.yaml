@@ -1,0 +1,83 @@
+services:
+  # Redis message broker and result backend
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    # Health check ensures Redis is ready before web/worker services start
+    # Prevents race condition causing crashes and restart loops
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # FastAPI web service
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - WHISPER_MODEL=large-v2
+      - WHISPER_DEVICE=cuda
+      - WHISPER_COMPUTE_TYPE=float16
+      - UPLOAD_DIR=/uploads
+      - MAX_FILE_SIZE=2147483648
+      - MAX_DURATION_HOURS=2
+      - CORS_ORIGINS=["http://localhost:5173"]
+    volumes:
+      - ./app:/app
+      - ./uploads:/uploads
+    # Wait for Redis health check before starting
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Celery worker with GPU access for WhisperX transcription
+  worker:
+    build: .
+    command: celery -A app.celery_utils worker --loglevel=info
+    # GPU configuration for nvidia-docker2
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - WHISPER_MODEL=large-v2
+      - WHISPER_DEVICE=cuda
+      - WHISPER_COMPUTE_TYPE=float16
+      - UPLOAD_DIR=/uploads
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./app:/app
+      - ./uploads:/uploads
+      # Model cache volume to avoid re-downloading WhisperX models
+      - whisperx-models:/root/.cache/whisperx
+    # Wait for Redis health check before starting
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Flower - Celery monitoring dashboard
+  flower:
+    build: .
+    command: celery -A app.celery_utils flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+# Named volume for WhisperX model caching
+volumes:
+  whisperx-models:
