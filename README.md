@@ -256,6 +256,50 @@ Visit http://localhost:8000/docs for interactive API documentation with:
 - Full parameter descriptions
 - Example requests and responses
 
+### Async Transcription Processing (Story 1.3)
+
+After uploading a file via `/upload`, transcription is processed asynchronously by a Celery worker with GPU acceleration. The job progresses through 5 stages:
+
+**Progress Stages:**
+
+1. **10% - Task Queued**: Job accepted and queued for processing
+2. **20% - Loading AI Model**: WhisperX model loading (cached after first run)
+3. **40% - Transcribing Audio**: Active transcription with GPU (longest stage)
+4. **80% - Aligning Timestamps**: Word-level timestamp alignment
+5. **100% - Processing Complete**: Results saved to Redis and disk
+
+**Processing Time:**
+- Expected speed: 1-2x real-time (1 hour audio = 30-60 min processing with GPU)
+- First run slower due to model download (~1.5GB)
+- Subsequent runs use cached model for faster startup
+
+**Monitoring:**
+- **Flower Dashboard**: http://localhost:5555 (real-time Celery task monitoring)
+- **Worker Logs**: `docker-compose logs -f worker`
+- **Status API**: Coming in Story 1.4 (`GET /status/{job_id}`)
+
+**Result Storage:**
+- Redis: `job:{job_id}:status` and `job:{job_id}:result` keys
+- Disk: `/uploads/{job_id}/transcription.json`
+
+**Example transcription.json format:**
+```json
+{
+  "segments": [
+    {
+      "start": 0.5,
+      "end": 3.2,
+      "text": "Hello, welcome to the meeting."
+    },
+    {
+      "start": 3.5,
+      "end": 7.8,
+      "text": "Let's begin with today's agenda."
+    }
+  ]
+}
+```
+
 ## Project Structure
 
 ```

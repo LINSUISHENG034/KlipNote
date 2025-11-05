@@ -48,9 +48,10 @@ services:
               count: 1
               capabilities: [gpu]
     environment:
+      - LD_LIBRARY_PATH=/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - WHISPER_MODEL=large-v2
+      - WHISPER_MODEL=base
       - WHISPER_DEVICE=cuda
       - WHISPER_COMPUTE_TYPE=float16
       - UPLOAD_DIR=/uploads

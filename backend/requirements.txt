@@ -22,7 +22,27 @@ pytest==7.4.4
 pytest-mock==3.12.0
 pytest-cov==4.1.0
 httpx==0.28.1  # For testing FastAPI endpoints
+fakeredis==2.21.1  # In-memory Redis for testing
 
-# Note: torch==2.1.2 and torchaudio==2.1.2 are installed in Dockerfile
-# with CUDA 11.8-specific index URL: --index-url https://download.pytorch.org/whl/cu118
+# WhisperX Submodule Dependencies
+# These are required by the whisperx git submodule but not installed automatically
+# CUDA 12.3 + cuDNN 9 environment enables latest library versions
+# - ctranslate2 4.5.0+ now available with cuDNN 9 support
+# - faster-whisper 1.1.1+ provides latest Whisper model improvements
+# - Version constraints removed to track upstream releases
+ctranslate2>=4.5.0
+faster-whisper>=1.1.1
+nltk>=3.9.1
+numpy<2.1.0
+onnxruntime
+pandas>=2.2.3,<2.3.0
+av<16.0.0
+# pyannote dependencies REMOVED - using Silero VAD instead
+# pyannote.audio has unsolvable dependency conflicts with torch
+# Silero VAD (torch.hub model) provides voice activity detection without extra deps
+transformers>=4.48.0
+
+# Note: torch, torchvision, and torchaudio are installed in Dockerfile
+# with CUDA 12.1-specific index URL: --index-url https://download.pytorch.org/whl/cu121
+# CUDA 12.1 wheels are forward-compatible with CUDA 12.3 runtime
 # This ensures GPU acceleration is properly configured

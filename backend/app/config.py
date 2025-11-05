@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
-    # WhisperX Configuration
-    WHISPER_MODEL: str = "large-v2"
-    WHISPER_DEVICE: str = "cuda"
+    # WhisperX model settings
+    WHISPER_MODEL: str = "base"  # large-v2, large-v3, medium, small, base, tiny
+    WHISPER_DEVICE: str = "cuda"  # cuda, cpu
     WHISPER_COMPUTE_TYPE: str = "float16"
 
     # File Storage Configuration

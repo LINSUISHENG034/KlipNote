@@ -1,6 +1,6 @@
 # Story 1.2: Backend API Upload Endpoint
 
-Status: review
+Status: done
 
 ## Story
 
@@ -274,6 +274,10 @@ pytest tests/ --cov=app --cov-report=html  # Full coverage report
 - [Source: docs/stories/1-1-project-scaffolding-and-development-environment.md#Dev-Notes] - FFmpeg binary installation, Pydantic Settings pattern, test infrastructure
 
 ## Dev Agent Record
+
+### Completion Notes
+**Completed:** 2025-11-05
+**Definition of Done:** All acceptance criteria met, code reviewed, tests passing
 
 ### Context Reference
 

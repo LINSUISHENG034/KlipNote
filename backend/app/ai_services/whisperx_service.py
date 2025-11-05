@@ -1,22 +1,36 @@
 """
 WhisperX transcription service implementation
-GPU-accelerated audio transcription using WhisperX
+GPU-accelerated audio transcription using faster-whisper (bypassing whisperx)
+
+NOTE: Originally used whisperx, but switched to faster-whisper directly due to
+unsolvable dependency conflicts between whisperx's pyannote dependencies and torch.
+faster-whisper provides the core Whisper transcription without pyannote coupling.
 """
 
 import os
-from typing import List, Dict, Any
+import logging
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 from app.ai_services.base import TranscriptionService
 from app.config import settings
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 
 class WhisperXService(TranscriptionService):
     """
-    WhisperX-based transcription service with GPU acceleration
+    Whisper-based transcription service using faster-whisper directly
 
-    Note: Actual WhisperX integration will be completed in Story 1.3
-    This is a placeholder implementation for Story 1.1 scaffolding
+    Originally used whisperx, but switched to faster-whisper to avoid pyannote.audio
+    dependency conflicts. faster-whisper provides core Whisper functionality with
+    GPU acceleration and efficient inference using CTranslate2.
+
+    Caches the loaded model to avoid reloading on every transcription.
     """
+
+    # Class-level model cache to avoid reloading
+    _model_cache: Dict[str, Any] = {}
 
     def __init__(
         self,
@@ -25,17 +39,42 @@ class WhisperXService(TranscriptionService):
         compute_type: str = None
     ):
         """
-        Initialize WhisperX service
+        Initialize Whisper service with faster-whisper
 
         Args:
-            model_name: WhisperX model (tiny, base, small, medium, large-v2, large-v3)
+            model_name: Whisper model (tiny, base, small, medium, large-v2, large-v3)
             device: 'cuda' for GPU or 'cpu'
             compute_type: 'float16' (GPU), 'int8' (GPU/CPU), 'float32' (CPU)
         """
         self.model_name = model_name or settings.WHISPER_MODEL
         self.device = device or settings.WHISPER_DEVICE
         self.compute_type = compute_type or settings.WHISPER_COMPUTE_TYPE
-        self.model = None  # Will be loaded in Story 1.3
+
+        # Check if model is cached
+        cache_key = f"{self.model_name}_{self.device}_{self.compute_type}"
+        if cache_key not in WhisperXService._model_cache:
+            logger.info(f"Loading Whisper model: {self.model_name} on {self.device}")
+            try:
+                # Import faster-whisper directly (no whisperx/pyannote dependencies)
+                from faster_whisper import WhisperModel
+
+                # Load model
+                self.model = WhisperModel(
+                    self.model_name,
+                    device=self.device,
+                    compute_type=self.compute_type
+                )
+                # Cache the model
+                WhisperXService._model_cache[cache_key] = self.model
+                logger.info("Whisper model loaded and cached successfully")
+            except Exception as e:
+                logger.error(f"Failed to load Whisper model: {e}")
+                raise RuntimeError(
+                    f"Failed to load Whisper model '{self.model_name}': {str(e)}"
+                )
+        else:
+            logger.info(f"Using cached Whisper model: {self.model_name}")
+            self.model = WhisperXService._model_cache[cache_key]
 
     def transcribe(
         self,
@@ -44,22 +83,86 @@ class WhisperXService(TranscriptionService):
         **kwargs
     ) -> List[Dict[str, Any]]:
         """
-        Transcribe audio file using WhisperX
-
-        Implementation will be completed in Story 1.3
+        Transcribe audio file using faster-whisper
 
         Args:
             audio_path: Path to audio file
-            language: Language code
-            **kwargs: Additional WhisperX parameters
+            language: Language code (default: 'en')
+            **kwargs: Additional Whisper parameters
 
         Returns:
             List of transcription segments with timestamps
+            [
+                {"start": 0.5, "end": 3.2, "text": "Hello, welcome..."},
+                ...
+            ]
+
+        Raises:
+            FileNotFoundError: If audio file doesn't exist
+            ValueError: If audio file is invalid
+            RuntimeError: If transcription fails
         """
-        # Placeholder - actual implementation in Story 1.3
-        raise NotImplementedError(
-            "WhisperX transcription will be implemented in Story 1.3"
-        )
+        # Validate audio file
+        if not self.validate_audio_file(audio_path):
+            raise FileNotFoundError(f"Audio file not found or invalid: {audio_path}")
+
+        try:
+            logger.info(f"Transcribing audio file: {audio_path}")
+
+            # Transcribe with faster-whisper
+            # Returns: (segments, info) where segments is an iterator
+            segments_iter, info = self.model.transcribe(
+                audio_path,
+                language=language,
+                beam_size=5,
+                vad_filter=True,  # Enable built-in VAD (no pyannote needed)
+                vad_parameters=dict(
+                    min_silence_duration_ms=500,
+                    speech_pad_ms=400
+                )
+            )
+
+            logger.info(f"Detected language: {info.language} with probability {info.language_probability:.2f}")
+
+            # Extract segments with timestamps
+            segments = []
+            for segment in segments_iter:
+                # faster-whisper segments have: start, end, text, words (optional)
+                segments.append({
+                    "start": float(segment.start),
+                    "end": float(segment.end),
+                    "text": segment.text.strip()
+                })
+
+            logger.info(f"Transcription complete: {len(segments)} segments")
+            return segments
+
+        except FileNotFoundError as e:
+            logger.error(f"Audio file not found: {audio_path}")
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+        except Exception as e:
+            logger.error(f"Transcription failed: {e}", exc_info=True)
+            # Translate technical errors to user-friendly messages
+            error_msg = str(e).lower()
+
+            if "cuda" in error_msg or "gpu" in error_msg:
+                raise RuntimeError(
+                    "GPU error during transcription. Please ensure GPU is available "
+                    "and has sufficient memory."
+                )
+            elif "memory" in error_msg:
+                raise RuntimeError(
+                    "Out of memory during transcription. Try with a shorter audio file."
+                )
+            elif "format" in error_msg or "decode" in error_msg:
+                raise ValueError(
+                    "Audio file format is corrupted or unsupported."
+                )
+            else:
+                raise RuntimeError(
+                    f"Transcription failed: {str(e)}"
+                )
 
     def get_supported_languages(self) -> List[str]:
         """
@@ -68,10 +171,11 @@ class WhisperXService(TranscriptionService):
         Returns:
             List of ISO 639-1 language codes supported by WhisperX
         """
-        # WhisperX supports 99 languages - returning subset for now
+        # WhisperX supports 99 languages - returning commonly used subset
         return [
             "en", "es", "fr", "de", "it", "pt", "nl", "pl", "ru",
-            "zh", "ja", "ko", "ar", "hi", "tr", "vi", "th", "id"
+            "zh", "ja", "ko", "ar", "hi", "tr", "vi", "th", "id",
+            "uk", "sv", "fi", "no", "da", "cs", "sk", "el", "he"
         ]
 
     def validate_audio_file(self, audio_path: str) -> bool:
@@ -89,7 +193,7 @@ class WhisperXService(TranscriptionService):
             return False
 
         # Check file extension
-        supported_formats = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".mp4", ".webm"}
+        supported_formats = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".mp4", ".webm", ".aac"}
         file_ext = Path(audio_path).suffix.lower()
 
         return file_ext in supported_formats

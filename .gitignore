@@ -17,8 +17,11 @@ backend/.venv/
 .venv
 env/
 venv/
-.claude
-.gemini
+
+# Other Files
+.claude/
+.gemini/
+.pytest_cache/
 
 # Python Compiled Files
 __pycache__/

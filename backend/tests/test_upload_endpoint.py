@@ -398,3 +398,111 @@ class TestUploadEndpointEdgeCases:
         assert response.status_code == 400
         data = response.json()
         assert "exceeds" in data["detail"]
+
+
+class TestUploadEndpointCeleryIntegration:
+    """Test suite for Celery task queuing integration"""
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.main.RedisService")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_queues_celery_task(self, mock_validate_duration, mock_redis_service_class, mock_transcribe_task, test_client, tmp_path, monkeypatch):
+        """Test that POST /upload queues Celery task with correct parameters"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Mock Redis service instance
+        mock_redis = Mock()
+        mock_redis_service_class.return_value = mock_redis
+
+        # Create test file
+        file_content = b"test audio content"
+        file = io.BytesIO(file_content)
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", file, "audio/mpeg")}
+        )
+
+        assert response.status_code == 200
+        job_id = response.json()["job_id"]
+
+        # Verify task.delay() was called
+        mock_transcribe_task.delay.assert_called_once()
+
+        # Verify task received correct job_id
+        call_args = mock_transcribe_task.delay.call_args[0]
+        assert call_args[0] == job_id  # First argument is job_id
+
+        # Verify task received correct file_path
+        expected_path = str(Path(config.settings.UPLOAD_DIR) / job_id / "original.mp3")
+        assert call_args[1] == expected_path  # Second argument is file_path
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.main.RedisService")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_initializes_redis_status(self, mock_validate_duration, mock_redis_service_class, mock_transcribe_task, test_client, tmp_path, monkeypatch):
+        """Test that POST /upload initializes Redis status to pending"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Mock Redis service instance
+        mock_redis = Mock()
+        mock_redis_service_class.return_value = mock_redis
+
+        # Create test file
+        file_content = b"test audio content"
+        file = io.BytesIO(file_content)
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", file, "audio/mpeg")}
+        )
+
+        assert response.status_code == 200
+        job_id = response.json()["job_id"]
+
+        # Verify Redis set_status was called with pending status
+        mock_redis.set_status.assert_called_once()
+        call_kwargs = mock_redis.set_status.call_args[1]
+
+        assert call_kwargs["job_id"] == job_id
+        assert call_kwargs["status"] == "pending"
+        assert call_kwargs["progress"] == 10
+        assert "queued" in call_kwargs["message"].lower()
+        assert call_kwargs["preserve_created_at"] is False  # Initial status
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.main.RedisService")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_task_receives_saved_file_path(self, mock_validate_duration, mock_redis_service_class, mock_transcribe_task, test_client, tmp_path, monkeypatch):
+        """Test that Celery task receives file_path from FileHandler.save_upload()"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Mock Redis service
+        mock_redis = Mock()
+        mock_redis_service_class.return_value = mock_redis
+
+        # Create test file
+        file_content = b"test audio content"
+        file = io.BytesIO(file_content)
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("audio.mp3", file, "audio/mpeg")}
+        )
+
+        assert response.status_code == 200
+
+        # Verify task was called with file path that exists
+        call_args = mock_transcribe_task.delay.call_args[0]
+        file_path = call_args[1]
+
+        # File should actually exist (saved by FileHandler)
+        assert Path(file_path).exists()
+        assert Path(file_path).name == "original.mp3"
+

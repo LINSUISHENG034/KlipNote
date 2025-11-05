@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.models import UploadResponse
 from app.services.file_handler import FileHandler
+from app.services.redis_service import RedisService
+from app.tasks.transcription import transcribe_audio
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -58,6 +60,7 @@ async def upload_file(file: UploadFile = File(...)):
     - **Duration**: Maximum 2 hours
     - **Size**: Maximum 2GB
 
+    The file is saved to storage and a Celery task is queued for async transcription.
     Returns a unique job_id (UUID v4) for tracking the transcription task.
 
     **Example Request:**
@@ -90,6 +93,21 @@ async def upload_file(file: UploadFile = File(...)):
 
         # Validate media duration after file is saved
         FileHandler.validate_duration(file_path)
+
+        # Initialize Redis service
+        redis_service = RedisService()
+
+        # Queue Celery task for transcription
+        transcribe_audio.delay(job_id, file_path)
+
+        # Initialize Redis status to "pending" (Stage 1 will update this)
+        redis_service.set_status(
+            job_id=job_id,
+            status="pending",
+            progress=10,
+            message="Task queued...",
+            preserve_created_at=False
+        )
 
         return UploadResponse(job_id=job_id)
 

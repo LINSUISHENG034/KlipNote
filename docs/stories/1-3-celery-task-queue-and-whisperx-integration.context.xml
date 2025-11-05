@@ -1,0 +1,475 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/1-3" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1.3</storyId>
+    <title>Celery Task Queue and WhisperX Integration</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/1-3-celery-task-queue-and-whisperx-integration.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system</asA>
+    <iWant>to process transcription jobs asynchronously using WhisperX</iWant>
+    <soThat>the web API remains responsive during long-running transcriptions</soThat>
+    <tasks>
+      - Task 1: Configure Celery with Redis (AC: #1)
+      - Task 2: Create WhisperX service abstraction (AC: #2)
+      - Task 3: Integrate WhisperX as git submodule (AC: #2)
+      - Task 4: Implement transcription Celery task (AC: #2, #3, #4, #5)
+      - Task 5: Create Redis helper service (AC: #3, #4)
+      - Task 6: Update POST /upload endpoint to queue task (AC: #6)
+      - Task 7: Add Pydantic models for status and result (AC: #4)
+      - Task 8: Write comprehensive tests (AC: #1-6)
+      - Task 9: Update Docker Compose for Celery worker (AC: #1)
+      - Task 10: Update project documentation (AC: #1, #2, #7)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1" category="Configuration">
+      <summary>Celery configured with Redis broker, worker can start and process jobs</summary>
+      <details>
+        - Celery configured with Redis broker
+        - Celery worker service can be started successfully
+        - Worker processes jobs from Redis queue
+      </details>
+    </criterion>
+    <criterion id="2" category="Transcription">
+      <summary>WhisperX integration transcribes media with word-level timestamps</summary>
+      <details>
+        - Transcription task accepts job_id and file path parameters
+        - WhisperX integration transcribes media file with word-level timestamps
+        - Task returns JSON with subtitle segments [{start, end, text}]
+      </details>
+    </criterion>
+    <criterion id="3" category="Progress">
+      <summary>5-stage progress tracking in Redis (10% → 20% → 40% → 80% → 100%)</summary>
+      <details>
+        Stage 1 (progress: 10): "Task queued..."
+        Stage 2 (progress: 20): "Loading AI model..."
+        Stage 3 (progress: 40): "Transcribing audio..." (longest stage)
+        Stage 4 (progress: 80): "Aligning timestamps..."
+        Stage 5 (progress: 100): "Processing complete!"
+      </details>
+    </criterion>
+    <criterion id="4" category="Storage">
+      <summary>Result stored in both Redis and disk with correct format</summary>
+      <details>
+        - Task stores transcription result in Redis key: job:{job_id}:result
+        - Task stores transcription result to disk: /uploads/{job_id}/transcription.json
+        - Result format matches TranscriptionResult model spec
+      </details>
+    </criterion>
+    <criterion id="5" category="Error Handling">
+      <summary>Graceful error handling with user-friendly messages</summary>
+      <details>
+        - Task handles transcription errors and stores error state with descriptive message
+        - Failed status includes error message for user display
+        - Errors logged with job_id and exception details
+      </details>
+    </criterion>
+    <criterion id="6" category="Integration">
+      <summary>Upload endpoint queues task with correct parameters</summary>
+      <details>
+        - POST /upload endpoint queues Celery task after successful file save
+        - Task receives correct job_id and file_path from upload endpoint
+        - Initial status set to "pending" when task is queued
+      </details>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>KlipNote - Epic Breakdown</title>
+        <section>Story 1.3: Celery Task Queue and WhisperX Integration</section>
+        <snippet>
+          As a system, I want to process transcription jobs asynchronously using WhisperX, so that the web API remains responsive during long-running transcriptions. Celery configured with Redis broker. Task updates progress in Redis with stage-based messages across 5 stages.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification: Foundation & Core Transcription Workflow</title>
+        <section>Services and Modules</section>
+        <snippet>
+          Celery Worker module responsible for async task execution and GPU resource management. TranscriptionService (Abstract) defines AI transcription interface. WhisperXService implements WhisperX with GPU inference. Redis Service serves as message broker, result backend, and status storage.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Data Models and Contracts - Backend Pydantic Models</section>
+        <snippet>
+          StatusResponse model: {status: 'pending'|'processing'|'completed'|'failed', progress: 0-100, message: str, created_at: ISO8601, updated_at: ISO8601}. TranscriptionSegment: {start: float, end: float, text: str}. TranscriptionResult: {segments: List[TranscriptionSegment]}.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>APIs and Interfaces - Celery Task Interface</section>
+        <snippet>
+          @shared_task(bind=True) def transcribe_audio(self, job_id: str, file_path: str) -> dict. Task updates Redis key job:{job_id}:status with progress stages. Stores final result in Redis key job:{job_id}:result and saves transcription.json to /uploads/{job_id}/. Returns dict: {"segments": [...]} on success.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Workflows and Sequencing - End-to-End Workflow</section>
+        <snippet>
+          Upload endpoint queues Celery task: transcribe_audio.delay(job_id, file_path). Celery picks up task from Redis queue. WhisperXService.transcribe(file_path) executes with 5 progress stages. Save result to Redis job:{job_id}:result and /uploads/{job_id}/transcription.json. Update status to "completed" with 100% progress.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Dependencies and Integrations</section>
+        <snippet>
+          WhisperX as git submodule: git submodule add https://github.com/m-bain/whisperX.git backend/app/ai_services/whisperx. Docker Compose architecture: web (FastAPI), worker (Celery with GPU), redis (broker + backend), flower (monitoring). Celery 5.5.3+, redis 5.x, whisperx (git submodule), torch 2.x.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Non-Functional Requirements - Performance</section>
+        <snippet>
+          Transcription processing: 1-2x real-time (1 hour audio = 30-60 min). WhisperX GPU mode (large-v2 model) with CUDA 11.8+. Model caching: Docker volume persists /root/.cache/whisperx to avoid re-download. Redis in-memory lookups complete in &lt;10ms.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Test Strategy Summary</section>
+        <snippet>
+          Backend services/tasks: 70%+ code coverage. pytest + pytest-mock for unit/integration tests. Mock WhisperX to avoid GPU dependency in tests. Use fakeredis for in-memory Redis testing. Test progress updates through all 5 stages. Test error handling: corrupted file, GPU errors, Redis failures.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>Development Environment Requirements</section>
+        <snippet>
+          Backend Python 3.12 managed via uv. Virtual environment at backend/.venv/. Activation required: source .venv/Scripts/activate (Git Bash). Use uv pip install for dependencies. Docker containers use isolated Python environment from Dockerfile. GPU requires nvidia-docker2 and CUDA 11.8+.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Functional Requirements</section>
+        <snippet>
+          FR-003: System shall process uploaded media files using WhisperX transcription engine with word-level timestamps. FR-004: System shall queue multiple transcription jobs and process them sequentially using available GPU resources. FR-006: System shall provide real-time progress updates during transcription processing.
+        </snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote PRD</title>
+        <section>Non-Functional Requirements</section>
+        <snippet>
+          NFR-001 Performance: Transcription processing shall complete at 1-2x real-time speed (1 hour audio = 30-60 min processing). NFR-003 Reliability: System shall achieve 90%+ transcription completion rate with error recovery and clear error messages.
+        </snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>backend/app/services/file_handler.py</path>
+        <kind>service</kind>
+        <symbol>FileHandler</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Existing service from Story 1.2. Use FileHandler.save_upload() for understanding file storage patterns. File paths follow /uploads/{job_id}/original.{ext} pattern. Transcription result will use same job_id folder.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/config.py</path>
+        <kind>config</kind>
+        <symbol>Settings</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Pydantic Settings pattern established in Story 1.1. Extend Settings class with Celery configuration: CELERY_BROKER_URL, CELERY_RESULT_BACKEND, WHISPER_MODEL, WHISPER_DEVICE, WHISPER_COMPUTE_TYPE. Load from .env file.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/models.py</path>
+        <kind>models</kind>
+        <symbol>UploadResponse</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Pydantic models defined here. Add StatusResponse, TranscriptionSegment, TranscriptionResult models to this file. Follow existing pattern with BaseModel inheritance and type hints.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/main.py</path>
+        <kind>api</kind>
+        <symbol>upload_file</symbol>
+        <lines>POST /upload endpoint</lines>
+        <reason>
+          Modify this endpoint to queue Celery task after FileHandler.save_upload(). Import transcribe_audio task. Call transcribe_audio.delay(job_id, file_path). Initialize Redis status before returning response.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/Dockerfile</path>
+        <kind>docker</kind>
+        <symbol>N/A</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Update to add GPU support (nvidia-docker2), CUDA libraries, WhisperX dependencies. Initialize git submodules during build. Follow existing COPY pattern from Story 1.2 fixes.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/docker-compose.yaml</path>
+        <kind>docker</kind>
+        <symbol>N/A</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Add worker service with GPU configuration, flower service for monitoring. Add volumes for /uploads and whisperx-models. Worker uses same image as web service with different command.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/conftest.py</path>
+        <kind>test</kind>
+        <symbol>test fixtures</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Existing pytest fixtures from Story 1.1. Use test_client fixture for API tests. Use tmp_path for file system testing. Follow established patterns for new test files.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/test_file_handler.py</path>
+        <kind>test</kind>
+        <symbol>test patterns</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Reference for testing patterns: pytest-mock usage, file system mocking, error scenario testing. Follow similar structure for test_transcription_task.py and test_whisperx_service.py.
+        </reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/test_upload_endpoint.py</path>
+        <kind>test</kind>
+        <symbol>test patterns</symbol>
+        <lines>entire file</lines>
+        <reason>
+          Reference for API endpoint testing patterns. Add tests for Celery task queuing (mock task.delay()). Verify initial status set in Redis. Update to include task integration tests.
+        </reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <python>
+        <existing>
+          - fastapi==0.120.x (web framework)
+          - uvicorn (ASGI server)
+          - pydantic==2.x (data validation)
+          - pydantic-settings==2.x (config management)
+          - python-multipart (file uploads)
+          - python-ffmpeg (media validation)
+          - pytest==7.x (testing)
+          - pytest-mock==3.x (mocking)
+        </existing>
+        <toAdd>
+          - celery[redis]==5.5.3+ (async task queue)
+          - redis==5.x (Python Redis client)
+          - whisperx (from git submodule, not PyPI)
+          - torch==2.x (PyTorch for WhisperX)
+          - torchaudio (audio processing)
+          - fakeredis==2.x (Redis mocking for tests)
+        </toAdd>
+      </python>
+      <docker>
+        - redis:7-alpine (message broker and result backend)
+        - nvidia-docker2 (GPU access in containers)
+        - CUDA 11.8+ or 12.1+ (GPU acceleration)
+      </docker>
+      <git>
+        - WhisperX submodule: https://github.com/m-bain/whisperX.git at backend/app/ai_services/whisperx
+      </git>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architectural">
+      Service abstraction: Create TranscriptionService base class in ai_services/base.py for future AI service flexibility. WhisperXService implements this interface.
+    </constraint>
+    <constraint type="architectural">
+      Celery task pattern: Use @shared_task(bind=True) decorator. Task signature: transcribe_audio(self, job_id: str, file_path: str) -> dict. Autodiscover tasks from app.tasks module.
+    </constraint>
+    <constraint type="storage">
+      Redis key patterns: job:{job_id}:status for status tracking, job:{job_id}:result for transcription results. Store as JSON strings. No TTL for MVP (manual cleanup).
+    </constraint>
+    <constraint type="storage">
+      File system: Save transcription result to /uploads/{job_id}/transcription.json alongside original.{ext} from Story 1.2. Use same job_id folder structure.
+    </constraint>
+    <constraint type="configuration">
+      Extend backend/app/config.py Settings class with Celery config: CELERY_BROKER_URL, CELERY_RESULT_BACKEND, WHISPER_MODEL, WHISPER_DEVICE, WHISPER_COMPUTE_TYPE. Load from .env file.
+    </constraint>
+    <constraint type="gpu">
+      Docker Compose worker service requires GPU configuration: deploy.resources.reservations.devices with nvidia driver. Environment: NVIDIA_VISIBLE_DEVICES=all. Mount volume for model caching: whisperx-models:/root/.cache/whisperx.
+    </constraint>
+    <constraint type="error-handling">
+      Wrap task logic in try/except. On exception, update Redis status to "failed" with user-friendly error message. Log with job_id and exception details. Max 3 retries with exponential backoff for transient failures.
+    </constraint>
+    <constraint type="performance">
+      Cache loaded WhisperX model in class variable to avoid reloading per job. Use float16 compute type for GPU efficiency. Expected speed: 1-2x real-time (1 hour audio = 30-60 min).
+    </constraint>
+    <constraint type="integration">
+      Modify POST /upload endpoint in backend/app/main.py to queue task after FileHandler.save_upload(). Initialize Redis status to "pending" (10%, "Task queued...") before returning UploadResponse.
+    </constraint>
+    <constraint type="security">
+      Job ID validation: UUID v4 format prevents injection. File path sanitization: Use os.path.join() for safe path construction. Don't expose internal paths or stack traces in user-facing error messages.
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>transcribe_audio (Celery Task)</name>
+      <kind>Celery shared_task</kind>
+      <signature>@shared_task(bind=True) def transcribe_audio(self, job_id: str, file_path: str) -> dict</signature>
+      <path>backend/app/tasks/transcription.py</path>
+      <description>
+        Async task that processes audio file using WhisperX. Updates progress in Redis through 5 stages. Stores result in Redis and disk. Handles errors gracefully.
+      </description>
+    </interface>
+    <interface>
+      <name>TranscriptionService.transcribe (Abstract Method)</name>
+      <kind>abstract method</kind>
+      <signature>def transcribe(self, audio_path: str) -> List[Dict[str, Any]]</signature>
+      <path>backend/app/ai_services/base.py</path>
+      <description>
+        Abstract interface for AI transcription services. Returns list of segments with start (float), end (float), text (str). WhisperXService implements this.
+      </description>
+    </interface>
+    <interface>
+      <name>WhisperXService.transcribe (Implementation)</name>
+      <kind>service method</kind>
+      <signature>def transcribe(self, audio_path: str) -> List[Dict[str, Any]]</signature>
+      <path>backend/app/ai_services/whisperx_service.py</path>
+      <description>
+        WhisperX implementation. Loads model with config settings (model, device, compute_type). Returns segments with word-level timestamps. Caches model in class variable.
+      </description>
+    </interface>
+    <interface>
+      <name>RedisService.set_status</name>
+      <kind>service method</kind>
+      <signature>def set_status(self, job_id: str, status: str, progress: int, message: str) -> None</signature>
+      <path>backend/app/services/redis_service.py</path>
+      <description>
+        Updates job status in Redis key job:{job_id}:status. Stores JSON with status, progress, message, created_at, updated_at (ISO 8601 UTC).
+      </description>
+    </interface>
+    <interface>
+      <name>RedisService.get_status</name>
+      <kind>service method</kind>
+      <signature>def get_status(self, job_id: str) -> Dict[str, Any]</signature>
+      <path>backend/app/services/redis_service.py</path>
+      <description>
+        Retrieves status from Redis key job:{job_id}:status. Returns parsed JSON dict. Returns None if key doesn't exist.
+      </description>
+    </interface>
+    <interface>
+      <name>RedisService.set_result</name>
+      <kind>service method</kind>
+      <signature>def set_result(self, job_id: str, segments: List[Dict[str, Any]]) -> None</signature>
+      <path>backend/app/services/redis_service.py</path>
+      <description>
+        Stores transcription result in Redis key job:{job_id}:result. Stores JSON with segments array.
+      </description>
+    </interface>
+    <interface>
+      <name>RedisService.get_result</name>
+      <kind>service method</kind>
+      <signature>def get_result(self, job_id: str) -> Dict[str, Any]</signature>
+      <path>backend/app/services/redis_service.py</path>
+      <description>
+        Retrieves result from Redis key job:{job_id}:result. Returns parsed JSON dict with segments. Returns None if key doesn't exist.
+      </description>
+    </interface>
+    <interface>
+      <name>StatusResponse (Pydantic Model)</name>
+      <kind>Pydantic BaseModel</kind>
+      <signature>
+        class StatusResponse(BaseModel):
+            status: Literal['pending', 'processing', 'completed', 'failed']
+            progress: int  # 0-100
+            message: str
+            created_at: str  # ISO 8601 UTC
+            updated_at: str  # ISO 8601 UTC
+      </signature>
+      <path>backend/app/models.py</path>
+      <description>Response model for GET /status/{job_id} endpoint (Story 1.4)</description>
+    </interface>
+    <interface>
+      <name>TranscriptionSegment (Pydantic Model)</name>
+      <kind>Pydantic BaseModel</kind>
+      <signature>
+        class TranscriptionSegment(BaseModel):
+            start: float  # Start time in seconds
+            end: float    # End time in seconds
+            text: str     # Transcribed text
+      </signature>
+      <path>backend/app/models.py</path>
+      <description>Individual subtitle segment with word-level timestamps</description>
+    </interface>
+    <interface>
+      <name>TranscriptionResult (Pydantic Model)</name>
+      <kind>Pydantic BaseModel</kind>
+      <signature>
+        class TranscriptionResult(BaseModel):
+            segments: list[TranscriptionSegment]
+      </signature>
+      <path>backend/app/models.py</path>
+      <description>Response model for GET /result/{job_id} endpoint (Story 1.4)</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Backend testing with pytest and pytest-mock. Target 70%+ code coverage for services/tasks, 80%+ for critical transcription path. Mock WhisperX using pytest-mock to avoid GPU dependency. Use fakeredis library for in-memory Redis testing. Mock file system with pytest tmp_path fixture. Follow patterns from test_file_handler.py and test_upload_endpoint.py. All error scenarios must have explicit tests.
+    </standards>
+    <locations>
+      - backend/tests/test_transcription_task.py (new)
+      - backend/tests/test_whisperx_service.py (new)
+      - backend/tests/test_redis_service.py (new)
+      - backend/tests/test_upload_endpoint.py (update existing)
+      - backend/tests/conftest.py (reuse fixtures)
+    </locations>
+    <ideas>
+      <idea ac="1">
+        - Test Celery worker can start with celery inspect ping
+        - Test task is registered in Celery app with autodiscovery
+        - Test Redis connection from worker
+      </idea>
+      <idea ac="2">
+        - Test transcribe_audio task accepts job_id and file_path parameters
+        - Test WhisperXService.transcribe() returns segments with start/end/text
+        - Mock WhisperX to return fixture segments (avoid GPU)
+        - Test task calls WhisperXService.transcribe() with correct file_path
+      </idea>
+      <idea ac="3">
+        - Test status updated through all 5 stages with correct progress values (10, 20, 40, 80, 100)
+        - Test messages match spec ("Task queued...", "Loading AI model...", etc.)
+        - Test Redis keys follow pattern job:{job_id}:status
+        - Test timestamps in ISO 8601 UTC format
+      </idea>
+      <idea ac="4">
+        - Test result stored in Redis key job:{job_id}:result with segments array
+        - Test result saved to disk at /uploads/{job_id}/transcription.json
+        - Test result format matches TranscriptionResult model spec
+        - Test segments have float timestamps (not strings)
+      </idea>
+      <idea ac="5">
+        - Test corrupted audio file → status "failed" with user-friendly error
+        - Test GPU out of memory → status "failed" with clear message
+        - Test Redis connection failure → task retries
+        - Test error message logged with job_id and exception details
+        - Test no stack traces in user-facing error messages
+      </idea>
+      <idea ac="6">
+        - Test POST /upload calls transcribe_audio.delay() with correct params
+        - Test task.delay() receives job_id from UploadResponse
+        - Test task.delay() receives file_path from FileHandler.save_upload()
+        - Test initial status set to "pending" (10%, "Task queued...") in Redis
+        - Mock task.delay() to avoid actual task execution in tests
+      </idea>
+    </ideas>
+  </tests>
+</story-context>

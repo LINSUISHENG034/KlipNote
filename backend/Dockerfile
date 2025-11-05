@@ -1,5 +1,6 @@
-# Base image with CUDA 11.8 support for GPU-accelerated WhisperX
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+# Base image with CUDA 12.3 support for GPU-accelerated WhisperX
+# CUDA 12.3.2 + cuDNN 9 required for ctranslate2 4.5.0+ and modern AI/ML ecosystem
+FROM nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04
 
 # Prevent interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -22,13 +23,15 @@ RUN ln -sf /usr/bin/python3.11 /usr/bin/python && \
 
 WORKDIR /app
 
-# Install PyTorch with CUDA 11.8 support (CRITICAL - must use specific index URL)
+# Install PyTorch with CUDA 12.1 support (CRITICAL - must use specific index URL)
 # Generic torch from PyPI installs CPU-only or wrong CUDA version
+# CUDA 12.1 wheels are compatible with CUDA 12.3 runtime (forward compatibility)
 # This ensures torch.cuda.is_available() returns True for GPU acceleration
 RUN pip install --no-cache-dir \
-    torch==2.1.2 \
-    torchaudio==2.1.2 \
-    --index-url https://download.pytorch.org/whl/cu118
+    torch \
+    torchvision \
+    torchaudio \
+    --index-url https://download.pytorch.org/whl/cu121
 
 # Install remaining Python dependencies
 COPY requirements.txt .
@@ -37,8 +40,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy entire backend directory to maintain app package structure
 COPY . /app
 
-# Set PYTHONPATH to include the app directory
-ENV PYTHONPATH="/app"
+# Set PYTHONPATH to include the app directory and whisperx submodule
+# whisperx is a git submodule at app/ai_services/whisperx/ and needs to be in the import path
+ENV PYTHONPATH="/app:/app/app/ai_services/whisperx"
 
 # Expose FastAPI port
 EXPOSE 8000

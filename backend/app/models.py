@@ -27,5 +27,94 @@ class UploadResponse(BaseModel):
     }
 
 
-# Placeholder models for future stories
-# Story 1.4: TranscriptionStatus, TranscriptionResult models
+class StatusResponse(BaseModel):
+    """Response model for job status tracking"""
+    status: str = Field(
+        ...,
+        description="Current job status",
+        pattern="^(pending|processing|completed|failed)$"
+    )
+    progress: int = Field(
+        ...,
+        description="Progress percentage (0-100)",
+        ge=0,
+        le=100
+    )
+    message: str = Field(
+        ...,
+        description="Human-readable status message"
+    )
+    created_at: str = Field(
+        ...,
+        description="ISO 8601 UTC timestamp when job was created"
+    )
+    updated_at: str = Field(
+        ...,
+        description="ISO 8601 UTC timestamp of last update"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "status": "processing",
+                    "progress": 40,
+                    "message": "Transcribing audio...",
+                    "created_at": "2025-11-05T10:30:00Z",
+                    "updated_at": "2025-11-05T10:31:15Z"
+                }
+            ]
+        }
+    }
+
+
+class TranscriptionSegment(BaseModel):
+    """Individual subtitle segment with word-level timestamps"""
+    start: float = Field(
+        ...,
+        description="Start time in seconds",
+        ge=0.0
+    )
+    end: float = Field(
+        ...,
+        description="End time in seconds",
+        gt=0.0
+    )
+    text: str = Field(
+        ...,
+        description="Transcribed text for this segment",
+        min_length=1
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "start": 0.5,
+                    "end": 3.2,
+                    "text": "Hello, welcome to the meeting."
+                }
+            ]
+        }
+    }
+
+
+class TranscriptionResult(BaseModel):
+    """Complete transcription result with all segments"""
+    segments: List[TranscriptionSegment] = Field(
+        ...,
+        description="List of transcription segments with timestamps"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "segments": [
+                        {"start": 0.5, "end": 3.2, "text": "Hello, welcome to the meeting."},
+                        {"start": 3.5, "end": 7.8, "text": "Let's begin with today's agenda."}
+                    ]
+                }
+            ]
+        }
+    }

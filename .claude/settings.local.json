@@ -29,7 +29,15 @@
       "Bash(test:*)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/test_file_handler.py -v)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/test_upload_endpoint.py -v)",
-      "Bash(.venv/Scripts/python.exe -m pytest tests/ -v --cov=app --cov-report=term-missing)"
+      "Bash(.venv/Scripts/python.exe -m pytest tests/ -v --cov=app --cov-report=term-missing)",
+      "Bash(.venvScriptspython.exe -m pytest tests/ -v --cov=app --cov-report=term-missing)",
+      "Bash(.venv/Scripts/python.exe -m pytest:*)",
+      "Bash(export PYTHONPATH=E:/Projects/KlipNote/backend:*)",
+      "Bash(.venv/Scripts/python.exe -m pip install:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker search:*)",
+      "Bash(docker-compose logs:*)"
     ],
     "deny": [],
     "ask": []
