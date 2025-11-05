@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "/uploads"
     MAX_FILE_SIZE: int = 2147483648  # 2GB in bytes
     MAX_DURATION_HOURS: int = 2
+    ALLOWED_FORMATS: List[str] = [
+        "audio/mpeg",      # MP3
+        "video/mp4",       # MP4
+        "audio/wav",       # WAV
+        "audio/x-m4a",     # M4A
+        "audio/mp4",       # M4A alternative MIME type
+    ]
 
     # CORS Configuration
     CORS_ORIGINS: str = '["http://localhost:5173"]'

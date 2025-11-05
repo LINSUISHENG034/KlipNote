@@ -28,7 +28,7 @@ services:
       - MAX_DURATION_HOURS=2
       - CORS_ORIGINS=["http://localhost:5173"]
     volumes:
-      - ./app:/app
+      - .:/app
       - ./uploads:/uploads
     # Wait for Redis health check before starting
     depends_on:
@@ -56,7 +56,7 @@ services:
       - UPLOAD_DIR=/uploads
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
-      - ./app:/app
+      - .:/app
       - ./uploads:/uploads
       # Model cache volume to avoid re-downloading WhisperX models
       - whisperx-models:/root/.cache/whisperx

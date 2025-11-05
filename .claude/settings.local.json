@@ -25,7 +25,11 @@
       "Bash(uv pip install:*)",
       "Bash(uv run pytest:*)",
       "Bash(npm run test:unit:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(test:*)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_file_handler.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_upload_endpoint.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/ -v --cov=app --cov-report=term-missing)"
     ],
     "deny": [],
     "ask": []

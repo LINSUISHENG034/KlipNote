@@ -1,0 +1,269 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/1-2-backend-api-upload-endpoint" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>2</storyId>
+    <title>Backend API Upload Endpoint</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-05</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/1-2-backend-api-upload-endpoint.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to upload audio/video files through a web form</iWant>
+    <soThat>I can start the transcription process</soThat>
+    <tasks>
+      <task id="1" acs="1,2">Create file validation service module - FileHandler class with validate_format(), validate_duration(), generate_job_id() methods</task>
+      <task id="2" acs="1,5">Implement file storage service - save_upload() method with /uploads/{job_id}/original.{ext} structure</task>
+      <task id="3" acs="1,4,8">Create Pydantic models for upload endpoint - UploadResponse with job_id field</task>
+      <task id="4" acs="1,2,3,4,5,6">Implement POST /upload endpoint with validation, error handling, and OpenAPI docs</task>
+      <task id="5" acs="3,7">Add configuration for file handling - UPLOAD_DIR, MAX_FILE_SIZE, MAX_DURATION_HOURS in Settings</task>
+      <task id="6" acs="1-8">Write comprehensive tests - unit tests for FileHandler, integration tests for /upload endpoint</task>
+      <task id="7" acs="4,8">Update project documentation - README with API usage examples</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">POST /upload endpoint accepts multipart/form-data file uploads with format and duration validation</criterion>
+    <criterion id="2">Validates file formats (MP3, MP4, WAV, M4A) and returns 400 error for unsupported formats</criterion>
+    <criterion id="3">Validates media duration using ffprobe, rejects files exceeding 2 hours with clear error</criterion>
+    <criterion id="4">Returns unique job_id (UUID v4 format) for tracking</criterion>
+    <criterion id="5">Saves uploaded file to /uploads/{job_id}/original.{ext} directory structure</criterion>
+    <criterion id="6">Returns 400/413 errors with clear messages for validation failures</criterion>
+    <criterion id="7">Handles files up to 2GB size, tested with actual large file</criterion>
+    <criterion id="8">API endpoint documented in FastAPI auto-docs (/docs) with OpenAPI schema</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Functional Requirements</section>
+        <snippet>FR001: System shall accept audio and video file uploads via web interface. FR002: System shall support common media formats including MP3, MP4, WAV, M4A.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Non-Functional Requirements</section>
+        <snippet>NFR-004: System shall handle media files up to 2 hours duration. File size limit of 2GB serves as practical upload boundary.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification: Foundation & Core Transcription Workflow</title>
+        <section>APIs and Interfaces - POST /upload</section>
+        <snippet>Upload media file and queue transcription job. Validations: File format (MP3, MP4, WAV, M4A), Duration ≤2 hours (checked via ffprobe), File size ≤2GB. Returns job_id (UUID v4). Errors: 400 (invalid format/duration/size), 500 (storage error).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Data Models and Contracts - Backend Pydantic Models</section>
+        <snippet>UploadResponse(BaseModel): job_id: str (UUID v4 format). Response from POST /upload endpoint.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>File System Storage</section>
+        <snippet>/uploads/{job_id}/original.{ext} - Uploaded media file (MP3, MP4, WAV, M4A). Job-based folder structure enables future multi-file support.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Security - Input Validation</section>
+        <snippet>File Upload Validation: File format whitelist (MP3, MP4, WAV, M4A), File size limit (2GB maximum), Duration validation (≤2 hours via ffprobe), Filename sanitization (UUID-based storage prevents path traversal).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-1.md</path>
+        <title>Epic Technical Specification</title>
+        <section>Test Strategy Summary</section>
+        <snippet>Backend API endpoints: 70%+ code coverage. Integration tests with TestClient (FastAPI). Mock external dependencies (ffprobe subprocess) using pytest-mock.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>Development Environment Requirements - Backend</section>
+        <snippet>Python 3.12.x managed via uv. Virtual environment at backend/.venv/. Activation required: source .venv/Scripts/activate. All backend commands MUST run inside uv environment.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>KlipNote - Epic Breakdown</title>
+        <section>Story 1.2: Backend API Upload Endpoint</section>
+        <snippet>As a user, I want to upload audio/video files through a web form, so that I can start the transcription process. Validates file formats, duration using ffprobe, returns unique job_id, saves to server storage.</snippet>
+      </doc>
+      <doc>
+        <path>docs/stories/1-1-project-scaffolding-and-development-environment.md</path>
+        <title>Story 1.1 - Learnings</title>
+        <section>Dev Notes - Critical Technical Decisions</section>
+        <snippet>FFmpeg binary installed in Dockerfile via apt-get (line 14) - available for media validation with ffprobe. Pydantic Settings pattern established in config.py. pytest configured with fixtures in tests/conftest.py.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>backend/app/main.py</path>
+        <kind>fastapi_app</kind>
+        <symbol>app</symbol>
+        <lines>11-26</lines>
+        <reason>FastAPI application instance with CORS middleware already configured. Extend with POST /upload endpoint, don't recreate.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/main.py</path>
+        <kind>endpoint</kind>
+        <symbol>root</symbol>
+        <lines>29-36</lines>
+        <reason>Example of existing endpoint pattern - follow similar structure for /upload endpoint.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/config.py</path>
+        <kind>configuration</kind>
+        <symbol>Settings</symbol>
+        <lines>11-47</lines>
+        <reason>Pydantic Settings class with UPLOAD_DIR, MAX_FILE_SIZE, MAX_DURATION_HOURS already defined. Use settings.UPLOAD_DIR in file_handler.py.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/models.py</path>
+        <kind>pydantic_models</kind>
+        <symbol>BaseModel</symbol>
+        <lines>1-12</lines>
+        <reason>Placeholder file for Pydantic models. Add UploadResponse model here following existing imports.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/services/__init__.py</path>
+        <kind>service_layer</kind>
+        <symbol>N/A</symbol>
+        <lines>N/A</lines>
+        <reason>Empty services directory established in Story 1.1. Create file_handler.py here following service layer pattern.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/conftest.py</path>
+        <kind>test_fixtures</kind>
+        <symbol>test_client</symbol>
+        <lines>N/A</lines>
+        <reason>Test fixtures for FastAPI TestClient and mocks. Use test_client fixture for /upload endpoint testing.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/test_api_endpoints.py</path>
+        <kind>test_examples</kind>
+        <symbol>N/A</symbol>
+        <lines>N/A</lines>
+        <reason>Existing API endpoint test patterns. Follow similar structure for POST /upload tests.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <python>
+        <package name="fastapi" version="0.120.0">Web framework for API endpoints</package>
+        <package name="uvicorn" version="0.32.1">ASGI server</package>
+        <package name="pydantic" version="2.10.3">Data validation and models</package>
+        <package name="pydantic-settings" version="2.7.0">Environment configuration</package>
+        <package name="python-multipart" version="0.0.20">Multipart form-data parsing for file uploads</package>
+        <package name="python-ffmpeg" version="1.0.16">Python wrapper for ffmpeg/ffprobe (binary installed in Docker)</package>
+        <package name="pytest" version="7.4.4">Testing framework</package>
+        <package name="pytest-mock" version="3.12.0">Mocking library for tests</package>
+        <package name="pytest-cov" version="4.1.0">Code coverage reporting</package>
+        <package name="httpx" version="0.28.1">HTTP client for testing FastAPI endpoints</package>
+      </python>
+      <system>
+        <dependency>FFmpeg (including ffprobe) - Installed in Docker via apt-get in Dockerfile line 14</dependency>
+      </system>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>CRITICAL: Activate uv virtual environment before all Python commands: cd backend && source .venv/Scripts/activate</constraint>
+    <constraint>Use Pydantic Settings pattern for configuration - extend Settings class in config.py, load from .env</constraint>
+    <constraint>Follow service layer pattern - create file_handler.py in backend/app/services/ following existing structure</constraint>
+    <constraint>Use FastAPI HTTPException for error handling with appropriate status codes (400, 413) and detail messages</constraint>
+    <constraint>File storage: UUID-based paths only (/uploads/{job_id}/original.{ext}), never use user-provided filenames</constraint>
+    <constraint>Security: Validate MIME types, enforce file size (2GB) and duration (2 hours) limits, sanitize all inputs</constraint>
+    <constraint>Testing: Maintain 70%+ backend code coverage, mock ffprobe subprocess calls using pytest-mock</constraint>
+    <constraint>Streaming uploads: Use FastAPI UploadFile and shutil.copyfileobj for memory-efficient large file handling</constraint>
+    <constraint>FFprobe integration: Use subprocess to call ffprobe with format=duration output, parse float seconds</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>Settings Configuration</name>
+      <kind>pydantic_settings</kind>
+      <signature>
+        class Settings(BaseSettings):
+            UPLOAD_DIR: str = "/uploads"
+            MAX_FILE_SIZE: int = 2147483648  # 2GB
+            MAX_DURATION_HOURS: int = 2
+            CORS_ORIGINS: str = '["http://localhost:5173"]'
+      </signature>
+      <path>backend/app/config.py</path>
+    </interface>
+    <interface>
+      <name>FastAPI App Instance</name>
+      <kind>fastapi_app</kind>
+      <signature>
+        app = FastAPI(
+            title="KlipNote API",
+            description="Audio transcription service with WhisperX",
+            version="0.1.0"
+        )
+      </signature>
+      <path>backend/app/main.py</path>
+    </interface>
+    <interface>
+      <name>POST /upload endpoint (to be created)</name>
+      <kind>rest_endpoint</kind>
+      <signature>
+        @app.post("/upload", response_model=UploadResponse)
+        async def upload_file(file: UploadFile) -> UploadResponse
+      </signature>
+      <path>backend/app/main.py (add to this file)</path>
+    </interface>
+    <interface>
+      <name>UploadResponse Model (to be created)</name>
+      <kind>pydantic_model</kind>
+      <signature>
+        class UploadResponse(BaseModel):
+            job_id: str  # UUID v4 format
+      </signature>
+      <path>backend/app/models.py (add to this file)</path>
+    </interface>
+    <interface>
+      <name>FileHandler Service (to be created)</name>
+      <kind>service_class</kind>
+      <signature>
+        class FileHandler:
+            @staticmethod
+            def validate_format(file: UploadFile) -> None
+            @staticmethod
+            def validate_duration(file_path: str) -> None
+            @staticmethod
+            def generate_job_id() -> str
+            @staticmethod
+            def save_upload(job_id: str, file: UploadFile) -> str
+      </signature>
+      <path>backend/app/services/file_handler.py (create this file)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing framework: pytest with pytest-mock for mocking external dependencies. Test organization: Unit tests in test_file_handler.py (service methods), integration tests in test_upload_endpoint.py (API with TestClient). Coverage target: 70%+ for backend code. Use fixtures from conftest.py (test_client, tmp_path). Mock ffprobe subprocess calls to avoid dependency on actual media files. Follow patterns from existing test_api_endpoints.py.
+    </standards>
+
+    <locations>
+      backend/tests/test_file_handler.py (create)
+      backend/tests/test_upload_endpoint.py (create)
+      backend/tests/conftest.py (existing fixtures)
+    </locations>
+
+    <ideas>
+      <idea ac="1,2">Test POST /upload with valid MP3 file - should return 200 with job_id in UUID v4 format</idea>
+      <idea ac="1,2">Test POST /upload with invalid format (.txt, .exe) - should return 400 with clear error message</idea>
+      <idea ac="3">Test POST /upload with file >2 hours duration - should return 400 with duration error message</idea>
+      <idea ac="7">Test POST /upload with file exactly 2GB - should succeed</idea>
+      <idea ac="7">Test POST /upload with file >2GB - should return 413 entity too large</idea>
+      <idea ac="5">Test file saved to correct directory structure /uploads/{job_id}/original.{ext}</idea>
+      <idea ac="4">Test generate_job_id() returns valid UUID v4 format</idea>
+      <idea ac="8">Test /docs endpoint includes /upload in OpenAPI schema</idea>
+      <idea ac="1-8">Mock ffprobe subprocess using pytest-mock to return controlled duration values</idea>
+    </ideas>
+  </tests>
+</story-context>

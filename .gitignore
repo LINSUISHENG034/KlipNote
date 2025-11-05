@@ -3,6 +3,8 @@ docs/bmm-*.md
 docs/implementation-*.md
 docs/validation-*.md
 
+test.mp3
+
 # Development Tools
 acli.exe
 _backend_old/
@@ -15,6 +17,8 @@ backend/.venv/
 .venv
 env/
 venv/
+.claude
+.gemini
 
 # Python Compiled Files
 __pycache__/

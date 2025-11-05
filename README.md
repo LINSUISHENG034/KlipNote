@@ -153,6 +153,109 @@ Access:
 - **API Docs**: http://localhost:8000/docs
 - **Flower**: http://localhost:5555
 
+## API Usage
+
+### Upload Audio/Video File
+
+Upload media files for transcription using the `/upload` endpoint.
+
+**Endpoint:** `POST /upload`
+
+**Supported Formats:**
+- MP3 (audio/mpeg)
+- MP4 (video/mp4)
+- WAV (audio/wav)
+- M4A (audio/x-m4a, audio/mp4)
+
+**File Requirements:**
+- **Maximum file size:** 2GB
+- **Maximum duration:** 2 hours
+- **Content-Type:** multipart/form-data
+
+**Example using cURL:**
+
+```bash
+# Upload an audio file
+curl -X POST "http://localhost:8000/upload" \
+     -F "file=@/path/to/your/audio.mp3"
+
+# Expected response:
+# {
+#   "job_id": "550e8400-e29b-41d4-a716-446655440000"
+# }
+```
+
+**Example using Python:**
+
+```python
+import requests
+
+# Upload file
+with open("/path/to/your/audio.mp3", "rb") as f:
+    response = requests.post(
+        "http://localhost:8000/upload",
+        files={"file": ("audio.mp3", f, "audio/mpeg")}
+    )
+
+data = response.json()
+job_id = data["job_id"]
+print(f"Upload successful! Job ID: {job_id}")
+```
+
+**Example using JavaScript/Fetch:**
+
+```javascript
+// Upload file from file input
+const fileInput = document.querySelector('input[type="file"]');
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+
+fetch('http://localhost:8000/upload', {
+    method: 'POST',
+    body: formData
+})
+.then(response => response.json())
+.then(data => {
+    console.log('Upload successful! Job ID:', data.job_id);
+})
+.catch(error => console.error('Upload failed:', error));
+```
+
+**Response Codes:**
+
+- **200 OK**: File uploaded successfully, returns `job_id`
+- **400 Bad Request**: Invalid file format or duration exceeds limit
+- **413 Payload Too Large**: File size exceeds 2GB limit
+- **422 Unprocessable Entity**: Missing file in request
+- **500 Internal Server Error**: Storage or processing error
+
+**Common Error Messages:**
+
+```json
+// Invalid format
+{
+  "detail": "Unsupported file format. Allowed: MP3, MP4, WAV, M4A. Received: text/plain"
+}
+
+// Duration too long
+{
+  "detail": "File duration exceeds 2-hour limit. File duration: 3.50 hours"
+}
+
+// File too large
+{
+  "detail": "File size exceeds maximum limit of 2.0GB"
+}
+```
+
+**Interactive API Documentation:**
+
+Visit http://localhost:8000/docs for interactive API documentation with:
+- Request/response schemas
+- Try-it-out functionality
+- Full parameter descriptions
+- Example requests and responses
+
 ## Project Structure
 
 ```
@@ -222,6 +325,28 @@ npm run test:unit -- --watch
 ```
 
 ## Troubleshooting
+
+### Upload Issues
+
+**Upload fails with "Unsupported file format":**
+- Ensure file is in supported format: MP3, MP4, WAV, or M4A
+- Check file extension matches actual format
+- Verify Content-Type header is correct
+
+**Upload fails with "File duration exceeds 2-hour limit":**
+- Media file is longer than 2 hours
+- Split file into shorter segments
+- Or adjust `MAX_DURATION_HOURS` in `.env` (requires restart)
+
+**Upload fails with "File size exceeds maximum limit":**
+- File is larger than 2GB
+- Compress or reduce quality of media file
+- Or adjust `MAX_FILE_SIZE` in `.env` (requires restart)
+
+**Upload succeeds but ffprobe validation fails:**
+- FFmpeg/ffprobe not installed in Docker container
+- Verify Dockerfile includes: `RUN apt-get update && apt-get install -y ffmpeg`
+- Rebuild containers: `docker-compose up --build`
 
 ### Backend Issues
 

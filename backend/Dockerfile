@@ -8,17 +8,17 @@ ENV DEBIAN_FRONTEND=noninteractive
 # WhisperX and torchaudio require the actual ffmpeg command-line tool, not just python-ffmpeg wrapper
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    python3.12 \
+    python3.11 \
     python3-pip \
-    python3.12-dev \
+    python3.11-dev \
     ffmpeg \
     git \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Create symlinks for python and pip
-RUN ln -s /usr/bin/python3.12 /usr/bin/python && \
-    ln -s /usr/bin/pip3 /usr/bin/pip
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip
 
 WORKDIR /app
 
@@ -34,11 +34,15 @@ RUN pip install --no-cache-dir \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY ./app /app
+# Copy entire backend directory to maintain app package structure
+COPY . /app
+
+# Set PYTHONPATH to include the app directory
+ENV PYTHONPATH="/app"
 
 # Expose FastAPI port
 EXPOSE 8000
 
 # Default command - runs FastAPI web server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Use app.main:app since 'app' is a Python package directory
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
