@@ -16,8 +16,9 @@ from fastapi.testclient import TestClient
 class TestUploadEndpointSuccess:
     """Test suite for successful upload scenarios"""
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_valid_mp3_file(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_valid_mp3_file(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test uploading valid MP3 file returns 200 with job_id"""
         # Mock settings and duration validation
         from app import config
@@ -46,8 +47,9 @@ class TestUploadEndpointSuccess:
         job_id = uuid.UUID(data["job_id"])
         assert job_id.version == 4
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_valid_mp4_file(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_valid_mp4_file(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test uploading valid MP4 file returns 200 with job_id"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -65,8 +67,9 @@ class TestUploadEndpointSuccess:
         data = response.json()
         assert "job_id" in data
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_valid_wav_file(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_valid_wav_file(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test uploading valid WAV file returns 200 with job_id"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -84,8 +87,9 @@ class TestUploadEndpointSuccess:
         data = response.json()
         assert "job_id" in data
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_valid_m4a_file(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_valid_m4a_file(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test uploading valid M4A file returns 200 with job_id"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -103,8 +107,9 @@ class TestUploadEndpointSuccess:
         data = response.json()
         assert "job_id" in data
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_saves_file_to_correct_location(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_saves_file_to_correct_location(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test that uploaded file is saved to /uploads/{job_id}/original.{ext}"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -178,7 +183,7 @@ class TestUploadEndpointValidationErrors:
         assert "Unsupported file format" in data["detail"]
 
     @patch("subprocess.run")
-    def test_upload_exceeding_duration_returns_400(self, mock_subprocess, test_client, tmp_path, monkeypatch):
+    def test_upload_exceeding_duration_returns_400(self, mock_subprocess, test_client, tmp_path, monkeypatch, fake_redis_client):
         """Test uploading file exceeding 2-hour duration returns 400"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -216,8 +221,9 @@ class TestUploadEndpointValidationErrors:
 class TestUploadEndpointSizeLimit:
     """Test suite for file size limit scenarios (413 errors)"""
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_file_exactly_2gb(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_file_exactly_2gb(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test uploading file exactly at 2GB limit succeeds"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -289,8 +295,9 @@ class TestUploadEndpointDocumentation:
 class TestUploadEndpointEdgeCases:
     """Test suite for edge cases and error handling"""
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_with_special_characters_in_filename(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_with_special_characters_in_filename(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test handling filename with special characters"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -307,8 +314,9 @@ class TestUploadEndpointEdgeCases:
         assert response.status_code == 200
         # UUID-based storage should handle any filename safely
 
+    @patch("app.main.transcribe_audio")
     @patch("app.services.file_handler.FileHandler.validate_duration")
-    def test_upload_with_unicode_filename(self, mock_validate_duration, test_client, tmp_path, monkeypatch):
+    def test_upload_with_unicode_filename(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test handling filename with unicode characters"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -325,7 +333,7 @@ class TestUploadEndpointEdgeCases:
         assert response.status_code == 200
 
     @patch("subprocess.run")
-    def test_upload_with_ffprobe_failure(self, mock_subprocess, test_client, tmp_path, monkeypatch):
+    def test_upload_with_ffprobe_failure(self, mock_subprocess, test_client, tmp_path, monkeypatch, fake_redis_client):
         """Test handling ffprobe execution failure"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -349,8 +357,9 @@ class TestUploadEndpointEdgeCases:
         data = response.json()
         assert "Media validation error" in data["detail"]
 
+    @patch("app.main.transcribe_audio")
     @patch("subprocess.run")
-    def test_upload_file_at_duration_boundary(self, mock_subprocess, test_client, tmp_path, monkeypatch):
+    def test_upload_file_at_duration_boundary(self, mock_subprocess, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
         """Test file exactly at 2-hour duration limit"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -374,7 +383,7 @@ class TestUploadEndpointEdgeCases:
         assert response.status_code == 200
 
     @patch("subprocess.run")
-    def test_upload_file_just_over_duration_limit(self, mock_subprocess, test_client, tmp_path, monkeypatch):
+    def test_upload_file_just_over_duration_limit(self, mock_subprocess, test_client, tmp_path, monkeypatch, fake_redis_client):
         """Test file just slightly over 2-hour limit"""
         from app import config
         monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
@@ -505,4 +514,241 @@ class TestUploadEndpointCeleryIntegration:
         # File should actually exist (saved by FileHandler)
         assert Path(file_path).exists()
         assert Path(file_path).name == "original.mp3"
+
+
+class TestStatusResultIntegrationWithUpload:
+    """Integration tests for full upload → status → result workflow"""
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_then_check_status_pending(self, mock_validate_duration, mock_transcribe_task, test_client, tmp_path, monkeypatch, fake_redis_client):
+        """Test Upload → Call /status immediately → Verify 'pending' status"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Upload file
+        file_content = b"test audio content"
+        file = io.BytesIO(file_content)
+
+        upload_response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", file, "audio/mpeg")}
+        )
+
+        assert upload_response.status_code == 200
+        job_id = upload_response.json()["job_id"]
+
+        # Immediately check status (before task completes)
+        status_response = test_client.get(f"/status/{job_id}")
+
+        assert status_response.status_code == 200
+        status_data = status_response.json()
+        assert status_data["status"] == "pending"
+        assert status_data["progress"] == 10
+        assert "queued" in status_data["message"].lower()
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_then_status_shows_completed(self, mock_validate_duration, mock_transcribe_task, test_client, tmp_path, monkeypatch, fake_redis_client):
+        """Test Upload → Simulate completion → Call /status → Verify 'completed'"""
+        from app import config
+        import json
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Upload file
+        file_content = b"test audio content"
+        file = io.BytesIO(file_content)
+
+        upload_response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", file, "audio/mpeg")}
+        )
+
+        assert upload_response.status_code == 200
+        job_id = upload_response.json()["job_id"]
+
+        # Simulate task completion by updating Redis status
+        status_key = f"job:{job_id}:status"
+        completed_status = {
+            "status": "completed",
+            "progress": 100,
+            "message": "Processing complete!",
+            "created_at": "2025-11-05T10:30:00Z",
+            "updated_at": "2025-11-05T10:32:45Z"
+        }
+        fake_redis_client.set(status_key, json.dumps(completed_status))
+
+        # Check status endpoint
+        status_response = test_client.get(f"/status/{job_id}")
+
+        assert status_response.status_code == 200
+        status_data = status_response.json()
+        assert status_data["status"] == "completed"
+        assert status_data["progress"] == 100
+        assert "complete" in status_data["message"].lower()
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_then_fetch_result(self, mock_validate_duration, mock_transcribe_task, test_client, tmp_path, monkeypatch, fake_redis_client):
+        """Test Upload → Simulate completion → Call /result → Verify segments present"""
+        from app import config
+        import json
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Upload file
+        file_content = b"test audio content"
+        file = io.BytesIO(file_content)
+
+        upload_response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", file, "audio/mpeg")}
+        )
+
+        assert upload_response.status_code == 200
+        job_id = upload_response.json()["job_id"]
+
+        # Simulate task completion by updating Redis status and result
+        status_key = f"job:{job_id}:status"
+        completed_status = {
+            "status": "completed",
+            "progress": 100,
+            "message": "Processing complete!",
+            "created_at": "2025-11-05T10:30:00Z",
+            "updated_at": "2025-11-05T10:32:45Z"
+        }
+        fake_redis_client.set(status_key, json.dumps(completed_status))
+
+        result_key = f"job:{job_id}:result"
+        transcription_result = {
+            "segments": [
+                {"start": 0.5, "end": 2.8, "text": "Hello, this is a test transcription."},
+                {"start": 3.0, "end": 5.5, "text": "The audio has been processed successfully."}
+            ]
+        }
+        fake_redis_client.set(result_key, json.dumps(transcription_result))
+
+        # Fetch result endpoint
+        result_response = test_client.get(f"/result/{job_id}")
+
+        assert result_response.status_code == 200
+        result_data = result_response.json()
+
+        assert "segments" in result_data
+        assert len(result_data["segments"]) == 2
+        assert result_data["segments"][0]["text"] == "Hello, this is a test transcription."
+        assert result_data["segments"][1]["text"] == "The audio has been processed successfully."
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_full_workflow_upload_status_result(self, mock_validate_duration, mock_transcribe_task, test_client, tmp_path, monkeypatch, fake_redis_client):
+        """Test complete workflow: Upload → Check pending status → Simulate completion → Check completed status → Fetch result"""
+        from app import config
+        import json
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Step 1: Upload file
+        file_content = b"full workflow test audio"
+        file = io.BytesIO(file_content)
+
+        upload_response = test_client.post(
+            "/upload",
+            files={"file": ("workflow_test.mp3", file, "audio/mpeg")}
+        )
+
+        assert upload_response.status_code == 200
+        job_id = upload_response.json()["job_id"]
+
+        # Step 2: Check initial status (pending)
+        status_response_1 = test_client.get(f"/status/{job_id}")
+        assert status_response_1.status_code == 200
+        assert status_response_1.json()["status"] == "pending"
+
+        # Step 3: Simulate processing status
+        status_key = f"job:{job_id}:status"
+        processing_status = {
+            "status": "processing",
+            "progress": 40,
+            "message": "Transcribing audio...",
+            "created_at": "2025-11-05T10:30:00Z",
+            "updated_at": "2025-11-05T10:31:15Z"
+        }
+        fake_redis_client.set(status_key, json.dumps(processing_status))
+
+        status_response_2 = test_client.get(f"/status/{job_id}")
+        assert status_response_2.status_code == 200
+        assert status_response_2.json()["status"] == "processing"
+        assert status_response_2.json()["progress"] == 40
+
+        # Step 4: Simulate completion
+        completed_status = {
+            "status": "completed",
+            "progress": 100,
+            "message": "Processing complete!",
+            "created_at": "2025-11-05T10:30:00Z",
+            "updated_at": "2025-11-05T10:32:45Z"
+        }
+        fake_redis_client.set(status_key, json.dumps(completed_status))
+
+        result_key = f"job:{job_id}:result"
+        transcription_result = {
+            "segments": [
+                {"start": 0.0, "end": 1.5, "text": "This is the complete workflow test."}
+            ]
+        }
+        fake_redis_client.set(result_key, json.dumps(transcription_result))
+
+        # Step 5: Check completed status
+        status_response_3 = test_client.get(f"/status/{job_id}")
+        assert status_response_3.status_code == 200
+        assert status_response_3.json()["status"] == "completed"
+        assert status_response_3.json()["progress"] == 100
+
+        # Step 6: Fetch final result
+        result_response = test_client.get(f"/result/{job_id}")
+        assert result_response.status_code == 200
+        assert len(result_response.json()["segments"]) == 1
+        assert result_response.json()["segments"][0]["text"] == "This is the complete workflow test."
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_result_endpoint_before_job_complete(self, mock_validate_duration, mock_transcribe_task, test_client, tmp_path, monkeypatch, fake_redis_client):
+        """Test calling /result while job is still processing returns 404"""
+        from app import config
+        import json
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Upload file
+        file_content = b"test audio content"
+        file = io.BytesIO(file_content)
+
+        upload_response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", file, "audio/mpeg")}
+        )
+
+        assert upload_response.status_code == 200
+        job_id = upload_response.json()["job_id"]
+
+        # Simulate processing status (not completed)
+        status_key = f"job:{job_id}:status"
+        processing_status = {
+            "status": "processing",
+            "progress": 40,
+            "message": "Transcribing audio...",
+            "created_at": "2025-11-05T10:30:00Z",
+            "updated_at": "2025-11-05T10:31:15Z"
+        }
+        fake_redis_client.set(status_key, json.dumps(processing_status))
+
+        # Try to fetch result (should fail with 404)
+        result_response = test_client.get(f"/result/{job_id}")
+
+        assert result_response.status_code == 404
+        assert "not yet complete" in result_response.json()["detail"].lower()
+
 

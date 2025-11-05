@@ -3,6 +3,7 @@ Pytest configuration and shared fixtures for backend tests
 """
 
 import pytest
+import fakeredis
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, MagicMock
 from typing import Generator, Dict, Any, List
@@ -21,6 +22,28 @@ def test_client() -> Generator[TestClient, None, None]:
     from app.main import app
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture
+def fake_redis_client(monkeypatch):
+    """
+    Provide fakeredis client for endpoint tests
+
+    Patches the Redis client used by RedisService to use fakeredis instead
+    of a real Redis connection. This allows testing Redis-dependent endpoints
+    without requiring a running Redis instance.
+
+    Usage:
+        def test_endpoint(test_client, fake_redis_client):
+            # fake_redis_client is automatically patched into RedisService
+            # Set test data in Redis
+            fake_redis_client.set("key", "value")
+            # Make API calls that use Redis
+            response = test_client.get("/endpoint")
+    """
+    fake_redis = fakeredis.FakeRedis(decode_responses=True)
+    monkeypatch.setattr("app.services.redis_service.redis.Redis", lambda **kwargs: fake_redis)
+    return fake_redis
 
 
 @pytest.fixture

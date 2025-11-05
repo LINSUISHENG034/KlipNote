@@ -37,7 +37,11 @@
       "Bash(.venv/Scripts/python.exe:*)",
       "Bash(docker-compose up:*)",
       "Bash(docker search:*)",
-      "Bash(docker-compose logs:*)"
+      "Bash(docker-compose logs:*)",
+      "Bash(.venvScriptspython.exe -m pytest tests/test_api_status_result.py -v)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/ -v --cov=app --cov-report=term-missing)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/test_upload_endpoint.py -v)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

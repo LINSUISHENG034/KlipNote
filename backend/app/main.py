@@ -6,7 +6,7 @@ Main entry point for the web service
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.models import UploadResponse
+from app.models import UploadResponse, StatusResponse, TranscriptionResult
 from app.services.file_handler import FileHandler
 from app.services.redis_service import RedisService
 from app.tasks.transcription import transcribe_audio
@@ -144,7 +144,150 @@ async def limit_upload_size(request: Request, call_next):
     return response
 
 
-# Placeholder endpoints - will be implemented in subsequent stories
-# Story 1.2: POST /api/upload - Upload audio file
-# Story 1.4: GET /api/transcriptions/{task_id} - Get transcription status
-# Story 1.4: GET /api/transcriptions/{task_id}/result - Get transcription result
+@app.get("/status/{job_id}", response_model=StatusResponse)
+async def get_status(job_id: str) -> StatusResponse:
+    """
+    Retrieve current status and progress of transcription job
+
+    Returns the current processing state, progress percentage, and descriptive message
+    for the specified job. Useful for polling to determine when transcription is complete.
+
+    **Progress Stages:**
+    - **10%**: Task queued...
+    - **20%**: Loading AI model...
+    - **40%**: Transcribing audio... (longest stage)
+    - **80%**: Aligning timestamps...
+    - **100%**: Processing complete!
+
+    **Response Fields:**
+    - **status**: One of: pending, processing, completed, failed
+    - **progress**: Integer percentage (0-100)
+    - **message**: User-friendly stage description
+    - **created_at**: ISO 8601 UTC timestamp when job was created
+    - **updated_at**: ISO 8601 UTC timestamp of last status update
+
+    **Example Request:**
+    ```bash
+    curl -X GET "http://localhost:8000/status/550e8400-e29b-41d4-a716-446655440000"
+    ```
+
+    **Example Response:**
+    ```json
+    {
+        "status": "processing",
+        "progress": 40,
+        "message": "Transcribing audio...",
+        "created_at": "2025-11-05T10:30:00Z",
+        "updated_at": "2025-11-05T10:31:15Z"
+    }
+    ```
+
+    **Error Responses:**
+    - **404**: Job ID not found (invalid or non-existent UUID)
+    """
+    redis_service = RedisService()
+
+    try:
+        status_data = redis_service.get_status(job_id)
+    except ValueError as e:
+        # Invalid UUID format
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found. Please check the job ID and try again."
+        )
+
+    if status_data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found. Please check the job ID and try again."
+        )
+
+    return StatusResponse(**status_data)
+
+
+@app.get("/result/{job_id}", response_model=TranscriptionResult)
+async def get_result(job_id: str) -> TranscriptionResult:
+    """
+    Retrieve completed transcription result
+
+    Returns the full transcription with word-level timestamps segmented into subtitle chunks.
+    Only available after the job status is "completed". Use GET /status/{job_id} to check completion.
+
+    **Response Fields:**
+    - **segments**: Array of subtitle segments, each containing:
+      - **start**: Start time in seconds (float)
+      - **end**: End time in seconds (float)
+      - **text**: Transcribed text for this segment
+
+    **Example Request:**
+    ```bash
+    curl -X GET "http://localhost:8000/result/550e8400-e29b-41d4-a716-446655440000"
+    ```
+
+    **Example Response:**
+    ```json
+    {
+        "segments": [
+            {"start": 0.5, "end": 3.2, "text": "Hello, welcome to the meeting."},
+            {"start": 3.5, "end": 7.8, "text": "Let's begin with today's agenda."}
+        ]
+    }
+    ```
+
+    **Error Responses:**
+    - **404**: Job not found, not yet complete, or transcription failed
+      - Returns specific error message based on job state:
+        - Job not found: Invalid or non-existent UUID
+        - Not complete: Job is still pending or processing
+        - Failed: Transcription error with details from status message
+    """
+    redis_service = RedisService()
+
+    # Check status first to provide better error messages
+    try:
+        status_data = redis_service.get_status(job_id)
+    except ValueError as e:
+        # Invalid UUID format
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found. Please check the job ID and try again."
+        )
+
+    if status_data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found. Please check the job ID and try again."
+        )
+
+    # Handle failed jobs
+    if status_data.get("status") == "failed":
+        raise HTTPException(
+            status_code=404,
+            detail=f"Transcription failed: {status_data.get('message', 'Unknown error')}"
+        )
+
+    # Handle incomplete jobs
+    if status_data.get("status") != "completed":
+        raise HTTPException(
+            status_code=404,
+            detail=f"Transcription not yet complete. Current status: {status_data.get('status')}"
+        )
+
+    # Retrieve result
+    try:
+        result_data = redis_service.get_result(job_id)
+    except ValueError as e:
+        # Invalid UUID format (shouldn't reach here, but defensive)
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found. Please check the job ID and try again."
+        )
+
+    if result_data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Transcription result not found. Please try again later."
+        )
+
+    return TranscriptionResult(**result_data)
+

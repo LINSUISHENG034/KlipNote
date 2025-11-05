@@ -40,7 +40,7 @@ development_status:
   1-1-project-scaffolding-and-development-environment: done
   1-2-backend-api-upload-endpoint: done
   1-3-celery-task-queue-and-whisperx-integration: done
-  1-4-status-and-result-api-endpoints: backlog
+  1-4-status-and-result-api-endpoints: done
   1-5-frontend-upload-interface: backlog
   1-6-frontend-progress-monitoring: backlog
   1-7-frontend-transcription-display: backlog
