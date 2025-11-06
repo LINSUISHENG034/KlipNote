@@ -42,7 +42,7 @@ development_status:
   1-3-celery-task-queue-and-whisperx-integration: done
   1-4-status-and-result-api-endpoints: done
   1-5-frontend-upload-interface: done
-  1-6-frontend-progress-monitoring: backlog
+  1-6-frontend-progress-monitoring: done
   1-7-frontend-transcription-display: backlog
   epic-1-retrospective: optional
 

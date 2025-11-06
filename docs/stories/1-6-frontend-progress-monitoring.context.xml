@@ -1,0 +1,204 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1.6</storyId>
+    <title>Frontend Progress Monitoring</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-06</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/1-6-frontend-progress-monitoring.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to see real-time progress while my file is transcribing</iWant>
+    <soThat>I know the system is working and how long to wait</soThat>
+    <tasks>
+      - Task 1: Create Pinia store for job state management (AC: #1, #4, #7)
+      - Task 2: Update API client with status and result endpoints (AC: #1, #4)
+      - Task 3: Create ProgressBar component (AC: #2)
+      - Task 4: Create ProgressView page with polling (AC: #1, #2, #3, #6, #7)
+      - Task 5: Implement auto-navigation on completion (AC: #4, #7)
+      - Task 6: Implement error handling with retry option (AC: #5, #7)
+      - Task 7: Add progress route to Vue Router (AC: #6)
+      - Task 8: Update UploadView to navigate to progress page (AC: #6)
+      - Task 9: Write comprehensive frontend tests (AC: #1-7)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    1. Progress page polls GET /status/{job_id} every 3 seconds
+    2. Progress bar or percentage displayed visually
+    3. Status message shows current state ("Task queued...", "Loading AI model...", "Transcribing audio...", "Aligning timestamps...", "Processing complete!")
+    4. On completion: Automatically navigates to results view
+    5. On error: Displays error message with retry option
+    6. User can safely navigate away and return using job_id (in URL)
+    7. Polling stops when job completes or fails
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Story 1.6: Frontend Progress Monitoring" snippet="User story statement and full acceptance criteria for progress monitoring feature with 3-second polling, visual progress display, and auto-navigation"/>
+
+      <doc path="docs/tech-spec-epic-1.md" title="Epic 1 Technical Specification" section="Progress Tracking Structure in Redis" snippet="Redis status format with 5-stage progress messages (queued, loading model, transcribing, aligning, complete), StatusResponse data model"/>
+
+      <doc path="docs/tech-spec-epic-1.md" title="Epic 1 Technical Specification" section="APIs and Interfaces" snippet="GET /status/{job_id} and GET /result/{job_id} endpoint specifications with request/response formats, error codes (404, 200), and status enum values"/>
+
+      <doc path="docs/tech-spec-epic-1.md" title="Epic 1 Technical Specification" section="Workflows and Sequencing" snippet="End-to-end polling workflow: Frontend polls status → Backend returns progress → Auto-navigate on completion"/>
+
+      <doc path="docs/architecture.md" title="Decision Architecture" section="State Management Patterns (Pinia)" snippet="Pinia store organization pattern: state, getters, actions structure. Example transcription store with job state management"/>
+
+      <doc path="docs/architecture.md" title="Decision Architecture" section="Component Structure Pattern" snippet="Vue SFC structure: script setup, template, style order. Import grouping (Vue, libs, local), props/emits definitions, lifecycle hooks"/>
+
+      <doc path="docs/architecture.md" title="Decision Architecture" section="Frontend API Client" snippet="Native fetch() pattern with error handling, API_BASE_URL constant, try/catch for network errors, response.ok checking"/>
+
+      <doc path="docs/architecture.md" title="Decision Architecture" section="TypeScript Type Definitions" snippet="StatusResponse, TranscriptionResult, Segment interface definitions mirroring backend Pydantic models"/>
+
+      <doc path="docs/architecture.md" title="Decision Architecture" section="Testing Strategy" snippet="Vitest + @vue/test-utils setup, 60%+ coverage target, mock strategies (API, Router, Intervals), test organization patterns"/>
+
+      <doc path="docs/stories/1-5-frontend-upload-interface.md" title="Story 1.5 Completion" section="Dev Notes - Learnings from Previous Story" snippet="Frontend architecture established: Vue 3 + Vite + TypeScript on port 5173, Router configured, API client pattern with fetch(), responsive design patterns"/>
+    </docs>
+
+    <code>
+      <file path="frontend/src/types/api.ts" kind="types" symbol="UploadResponse, ErrorResponse" lines="1-8" reason="Existing TypeScript interfaces - need to add StatusResponse, TranscriptionResult, Segment interfaces"/>
+
+      <file path="frontend/src/services/api.ts" kind="service" symbol="uploadFile" lines="1-43" reason="Existing API client with fetch() pattern - need to add fetchStatus() and fetchResult() functions following same error handling pattern"/>
+
+      <file path="frontend/src/router/index.ts" kind="router" symbol="router" lines="1-22" reason="Vue Router configuration - already has /progress/:job_id route configured! Note: uses job_id not jobId in route param"/>
+
+      <file path="frontend/src/views/UploadView.vue" kind="view" symbol="UploadView" reason="Upload page that needs to navigate to /progress/{job_id} after successful upload - integration point"/>
+
+      <file path="frontend/src/components/FileUpload.vue" kind="component" symbol="FileUpload" reason="File upload component used in UploadView - reference for component structure patterns"/>
+
+      <file path="frontend/package.json" kind="manifest" symbol="dependencies" lines="17-21" reason="Project dependencies: pinia@^3.0.3, vue@^3.5.22, vue-router@^4.6.3 already installed"/>
+
+      <file path="frontend/package.json" kind="manifest" symbol="devDependencies" lines="22-37" reason="Testing framework: vitest@^3.2.4, @vue/test-utils@^2.4.6, @vitest/coverage-v8@^3.2.4 configured"/>
+    </code>
+
+    <dependencies>
+      <node>
+        <dependency name="vue" version="^3.5.22" reason="Frontend framework - Composition API for ProgressView"/>
+        <dependency name="vue-router" version="^4.6.3" reason="Client-side routing - useRoute(), useRouter(), router.push()"/>
+        <dependency name="pinia" version="^3.0.3" reason="State management - transcription store for job state"/>
+        <dependency name="typescript" version="~5.9.0" reason="Type safety - StatusResponse, TranscriptionResult interfaces"/>
+        <dependency name="vitest" version="^3.2.4" reason="Testing framework - unit tests for store, components, views"/>
+        <dependency name="@vue/test-utils" version="^2.4.6" reason="Vue component testing - mount(), wrapper.find(), etc"/>
+        <dependency name="@vitest/coverage-v8" version="^3.2.4" reason="Code coverage reporting - target 60%+"/>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    **Development Constraints:**
+
+    1. **Polling Pattern**: MUST use setInterval with 3-second interval (3000ms), MUST clear interval on unmount to prevent memory leaks
+
+    2. **Router Integration**: Route param is job_id (underscore) not jobId (camelCase) - already defined in router/index.ts as /progress/:job_id
+
+    3. **State Management**: MUST use Pinia store for centralized state - NO component-local state for job data, status, or segments
+
+    4. **API Client Pattern**: Follow existing fetch() pattern in services/api.ts - use try/catch, check response.ok, parse error.detail
+
+    5. **Component Structure**: Vue SFC order: script setup → template → style scoped. Import order: Vue composables → external libs → local files
+
+    6. **TypeScript Types**: ALL interfaces must be defined in types/api.ts and imported with 'type' keyword (import type { ... })
+
+    7. **Error Handling**: Continue polling on transient errors (network timeouts), only stop on completed/failed status or unmount
+
+    8. **Navigation**: Auto-navigate MUST call store.fetchResult() before router.push() to ensure segments are loaded for EditorView (Story 1.7)
+
+    9. **Responsive Design**: Follow mobile-first approach with breakpoints at 768px. Progress bar must work on mobile, tablet, desktop
+
+    10. **Testing**: MUST use vitest fake timers (vi.useFakeTimers) to test polling intervals without waiting 3 real seconds
+  </constraints>
+
+  <interfaces>
+    <interface name="GET /status/{job_id}" kind="REST endpoint" signature="GET /status/{job_id} → StatusResponse" path="backend/app/main.py">
+      Response: {
+        status: 'pending' | 'processing' | 'completed' | 'failed',
+        progress: number (0-100),
+        message: string,
+        created_at: string (ISO 8601),
+        updated_at: string (ISO 8601)
+      }
+      Error: 404 if job_id not found
+    </interface>
+
+    <interface name="GET /result/{job_id}" kind="REST endpoint" signature="GET /result/{job_id} → TranscriptionResult" path="backend/app/main.py">
+      Response: {
+        segments: Array<{
+          start: number (float seconds),
+          end: number (float seconds),
+          text: string
+        }>
+      }
+      Error: 404 if job not completed or not found
+    </interface>
+
+    <interface name="useTranscriptionStore" kind="Pinia store" signature="defineStore('transcription', { state, getters, actions })" path="frontend/src/stores/transcription.ts">
+      State: { jobId, status, progress, message, segments, error }
+      Actions: fetchStatus(jobId), fetchResult(jobId), reset()
+      Getters: isProcessing, isCompleted, isFailed
+    </interface>
+
+    <interface name="ProgressBar" kind="Vue component" signature="defineProps<{ progress: number }>()" path="frontend/src/components/ProgressBar.vue">
+      Props: progress (0-100 number)
+      Emits: none
+      Display: Visual progress bar with percentage text, smooth CSS transition
+    </interface>
+
+    <interface name="ProgressView" kind="Vue component" signature="useRoute(), useRouter(), useTranscriptionStore()" path="frontend/src/views/ProgressView.vue">
+      Route Params: job_id (from /progress/:job_id)
+      Lifecycle: onMounted starts polling, onUnmounted stops polling
+      Watch: store.status → auto-navigate on 'completed', show error on 'failed'
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing framework: Vitest + @vue/test-utils. Coverage target: 60%+ for new components and store. Test organization: store tests in __tests__/stores/, component tests in __tests__/components/, view tests in __tests__/views/. Mock strategies: Use vitest.mock for API calls, mock useRouter/useRoute from vue-router, use vi.useFakeTimers for interval testing, create test Pinia instance for store tests.
+    </standards>
+
+    <locations>
+      - frontend/src/__tests__/stores/transcription.test.ts
+      - frontend/src/__tests__/components/ProgressBar.test.ts
+      - frontend/src/__tests__/views/ProgressView.test.ts
+    </locations>
+
+    <ideas>
+      **Pinia Store Tests (AC #1, #4, #7):**
+      - Test: State initialization - verify default values (jobId: null, status: 'pending', progress: 0, message: '', segments: [], error: null)
+      - Test: fetchStatus() success - mock API response, verify state updates (status, progress, message)
+      - Test: fetchStatus() failure - mock API error, verify error set and exception thrown
+      - Test: fetchResult() success - mock API response, verify segments array populated
+      - Test: fetchResult() failure - mock API error, verify error set and exception thrown
+      - Test: Getters - verify isProcessing true when status is 'pending' or 'processing'
+      - Test: Getters - verify isCompleted true when status is 'completed'
+      - Test: Getters - verify isFailed true when status is 'failed'
+      - Test: reset() action - verify all state cleared to default values
+
+      **ProgressBar Component Tests (AC #2):**
+      - Test: Render with progress=0 - verify 0% width and "0%" text
+      - Test: Render with progress=50 - verify 50% width and "50%" text
+      - Test: Render with progress=100 - verify 100% width and "100%" text
+      - Test: CSS transition - verify progress-bar-fill has transition style
+      - Test: Responsive - verify component renders on mobile viewport (320px)
+
+      **ProgressView Tests (AC #1, #2, #3, #4, #5, #6, #7):**
+      - Test: Mount - verify polling starts immediately (fetchStatus called within 100ms)
+      - Test: Polling interval - use vi.useFakeTimers, advance 3 seconds, verify fetchStatus called
+      - Test: Unmount - verify clearInterval called, polling stopped
+      - Test: Job ID extraction - verify route.params.job_id extracted correctly
+      - Test: Progress display - verify ProgressBar component receives store.progress prop
+      - Test: Status message - verify store.message displayed in template
+      - Test: Completed status - mock store.status = 'completed', verify fetchResult() called then router.push('/results/{job_id}')
+      - Test: Failed status - mock store.status = 'failed', verify error message displayed
+      - Test: Retry button - click retry button, verify store.reset() called then router.push('/')
+      - Test: Polling resilience - mock fetchStatus() throw error, verify polling continues (no clearInterval)
+
+      **Integration Tests (AC #6, #8):**
+      - Test: UploadView navigation - mock successful upload, verify router.push called with /progress/{job_id}
+      - Test: Full workflow - upload → progress → auto-navigate to results (requires mocking all APIs)
+    </ideas>
+  </tests>
+</story-context>

@@ -1,4 +1,4 @@
-import type { UploadResponse } from '@/types/api'
+import type { UploadResponse, StatusResponse, TranscriptionResult } from '@/types/api'
 
 const API_BASE_URL = 'http://localhost:8000'
 
@@ -39,4 +39,44 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
     }
     throw new Error('Network error: Failed to upload file')
   }
+}
+
+/**
+ * Fetch the current status of a transcription job
+ * @param jobId - The job ID to check status for
+ * @returns Promise resolving to StatusResponse with status, progress, and message
+ * @throws Error if status fetch fails or job not found
+ */
+export async function fetchStatus(jobId: string): Promise<StatusResponse> {
+  const response = await fetch(`${API_BASE_URL}/status/${jobId}`)
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Job not found. Please check the job ID.')
+    }
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to fetch status')
+  }
+
+  return response.json()
+}
+
+/**
+ * Fetch the transcription result for a completed job
+ * @param jobId - The job ID to fetch results for
+ * @returns Promise resolving to TranscriptionResult with segments
+ * @throws Error if result fetch fails or job not ready
+ */
+export async function fetchResult(jobId: string): Promise<TranscriptionResult> {
+  const response = await fetch(`${API_BASE_URL}/result/${jobId}`)
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Result not ready yet or job not found.')
+    }
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to fetch result')
+  }
+
+  return response.json()
 }

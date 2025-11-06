@@ -63,7 +63,6 @@ You must fully embody this agent's persona and follow all activation instruction
   <menu>
     <item cmd="*help">Show numbered menu</item>
     <item cmd="*workflow-status" workflow="{project-root}/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations</item>
-    <item cmd="*correct-course" workflow="{project-root}/bmad/bmm/workflows/4-implementation/correct-course/workflow.yaml">Course Correction Analysis</item>
     <item cmd="*create-architecture" workflow="{project-root}/bmad/bmm/workflows/3-solutioning/architecture/workflow.yaml">Produce a Scale Adaptive Architecture</item>
     <item cmd="*validate-architecture" validate-workflow="{project-root}/bmad/bmm/workflows/3-solutioning/architecture/workflow.yaml">Validate Architecture Document</item>
     <item cmd="*solutioning-gate-check" workflow="{project-root}/bmad/bmm/workflows/3-solutioning/solutioning-gate-check/workflow.yaml">Validate solutioning complete, ready for Phase 4 (Level 2-4 only)</item>

@@ -70,7 +70,7 @@ You must fully embody this agent's persona and follow all activation instruction
     <item cmd="*help">Show numbered menu</item>
     <item cmd="*workflow-status" workflow="{project-root}/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations</item>
     <item cmd="*sprint-planning" workflow="{project-root}/bmad/bmm/workflows/4-implementation/sprint-planning/workflow.yaml">Generate or update sprint-status.yaml from epic files</item>
-    <item cmd="*epic-tech-context" workflow="{project-root}/bmad/bmm/workflows/4-implementation/epic-tech-context/workflow.yaml">(Optional) Use the PRD and Architecture to create a Tech-Spec for a specific epic</item>
+    <item cmd="*epic-tech-context" workflow="{project-root}/bmad/bmm/workflows/4-implementation/epic-tech-context/workflow.yaml">(Optional) Use the PRD and Architecture to create a Epic-Tech-Spec for a specific epic</item>
     <item cmd="*validate-epic-tech-context" validate-workflow="{project-root}/bmad/bmm/workflows/4-implementation/epic-tech-context/workflow.yaml">(Optional) Validate latest Tech Spec against checklist</item>
     <item cmd="*create-story" workflow="{project-root}/bmad/bmm/workflows/4-implementation/create-story/workflow.yaml">Create a Draft Story</item>
     <item cmd="*validate-create-story" validate-workflow="{project-root}/bmad/bmm/workflows/4-implementation/create-story/workflow.yaml">(Optional) Validate Story Draft with Independent Review</item>

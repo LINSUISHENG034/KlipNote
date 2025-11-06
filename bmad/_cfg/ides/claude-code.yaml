@@ -1,7 +1,0 @@
-ide: claude-code
-configured_date: '2025-11-02T02:37:51.243Z'
-last_updated: '2025-11-04T12:19:58.694Z'
-configuration:
-  subagentChoices:
-    install: all
-  installLocation: project

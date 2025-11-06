@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { uploadFile } from '@/services/api'
+import { uploadFile, fetchStatus, fetchResult } from '@/services/api'
 
 describe('API Service', () => {
   const mockFetch = vi.fn()
@@ -183,6 +183,113 @@ describe('API Service', () => {
 
       const result = await uploadFile(file)
       expect(result.job_id).toBe('video-id')
+    })
+  })
+
+  describe('fetchStatus', () => {
+    it('returns status response from successful API call', async () => {
+      const mockResponse = {
+        status: 'processing',
+        progress: 45,
+        message: 'Transcribing audio...',
+        created_at: '2025-11-06T10:00:00Z',
+        updated_at: '2025-11-06T10:05:00Z',
+      }
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      })
+
+      const result = await fetchStatus('test-job-123')
+
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:8000/status/test-job-123')
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('throws error with 404 message when job not found', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: 'Job not found' }),
+      })
+
+      await expect(fetchStatus('invalid-job')).rejects.toThrow('Job not found. Please check the job ID.')
+    })
+
+    it('throws error with detail from API error response', async () => {
+      const errorDetail = 'Internal server error'
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ detail: errorDetail }),
+      })
+
+      await expect(fetchStatus('test-job')).rejects.toThrow(errorDetail)
+    })
+
+    it('throws generic error when API error has no detail', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      })
+
+      await expect(fetchStatus('test-job')).rejects.toThrow('Failed to fetch status')
+    })
+  })
+
+  describe('fetchResult', () => {
+    it('returns transcription result from successful API call', async () => {
+      const mockResponse = {
+        segments: [
+          { start: 0, end: 5.2, text: 'Hello world' },
+          { start: 5.2, end: 10.5, text: 'This is a test' },
+        ],
+      }
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      })
+
+      const result = await fetchResult('test-job-123')
+
+      expect(mockFetch).toHaveBeenCalledWith('http://localhost:8000/result/test-job-123')
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('throws error with 404 message when result not ready', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: 'Result not found' }),
+      })
+
+      await expect(fetchResult('test-job')).rejects.toThrow('Result not ready yet or job not found.')
+    })
+
+    it('throws error with detail from API error response', async () => {
+      const errorDetail = 'Processing incomplete'
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ detail: errorDetail }),
+      })
+
+      await expect(fetchResult('test-job')).rejects.toThrow(errorDetail)
+    })
+
+    it('throws generic error when API error has no detail', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      })
+
+      await expect(fetchResult('test-job')).rejects.toThrow('Failed to fetch result')
     })
   })
 })
