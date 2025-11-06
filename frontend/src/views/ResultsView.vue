@@ -1,231 +1,220 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useTranscriptionStore } from '@/stores/transcription'
+import SubtitleList from '@/components/SubtitleList.vue'
 
 const route = useRoute()
+const router = useRouter()
 const store = useTranscriptionStore()
-const jobId = route.params.job_id as string
+
+const jobId = ref(route.params.job_id as string)
+const isLoading = ref(false)
+const errorMessage = ref<string | null>(null)
+
+onMounted(async () => {
+  // Check if segments already loaded (from Story 1.6 auto-nav)
+  if (store.segments.length === 0) {
+    isLoading.value = true
+    try {
+      await store.fetchResult(jobId.value)
+    } catch (error) {
+      errorMessage.value = 'Failed to load transcription results. Please try again.'
+    } finally {
+      isLoading.value = false
+    }
+  }
+})
+
+async function handleRetry() {
+  errorMessage.value = null
+  isLoading.value = true
+  try {
+    await store.fetchResult(jobId.value)
+  } catch (error) {
+    errorMessage.value = 'Failed to load transcription results. Please try again.'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function handleBack() {
+  router.push('/')
+}
 </script>
 
 <template>
   <div class="results-view">
-    <div class="placeholder-card">
-      <div class="success-icon">✅</div>
-      <h1>Transcription Complete!</h1>
-      <p class="message">Your audio has been successfully transcribed.</p>
+    <!-- Top App Bar -->
+    <div class="top-bar">
+      <div class="top-bar-content">
+        <button @click="handleBack" class="icon-button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h2 class="top-bar-title">Transcription Results</h2>
+        <div class="icon-button-placeholder"></div>
+      </div>
+    </div>
 
-      <div class="job-info">
-        <h2>Job ID:</h2>
-        <code class="job-id">{{ jobId }}</code>
+    <!-- Content -->
+    <div class="content">
+      <!-- Loading State -->
+      <div v-if="isLoading" class="state-container">
+        <div class="spinner"></div>
+        <p class="state-message">Loading transcription...</p>
       </div>
 
-      <div class="segments-preview" v-if="store.segments.length > 0">
-        <h2>Preview ({{ store.segments.length }} segments)</h2>
-        <div class="segment-list">
-          <div v-for="(segment, index) in store.segments.slice(0, 3)" :key="index" class="segment">
-            <span class="timestamp">{{ segment.start.toFixed(1) }}s - {{ segment.end.toFixed(1) }}s</span>
-            <p class="text">{{ segment.text }}</p>
-          </div>
-          <p v-if="store.segments.length > 3" class="more-segments">
-            ... and {{ store.segments.length - 3 }} more segments
-          </p>
-        </div>
+      <!-- Error State -->
+      <div v-else-if="errorMessage" class="state-container">
+        <p class="error-message">{{ errorMessage }}</p>
+        <button @click="handleRetry" class="retry-button">Retry</button>
       </div>
 
-      <div class="placeholder-notice">
-        <p><strong>Note:</strong> This is a temporary placeholder page.</p>
-        <p>Story 1.7 will implement the full transcription display interface with editing capabilities.</p>
-      </div>
+      <!-- Results Display -->
+      <SubtitleList v-else-if="store.segments.length > 0" :segments="store.segments" />
 
-      <router-link to="/" class="back-button">
-        ← Upload Another File
-      </router-link>
+      <!-- Empty State -->
+      <div v-else class="state-container">
+        <p class="state-message">No transcription results available.</p>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .results-view {
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #101922;
+  color: #e4e4e7;
 }
 
-.placeholder-card {
-  background: white;
-  border-radius: 16px;
-  padding: 3rem;
-  max-width: 800px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  text-align: center;
+/* Top App Bar */
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(16, 25, 34, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(63, 63, 70, 0.3);
 }
 
-.success-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  animation: bounce 0.6s ease-out;
-}
-
-@keyframes bounce {
-  0%,
-  20%,
-  50%,
-  80%,
-  100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-20px);
-  }
-  60% {
-    transform: translateY(-10px);
-  }
-}
-
-h1 {
-  color: #2c3e50;
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.message {
-  color: #666;
-  font-size: 1.1rem;
-  margin-bottom: 2rem;
-}
-
-.job-info {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.job-info h2 {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.job-id {
-  display: inline-block;
-  background: #e9ecef;
-  color: #495057;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  word-break: break-all;
-}
-
-.segments-preview {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: left;
-}
-
-.segments-preview h2 {
-  font-size: 1rem;
-  color: #2c3e50;
-  margin-bottom: 1rem;
-}
-
-.segment-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.segment {
-  background: white;
+.top-bar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 1rem;
-  margin-bottom: 0.5rem;
-  border-radius: 4px;
-  border-left: 3px solid #42b983;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-.timestamp {
-  display: block;
-  font-size: 0.8rem;
-  color: #42b983;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  font-family: monospace;
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: transparent;
+  border: none;
+  color: #e4e4e7;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
 }
 
-.text {
-  color: #2c3e50;
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-button-placeholder {
+  width: 48px;
+  height: 48px;
+}
+
+.top-bar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #e4e4e7;
   margin: 0;
-  line-height: 1.6;
 }
 
-.more-segments {
-  text-align: center;
-  color: #999;
-  font-style: italic;
-  margin-top: 1rem;
-}
-
-.placeholder-notice {
-  background: #fff3cd;
-  border-left: 4px solid #ffc107;
+/* Content */
+.content {
+  max-width: 900px;
+  margin: 0 auto;
   padding: 1rem;
-  margin-bottom: 2rem;
-  text-align: left;
-  border-radius: 4px;
+  padding-bottom: 7rem;
 }
 
-.placeholder-notice p {
-  margin: 0.5rem 0;
-  color: #856404;
-  font-size: 0.9rem;
+/* State Containers */
+.state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
 }
 
-.placeholder-notice strong {
-  color: #856404;
+.state-message {
+  color: #a1a1aa;
+  font-size: 1rem;
+  margin: 0;
 }
 
-.back-button {
-  display: inline-block;
+/* Spinner */
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(19, 127, 236, 0.2);
+  border-top-color: #137fec;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error State */
+.error-message {
+  color: #ef4444;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.retry-button {
   padding: 0.75rem 2rem;
-  background: #42b983;
+  background: #137fec;
   color: white;
-  text-decoration: none;
-  border-radius: 8px;
+  border: none;
+  border-radius: 9999px;
+  font-size: 1rem;
   font-weight: 600;
-  transition: all 0.3s ease;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.back-button:hover {
-  background: #359268;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(66, 185, 131, 0.4);
+.retry-button:hover {
+  background: #0e6ac9;
 }
 
-/* Mobile responsive */
+/* Responsive */
 @media (max-width: 768px) {
-  .placeholder-card {
-    padding: 2rem 1.5rem;
+  .content {
+    padding: 0.75rem;
+    padding-bottom: 7rem;
   }
 
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  .success-icon {
-    font-size: 3rem;
-  }
-
-  .job-id {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
+  .top-bar-title {
+    font-size: 1rem;
   }
 }
 </style>

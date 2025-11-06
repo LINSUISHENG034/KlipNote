@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KlipNote Transcription</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#137fec",
+              "background-light": "#f6f7f8",
+              "background-dark": "#101922",
+            },
+            fontFamily: {
+              "display": ["Inter", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-screen w-full flex-col dark group/design-root overflow-hidden">
+<!-- Top App Bar -->
+<div class="flex shrink-0 items-center bg-background-light dark:bg-background-dark p-4 justify-between">
+<div class="text-slate-800 dark:text-white flex size-10 shrink-0 items-center justify-center">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</div>
+<h1 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">Transcribing Meeting</h1>
+<div class="flex size-10 shrink-0 items-center"></div>
+</div>
+<!-- Main Content -->
+<div class="flex flex-1 flex-col items-center justify-center p-6 space-y-8">
+<!-- Icon/Graphic -->
+<div class="flex h-40 w-40 items-center justify-center rounded-full bg-primary/10">
+<div class="flex h-28 w-28 items-center justify-center rounded-full bg-primary/20">
+<span class="material-symbols-outlined text-5xl text-primary">graphic_eq</span>
+</div>
+</div>
+<!-- Processing Container -->
+<div class="w-full max-w-sm rounded-xl bg-white/50 dark:bg-white/5 p-6 shadow-sm">
+<!-- Dynamic Status Text -->
+<div class="flex gap-6 justify-between mb-2">
+<p class="text-slate-700 dark:text-slate-300 text-base font-medium leading-normal">Generating timestamps...</p>
+<p class="text-slate-900 dark:text-white text-base font-bold leading-normal">90%</p>
+</div>
+<!-- Progress Bar -->
+<div class="w-full rounded-full bg-slate-200 dark:bg-slate-700">
+<div class="h-2 rounded-full bg-primary" style="width: 90%;"></div>
+</div>
+</div>
+</div>
+<!-- Bottom Action Button (Simulated Transition) -->
+<div class="p-4 pt-2 border-t border-slate-200 dark:border-slate-800">
+<button class="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 px-6 text-base font-bold text-white transition-all hover:bg-primary/90 active:scale-95">
+            Go to Editor
+        </button>
+</div>
+</div>
+</body></html>
