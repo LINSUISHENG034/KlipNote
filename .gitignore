@@ -18,7 +18,8 @@ backend/.venv/
 env/
 venv/
 
-# Other Files
+# AIGC Files
+.serena/
 .claude/
 .gemini/
 .pytest_cache/
