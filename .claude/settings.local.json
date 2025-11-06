@@ -41,7 +41,12 @@
       "Bash(.venvScriptspython.exe -m pytest tests/test_api_status_result.py -v)",
       "Bash(../.venv/Scripts/python.exe -m pytest tests/ -v --cov=app --cov-report=term-missing)",
       "Bash(../.venv/Scripts/python.exe -m pytest tests/test_upload_endpoint.py -v)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npm run:*)",
+      "Bash(cd frontend && npm run dev:*)",
+      "Bash(timeout 5 npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(../.venv/Scripts/python.exe -m pytest tests/ -v)"
     ],
     "deny": [],
     "ask": []
