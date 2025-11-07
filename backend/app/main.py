@@ -5,11 +5,18 @@ Main entry point for the web service
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pathlib import Path
+import re
+import logging
 from app.config import settings
 from app.models import UploadResponse, StatusResponse, TranscriptionResult
 from app.services.file_handler import FileHandler
 from app.services.redis_service import RedisService
 from app.tasks.transcription import transcribe_audio
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -290,4 +297,100 @@ async def get_result(job_id: str) -> TranscriptionResult:
         )
 
     return TranscriptionResult(**result_data)
+
+
+@app.get("/media/{job_id}")
+async def serve_media(job_id: str):
+    """
+    Serve uploaded media file with HTTP Range support for seeking
+
+    Returns the original uploaded audio/video file for playback in browser.
+    Supports HTTP Range requests enabling smooth seeking in HTML5 media players.
+
+    **Supported Formats:**
+    - Audio: MP3, WAV, M4A, WMA
+    - Video: MP4
+
+    **Features:**
+    - HTTP Range request support (206 Partial Content responses)
+    - Accept-Ranges: bytes header for browser compatibility
+    - Automatic Content-Type detection based on file extension
+
+    **Example Request:**
+    ```bash
+    curl -X GET "http://localhost:8000/media/550e8400-e29b-41d4-a716-446655440000"
+    ```
+
+    **Example Response Headers:**
+    ```
+    HTTP/1.1 200 OK
+    Content-Type: audio/mpeg
+    Accept-Ranges: bytes
+    Content-Length: 5242880
+    ```
+
+    **Range Request Example:**
+    ```bash
+    curl -X GET "http://localhost:8000/media/550e8400-e29b-41d4-a716-446655440000" \\
+         -H "Range: bytes=0-1023"
+    ```
+
+    **Range Response:**
+    ```
+    HTTP/1.1 206 Partial Content
+    Content-Type: audio/mpeg
+    Content-Range: bytes 0-1023/5242880
+    Content-Length: 1024
+    ```
+
+    **Error Responses:**
+    - **400**: Invalid job ID format (must be UUID)
+    - **404**: Job ID not found or media file missing
+    """
+    # Validate job_id format (UUID) to prevent path traversal attacks
+    UUID_PATTERN = re.compile(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$', re.IGNORECASE)
+    if not UUID_PATTERN.match(job_id):
+        logger.warning(f"Invalid job_id format attempted: {job_id}")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid job ID format. Must be a valid UUID."
+        )
+
+    # Locate job directory
+    job_dir = Path(settings.UPLOAD_DIR) / job_id
+    if not job_dir.exists():
+        logger.warning(f"Job directory not found: {job_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job {job_id} not found"
+        )
+
+    # Find original.{ext} file
+    media_files = list(job_dir.glob("original.*"))
+    if not media_files:
+        logger.warning(f"Media file not found for job: {job_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Media file not found for job {job_id}"
+        )
+
+    # Warn if multiple original files exist (ambiguous scenario)
+    if len(media_files) > 1:
+        logger.warning(f"Multiple media files found for job {job_id}: {[f.name for f in media_files]}. Using first match: {media_files[0].name}")
+
+    media_path = media_files[0]
+
+    # Determine Content-Type from extension using FileHandler mapping
+    ext = media_path.suffix.lower()
+    content_type = FileHandler.EXTENSION_MIME_MAP.get(ext, "application/octet-stream")
+
+    logger.info(f"Serving media file: {job_id}/{media_path.name} (type: {content_type})")
+
+    # FileResponse automatically handles Range requests
+    return FileResponse(
+        path=str(media_path),
+        media_type=content_type,
+        filename=f"media{ext}"
+    )
+
 

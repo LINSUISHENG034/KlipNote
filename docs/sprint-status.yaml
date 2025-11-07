@@ -1,4 +1,4 @@
-# generated: 2025-11-05
+# generated: 2025-11-07
 # project: KlipNote
 # project_key: KlipNote
 # tracking_system: file-system
@@ -29,7 +29,7 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
 
-generated: 2025-11-05
+generated: 2025-11-07
 project: KlipNote
 project_key: KlipNote
 tracking_system: file-system
@@ -47,8 +47,8 @@ development_status:
   1-8-ui-refactoring-with-stitch-design-system: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-media-playback-api-endpoint: backlog
+  epic-2: contexted
+  2-1-media-playback-api-endpoint: done
   2-2-frontend-media-player-integration: backlog
   2-3-click-to-timestamp-navigation: backlog
   2-4-inline-subtitle-editing: backlog
