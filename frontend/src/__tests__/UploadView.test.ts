@@ -48,16 +48,16 @@ describe('UploadView Component', () => {
     })
 
     it('renders upload button', () => {
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       expect(button.exists()).toBe(true)
-      expect(button.text()).toBe('Upload and Transcribe')
+      expect(button.text()).toContain('Upload and Transcribe')
     })
   })
 
   describe('File Selection', () => {
     it('enables upload button when file is selected', async () => {
       const file = new File(['audio'], 'test.mp3', { type: 'audio/mpeg' })
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
 
       expect(button.attributes('disabled')).toBeDefined()
 
@@ -69,23 +69,34 @@ describe('UploadView Component', () => {
 
     it('clears error message when new file is selected', async () => {
       const file = new File(['audio'], 'test.mp3', { type: 'audio/mpeg' })
+      const file2 = new File(['audio2'], 'test2.mp3', { type: 'audio/mpeg' })
 
-      // Set error message
-      wrapper.vm.errorMessage = 'Previous error'
-      await wrapper.vm.$nextTick()
-      expect(wrapper.find('.error-message').exists()).toBe(true)
+      // Trigger an error first
+      vi.mocked(api.uploadFile).mockRejectedValueOnce(new Error('Upload error'))
 
-      // Select new file
+      // Select first file and try to upload (which will fail)
       wrapper.findComponent(FileUpload).vm.$emit('file-selected', file)
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.find('.error-message').exists()).toBe(false)
+      const button = wrapper.find('[data-testid="upload-button"]')
+      await button.trigger('click')
+      await flushPromises()
+
+      // Error message should be visible
+      expect(wrapper.find('[data-testid="error-message"]').exists()).toBe(true)
+
+      // Select new file
+      wrapper.findComponent(FileUpload).vm.$emit('file-selected', file2)
+      await wrapper.vm.$nextTick()
+
+      // Error message should be cleared
+      expect(wrapper.find('[data-testid="error-message"]').exists()).toBe(false)
     })
   })
 
   describe('Upload Flow', () => {
     it('button is disabled when no file is selected', async () => {
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       expect(button.attributes('disabled')).toBeDefined()
     })
 
@@ -100,7 +111,7 @@ describe('UploadView Component', () => {
       await wrapper.vm.$nextTick()
 
       // Click upload button
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       await button.trigger('click')
 
       expect(api.uploadFile).toHaveBeenCalledWith(file)
@@ -122,12 +133,12 @@ describe('UploadView Component', () => {
       await wrapper.vm.$nextTick()
 
       // Click upload button
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       await button.trigger('click')
       await wrapper.vm.$nextTick()
 
       // Check loading state
-      expect(button.text()).toBe('Uploading...')
+      expect(button.text()).toContain('Uploading...')
       expect(button.attributes('disabled')).toBeDefined()
 
       // Resolve upload
@@ -146,7 +157,7 @@ describe('UploadView Component', () => {
       await wrapper.vm.$nextTick()
 
       // Click upload button
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       await button.trigger('click')
       await flushPromises()
 
@@ -165,12 +176,12 @@ describe('UploadView Component', () => {
       await wrapper.vm.$nextTick()
 
       // Click upload button
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       await button.trigger('click')
       await flushPromises()
 
       // Check error display
-      expect(wrapper.find('.error-message').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="error-message"]').exists()).toBe(true)
       expect(wrapper.text()).toContain(errorMessage)
       expect(router.currentRoute.value.path).toBe('/')
     })
@@ -185,12 +196,12 @@ describe('UploadView Component', () => {
       await wrapper.vm.$nextTick()
 
       // Click upload button
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       await button.trigger('click')
       await flushPromises()
 
       // Check error display
-      expect(wrapper.find('.error-message').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="error-message"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('Upload failed. Please try again.')
     })
 
@@ -204,12 +215,12 @@ describe('UploadView Component', () => {
       await wrapper.vm.$nextTick()
 
       // Click upload button
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       await button.trigger('click')
       await flushPromises()
 
       // Check button is no longer loading
-      expect(button.text()).toBe('Upload and Transcribe')
+      expect(button.text()).toContain('Upload and Transcribe')
       expect(button.attributes('disabled')).toBeUndefined()
     })
   })
@@ -221,7 +232,7 @@ describe('UploadView Component', () => {
       wrapper.findComponent(FileUpload).vm.$emit('file-selected', file)
       await wrapper.vm.$nextTick()
 
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       expect(button.attributes('type')).toBeUndefined() // Should be clickable
     })
 
@@ -237,7 +248,7 @@ describe('UploadView Component', () => {
       wrapper.findComponent(FileUpload).vm.$emit('file-selected', file)
       await wrapper.vm.$nextTick()
 
-      const button = wrapper.find('.upload-button')
+      const button = wrapper.find('[data-testid="upload-button"]')
       await button.trigger('click')
       await wrapper.vm.$nextTick()
 

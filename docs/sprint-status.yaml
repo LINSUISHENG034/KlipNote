@@ -44,6 +44,7 @@ development_status:
   1-5-frontend-upload-interface: done
   1-6-frontend-progress-monitoring: done
   1-7-frontend-transcription-display: done
+  1-8-ui-refactoring-with-stitch-design-system: done
   epic-1-retrospective: optional
 
   epic-2: backlog

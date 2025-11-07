@@ -29,10 +29,11 @@ describe('API Service', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1)
 
       const callArgs = mockFetch.mock.calls[0]
-      expect(callArgs[0]).toBe('http://localhost:8000/upload')
-      expect(callArgs[1].method).toBe('POST')
+      expect(callArgs).toBeDefined()
+      expect(callArgs![0]).toBe('http://localhost:8000/upload')
+      expect(callArgs![1].method).toBe('POST')
 
-      const formData = callArgs[1].body as FormData
+      const formData = callArgs![1].body as FormData
       expect(formData).toBeInstanceOf(FormData)
       expect(formData.get('file')).toBe(file)
     })
@@ -48,7 +49,8 @@ describe('API Service', () => {
       await uploadFile(file)
 
       const callArgs = mockFetch.mock.calls[0]
-      expect(callArgs[1].headers).toBeUndefined()
+      expect(callArgs).toBeDefined()
+      expect(callArgs![1].headers).toBeUndefined()
     })
 
     it('returns job_id from successful response', async () => {

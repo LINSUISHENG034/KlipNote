@@ -74,9 +74,9 @@ function handleDragLeave() {
       <div class="upload-icon">📁</div>
       <p class="main-text">Drag and drop your file here</p>
       <p class="or-text">or</p>
-      <button type="button" class="choose-file-button">
+      <span class="choose-file-button">
         Choose File
-      </button>
+      </span>
     </label>
 
     <div v-if="selectedFileName" class="selected-file">
@@ -91,23 +91,23 @@ function handleDragLeave() {
 
 <style scoped>
 .file-upload {
-  border: 2px dashed #ccc;
+  border: 2px dashed rgb(71 85 105); /* slate-600 */
   border-radius: 8px;
   padding: 2rem;
   text-align: center;
   transition: all 0.3s ease;
   cursor: pointer;
-  background-color: #fff;
+  background-color: rgb(15 23 42 / 0.3); /* dark semi-transparent */
 }
 
 .file-upload.drag-over {
-  border-color: #42b983;
-  background-color: #f0f9ff;
+  border-color: rgb(34 197 94); /* green-500 for primary */
+  background-color: rgb(34 197 94 / 0.1);
   transform: scale(1.02);
 }
 
 .file-upload:hover {
-  border-color: #42b983;
+  border-color: rgb(34 197 94); /* green-500 for primary */
 }
 
 .file-label {
@@ -121,37 +121,39 @@ function handleDragLeave() {
 }
 
 .main-text {
-  color: #34495e;
+  color: rgb(148 163 184); /* slate-400 */
   font-size: 1rem;
   margin-bottom: 0.5rem;
 }
 
 .or-text {
-  color: #999;
+  color: rgb(100 116 139); /* slate-500 */
   margin: 0.5rem 0;
   font-size: 0.9rem;
 }
 
 .choose-file-button {
+  display: inline-block;
   padding: 0.5rem 1.5rem;
-  background-color: #42b983;
+  background-color: rgb(34 197 94); /* green-500 primary */
   color: white;
-  border: none;
-  border-radius: 4px;
+  border-radius: 9999px; /* rounded-full */
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background-color 0.3s ease;
+  font-weight: 600;
+  transition: all 0.3s ease;
 }
 
 .choose-file-button:hover {
-  background-color: #359268;
+  background-color: rgb(22 163 74); /* green-600 */
+  transform: scale(1.05);
 }
 
 .selected-file {
   margin-top: 1rem;
   padding: 0.5rem;
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: rgb(34 197 94 / 0.2);
+  color: rgb(134 239 172); /* green-300 */
   border-radius: 4px;
   font-size: 0.9rem;
 }
@@ -159,8 +161,8 @@ function handleDragLeave() {
 .validation-error {
   margin-top: 1rem;
   padding: 0.75rem;
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: rgb(220 38 38 / 0.2);
+  color: rgb(252 165 165); /* red-300 */
   border-radius: 4px;
   font-size: 0.9rem;
 }

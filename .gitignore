@@ -24,6 +24,7 @@ venv/
 .gemini/
 .pytest_cache/
 bmad/
+temp/
 
 # Python Compiled Files
 __pycache__/

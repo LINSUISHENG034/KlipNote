@@ -176,6 +176,28 @@ So that I can verify the AI transcription quality.
 
 ---
 
+**Story 1.8: UI Refactoring with Stitch Design System**
+
+As a user,
+I want a professional, polished interface that matches modern design standards,
+So that the application looks credible and is enjoyable to use.
+
+**Acceptance Criteria:**
+1. All Vue 3 template example elements removed (Vue logo, "You did it!" text, HelloWorld.vue, TheWelcome.vue, WelcomeItem.vue)
+2. Tailwind CSS configured with Stitch design system (primary color: #137fec, dark background: #101922)
+3. Google Fonts Inter and Material Symbols Outlined integrated
+4. UploadView.vue redesigned with dark theme, glass-morphism card, and centered layout
+5. ProgressView.vue redesigned with top nav bar, audio wave animation, and professional progress indicators
+6. ResultsView.vue redesigned with media player placeholder area (for Epic 2), styled subtitle list with cards
+7. ExportModal.vue component created (UI only, functionality in Epic 2)
+8. All Epic 1 functionality verified working (upload, progress, transcription display)
+9. Responsive design works on desktop, tablet, and mobile
+10. No TypeScript errors, no console errors, code properly formatted
+
+**Prerequisites:** Story 1.7 (all Epic 1 features completed)
+
+---
+
 ## Epic 2: Integrated Review & Export Experience
 
 **Expanded Goal:**

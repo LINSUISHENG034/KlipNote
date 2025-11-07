@@ -3,7 +3,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import { setActivePinia, createPinia } from 'pinia'
 import ProgressView from '@/views/ProgressView.vue'
-import ProgressBar from '@/components/ProgressBar.vue'
 import { useTranscriptionStore } from '@/stores/transcription'
 import * as api from '@/services/api'
 
@@ -50,7 +49,7 @@ describe('ProgressView', () => {
       },
     })
 
-    expect(wrapper.find('.job-id').text()).toContain('test-job-123')
+    expect(wrapper.find('[data-testid="job-id"]').text()).toContain('test-job-123')
   })
 
   it('starts polling immediately on mount', async () => {
@@ -140,7 +139,7 @@ describe('ProgressView', () => {
     expect(api.fetchStatus).toHaveBeenCalledTimes(1) // Still only once
   })
 
-  it('displays ProgressBar with store progress', async () => {
+  it('displays progress bar with store progress', async () => {
     vi.mocked(api.fetchStatus).mockResolvedValue({
       status: 'processing',
       progress: 65,
@@ -160,9 +159,9 @@ describe('ProgressView', () => {
 
     await flushPromises()
 
-    const progressBar = wrapper.findComponent(ProgressBar)
+    const progressBar = wrapper.find('[data-testid="progress-bar"]')
     expect(progressBar.exists()).toBe(true)
-    expect(progressBar.props('progress')).toBe(65)
+    expect(progressBar.attributes('style')).toContain('width: 65%')
   })
 
   it('displays status message from store', async () => {
@@ -185,7 +184,7 @@ describe('ProgressView', () => {
 
     await flushPromises()
 
-    expect(wrapper.find('.status-message').text()).toBe('Transcribing audio...')
+    expect(wrapper.find('[data-testid="status-message"]').text()).toBe('Transcribing audio...')
   })
 
   it('navigates to results page when status is completed', async () => {
@@ -251,9 +250,9 @@ describe('ProgressView', () => {
 
     await flushPromises()
 
-    expect(wrapper.find('.error-section').exists()).toBe(true)
-    expect(wrapper.find('.error-message').text()).toContain('Processing failed')
-    expect(wrapper.find('.retry-button').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="error-section"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="error-message"]').text()).toContain('Processing failed')
+    expect(wrapper.find('[data-testid="retry-button"]').exists()).toBe(true)
   })
 
   it('retry button resets store and navigates to upload page', async () => {
@@ -279,7 +278,7 @@ describe('ProgressView', () => {
     await flushPromises()
 
     // Click retry button
-    await wrapper.find('.retry-button').trigger('click')
+    await wrapper.find('[data-testid="retry-button"]').trigger('click')
     await flushPromises()
 
     // Store should be reset

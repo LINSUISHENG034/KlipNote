@@ -66,7 +66,7 @@ describe('ResultsView', () => {
     const wrapper = mount(ResultsView)
     await flushPromises()
 
-    expect(wrapper.find('.state-container .spinner').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="loading-state"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Loading transcription')
   })
 
@@ -78,8 +78,8 @@ describe('ResultsView', () => {
     const wrapper = mount(ResultsView)
     await flushPromises()
 
-    expect(wrapper.find('.state-container .error-message').exists()).toBe(true)
-    expect(wrapper.find('.error-message').text()).toBe(
+    expect(wrapper.find('[data-testid="error-state"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="error-message"]').text()).toBe(
       'Failed to load transcription results. Please try again.'
     )
   })
@@ -92,9 +92,9 @@ describe('ResultsView', () => {
     const wrapper = mount(ResultsView)
     await flushPromises()
 
-    const retryButton = wrapper.find('.retry-button')
+    const retryButton = wrapper.find('[data-testid="retry-button"]')
     expect(retryButton.exists()).toBe(true)
-    expect(retryButton.text()).toBe('Retry')
+    expect(retryButton.text()).toContain('Retry')
   })
 
   it('should clear error and refetch on retry button click', async () => {
@@ -109,10 +109,10 @@ describe('ResultsView', () => {
     await flushPromises()
 
     // Error state should be visible
-    expect(wrapper.find('.state-container .error-message').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="error-state"]').exists()).toBe(true)
 
     // Click retry button
-    const retryButton = wrapper.find('.retry-button')
+    const retryButton = wrapper.find('[data-testid="retry-button"]')
     await retryButton.trigger('click')
     await flushPromises()
 
@@ -142,7 +142,7 @@ describe('ResultsView', () => {
     const wrapper = mount(ResultsView)
     await flushPromises()
 
-    expect(wrapper.find('.state-container').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="empty-state"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('No transcription results available')
   })
 
@@ -160,7 +160,7 @@ describe('ResultsView', () => {
     await flushPromises()
 
     // Should show loading initially
-    expect(wrapper.find('.state-container .spinner').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="loading-state"]').exists()).toBe(true)
 
     // Simulate successful fetch
     store.segments = createMockSegments(5)
@@ -168,12 +168,12 @@ describe('ResultsView', () => {
     await flushPromises()
 
     // Should show SubtitleList after loading
-    expect(wrapper.find('.state-container .spinner').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="loading-state"]').exists()).toBe(false)
     expect(wrapper.findComponent({ name: 'SubtitleList' }).exists()).toBe(true)
   })
 
   it('should have proper page title', () => {
     const wrapper = mount(ResultsView)
-    expect(wrapper.find('.top-bar-title').text()).toBe('Transcription Results')
+    expect(wrapper.find('[data-testid="top-bar-title"]').text()).toBe('KlipNote Demo')
   })
 })

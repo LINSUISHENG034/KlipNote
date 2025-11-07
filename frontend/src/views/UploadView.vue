@@ -36,112 +36,60 @@ async function handleUpload() {
     isUploading.value = false
   }
 }
+
+// Expose for testing
+defineExpose({
+  errorMessage
+})
 </script>
 
 <template>
-  <div class="upload-view">
-    <h1>KlipNote - AI Transcription</h1>
-    <p>Upload your audio or video file to generate a transcription</p>
-    <p class="supported-formats">Supported formats: MP3, MP4, WAV, M4A</p>
+  <div class="min-h-screen w-full flex items-center justify-center bg-dark-bg p-4">
+    <main class="w-full max-w-md">
+      <!-- Glass-morphism card -->
+      <div class="flex flex-col items-stretch justify-start rounded-xl bg-white/10 dark:bg-zinc-900/40 p-6 md:p-8 shadow-xl backdrop-blur-lg">
+        <!-- Header section -->
+        <div class="flex w-full flex-col items-stretch justify-center gap-4 text-center">
+          <h1 class="text-2xl font-bold tracking-tight text-slate-100 md:text-3xl">
+            KlipNote - AI Transcription
+          </h1>
+          <p class="text-base leading-relaxed text-slate-400">
+            Upload your audio or video file to generate a transcription
+          </p>
+          <p class="text-sm text-slate-500">
+            Supported formats: MP3, MP4, WAV, M4A
+          </p>
+        </div>
 
-    <FileUpload @file-selected="handleFileSelected" />
+        <!-- FileUpload component (drag-and-drop area) -->
+        <div class="mt-6">
+          <FileUpload @file-selected="handleFileSelected" />
+        </div>
 
-    <button
-      @click="handleUpload"
-      :disabled="!selectedFile || isUploading"
-      class="upload-button"
-    >
-      {{ isUploading ? 'Uploading...' : 'Upload and Transcribe' }}
-    </button>
+        <!-- Upload button with Material Symbol icon -->
+        <div class="mt-8 flex justify-center">
+          <button
+            @click="handleUpload"
+            :disabled="!selectedFile || isUploading"
+            data-testid="upload-button"
+            class="flex h-12 min-w-[84px] w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-primary px-5 text-base font-bold leading-normal tracking-[0.015em] text-white shadow-lg transition-transform hover:scale-105 active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            <span class="material-symbols-outlined text-xl">upload_file</span>
+            <span class="truncate">
+              {{ isUploading ? 'Uploading...' : 'Upload and Transcribe' }}
+            </span>
+          </button>
+        </div>
 
-    <div v-if="errorMessage" class="error-message">
-      {{ errorMessage }}
-    </div>
+        <!-- Error message display -->
+        <div v-if="errorMessage" data-testid="error-message" class="mt-4 p-3 bg-red-900/30 border border-red-500/50 text-red-300 rounded-lg text-sm">
+          {{ errorMessage }}
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
 <style scoped>
-.upload-view {
-  max-width: 600px;
-  margin: 2rem auto;
-  padding: 2rem;
-}
-
-h1 {
-  font-size: 2rem;
-  color: #2c3e50;
-  margin-bottom: 1rem;
-}
-
-p {
-  color: #34495e;
-  line-height: 1.6;
-}
-
-.supported-formats {
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
-}
-
-.upload-button {
-  margin-top: 1rem;
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.upload-button:hover:not(:disabled) {
-  background-color: #359268;
-}
-
-.upload-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.error-message {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background-color: #ffebee;
-  color: #c62828;
-  border-radius: 4px;
-}
-
-/* Responsive design - Mobile-first approach */
-/* Mobile (320px-767px) */
-@media (max-width: 767px) {
-  .upload-view {
-    padding: 1rem;
-    margin: 1rem auto;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  .upload-button {
-    width: 100%;
-    padding: 1rem;
-    font-size: 1.1rem;
-  }
-}
-
-/* Tablet (768px-1023px) */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .upload-view {
-    padding: 1.5rem;
-  }
-
-  h1 {
-    font-size: 1.75rem;
-  }
-}
-
-/* Desktop (1024px+) - default styles above already apply */
+/* Minimal scoped styles - prefer Tailwind utility classes */
 </style>
