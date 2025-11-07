@@ -121,10 +121,10 @@ def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
             message="Transcribing audio..."
         )
 
-        # Call WhisperX transcription
+        # Call WhisperX transcription with automatic language detection
         segments = whisperx_service.transcribe(
             audio_path=file_path,
-            language="en"  # TODO: Auto-detect language in future story
+            language=None  # Auto-detect language (zh, en, etc.)
         )
 
         # ======================================================================

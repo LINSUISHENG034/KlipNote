@@ -21,6 +21,7 @@ class FileHandler:
         ".mp4": "video/mp4",
         ".wav": "audio/wav",
         ".m4a": "audio/x-m4a",
+        ".wma": "audio/x-ms-wma",  # Windows Media Audio
     }
 
     @staticmethod
@@ -49,7 +50,7 @@ class FileHandler:
 
         # Neither Content-Type nor extension matched
         raise ValueError(
-            f"Unsupported file format. Allowed: MP3, MP4, WAV, M4A. "
+            f"Unsupported file format. Allowed: MP3, MP4, WAV, M4A, WMA. "
             f"Received Content-Type: {file.content_type}, "
             f"Filename: {file.filename or 'unknown'}"
         )

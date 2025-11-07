@@ -30,6 +30,8 @@ class Settings(BaseSettings):
         "audio/wav",       # WAV
         "audio/x-m4a",     # M4A
         "audio/mp4",       # M4A alternative MIME type
+        "audio/x-ms-wma",  # WMA (Windows Media Audio)
+        "audio/wma",       # WMA alternative MIME type
     ]
 
     # CORS Configuration

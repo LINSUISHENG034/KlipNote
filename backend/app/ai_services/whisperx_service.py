@@ -79,21 +79,24 @@ class WhisperXService(TranscriptionService):
     def transcribe(
         self,
         audio_path: str,
-        language: str = "en",
+        language: Optional[str] = None,  # Changed: Auto-detect when None
         **kwargs
     ) -> List[Dict[str, Any]]:
         """
-        Transcribe audio file using faster-whisper
+        Transcribe audio file using faster-whisper with automatic language detection
 
         Args:
             audio_path: Path to audio file
-            language: Language code (default: 'en')
+            language: Language code for transcription (ISO 639-1). If None (default),
+                      Whisper automatically detects the source audio language.
+                      Examples: 'en', 'zh', 'es', 'fr'
             **kwargs: Additional Whisper parameters
 
         Returns:
-            List of transcription segments with timestamps
+            List of transcription segments with timestamps in the detected/specified language
             [
-                {"start": 0.5, "end": 3.2, "text": "Hello, welcome..."},
+                {"start": 0.5, "end": 3.2, "text": "Hello, welcome..."},  # English
+                {"start": 3.5, "end": 7.2, "text": "你好，欢迎..."},  # Chinese (auto-detected)
                 ...
             ]
 
@@ -123,6 +126,16 @@ class WhisperXService(TranscriptionService):
             )
 
             logger.info(f"Detected language: {info.language} with probability {info.language_probability:.2f}")
+
+            # Enhanced logging to show auto-detection vs manual specification
+            detected_lang = info.language
+            lang_prob = info.language_probability
+            detection_mode = "auto-detected" if language is None else "user-specified"
+            logger.info(
+                f"Audio language: {detected_lang.upper()} "
+                f"(probability: {lang_prob:.2%}, "
+                f"{detection_mode})"
+            )
 
             # Extract segments with timestamps
             segments = []
@@ -193,7 +206,7 @@ class WhisperXService(TranscriptionService):
             return False
 
         # Check file extension
-        supported_formats = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".mp4", ".webm", ".aac"}
+        supported_formats = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".mp4", ".webm", ".aac", ".wma"}
         file_ext = Path(audio_path).suffix.lower()
 
         return file_ext in supported_formats

@@ -34,7 +34,7 @@ KlipNote solves this by combining WhisperX's state-of-the-art transcription accu
 
 - **FR001:** System shall accept audio and video file uploads via web interface
 - **FR002:** System shall support common media formats including MP3, MP4, WAV, M4A, and other formats supported by FFmpeg
-- **FR003:** System shall process uploaded media files using WhisperX transcription engine with word-level timestamps
+- **FR003:** System shall process uploaded media files using WhisperX transcription engine with word-level timestamps, automatically detecting and preserving the original audio language
 - **FR004:** System shall queue multiple transcription jobs and process them sequentially using available GPU resources
 
 **Transcription Display & Management**
