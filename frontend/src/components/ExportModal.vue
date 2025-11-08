@@ -67,6 +67,14 @@ onUnmounted(() => {
           Choose a format to download.
         </p>
 
+        <!-- Privacy Notice -->
+        <div class="mt-4 px-3 py-2 bg-zinc-700/30 border border-zinc-600/30 rounded-lg">
+          <p class="text-xs text-zinc-400 leading-relaxed">
+            <span class="material-symbols-outlined text-sm align-middle mr-1" style="font-size: 14px;">info</span>
+            Note: Edited transcriptions may be retained to improve our AI model.
+          </p>
+        </div>
+
         <!-- Export Options -->
         <div class="mt-6 flex flex-col space-y-3">
           <button

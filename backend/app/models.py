@@ -4,7 +4,7 @@ Will be populated in subsequent stories
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 import re
 
 
@@ -114,6 +114,79 @@ class TranscriptionResult(BaseModel):
                         {"start": 0.5, "end": 3.2, "text": "Hello, welcome to the meeting."},
                         {"start": 3.5, "end": 7.8, "text": "Let's begin with today's agenda."}
                     ]
+                }
+            ]
+        }
+    }
+
+
+class ExportRequest(BaseModel):
+    """Request body for POST /export/{job_id} endpoint"""
+    segments: List[TranscriptionSegment] = Field(
+        ...,
+        description="Edited subtitle array to export",
+        min_length=1
+    )
+    format: Literal['srt', 'txt'] = Field(
+        ...,
+        description="Export format choice: 'srt' (SubRip subtitle) or 'txt' (plain text)"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "segments": [
+                        {"start": 0.5, "end": 3.2, "text": "Edited subtitle text"},
+                        {"start": 3.5, "end": 7.8, "text": "Another edited segment"}
+                    ],
+                    "format": "srt"
+                }
+            ]
+        }
+    }
+
+
+class ExportMetadata(BaseModel):
+    """Metadata stored with edited transcription for data flywheel"""
+    job_id: str = Field(
+        ...,
+        description="Unique job identifier"
+    )
+    original_segment_count: int = Field(
+        ...,
+        description="Number of segments in original transcription",
+        ge=0
+    )
+    edited_segment_count: int = Field(
+        ...,
+        description="Number of segments in edited version",
+        ge=0
+    )
+    export_timestamp: str = Field(
+        ...,
+        description="ISO 8601 UTC timestamp when export was generated"
+    )
+    format_requested: str = Field(
+        ...,
+        description="Export format requested: 'srt' or 'txt'"
+    )
+    changes_detected: int = Field(
+        ...,
+        description="Number of segments with text differences from original",
+        ge=0
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "job_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "original_segment_count": 45,
+                    "edited_segment_count": 45,
+                    "export_timestamp": "2025-11-07T14:30:00Z",
+                    "format_requested": "srt",
+                    "changes_detected": 7
                 }
             ]
         }

@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Tailwind v4 Custom Theme - Define custom colors using @theme directive */
+@theme {
+  --color-primary: #137fec;
+  --color-dark-bg: #101922;
+  --color-light-bg: #f6f7f8;
+}
+
 /* Global base styles */
 @layer base {
   * {
