@@ -46,11 +46,17 @@ So that I can begin building features on a solid foundation.
 **Acceptance Criteria:**
 1. Backend: FastAPI project initialized with proper directory structure (api/, models/, services/, tasks/)
 2. Frontend: Vue 3 + Vite project initialized with component structure
-3. Dependencies installed: FastAPI, Celery, Redis, Vue 3, Vite
-4. WhisperX integrated as git submodule at `ai_services/whisperx/`
-5. Git repository configured with .gitignore for Python and Node
-6. Basic README with setup instructions
-7. Local development servers can run (backend on port 8000, frontend on port 5173)
+3. Dependencies installed: FastAPI, Celery, Redis, Vue 3, Vite, Tailwind CSS v4.1.16+
+4. Tailwind CSS v4 configured using `@tailwindcss/vite` plugin (NOT `@tailwindcss/postcss`)
+   - `@tailwindcss/vite` added to `frontend/package.json` devDependencies
+   - `tailwindcss()` plugin added to `frontend/vite.config.ts` plugins array
+   - `frontend/src/assets/main.css` uses `@import "tailwindcss";` syntax (NOT `@tailwind` directives)
+   - No `postcss.config.js` file exists in frontend directory
+5. WhisperX integrated as git submodule at `ai_services/whisperx/`
+6. Git repository configured with .gitignore for Python and Node
+7. Basic README with setup instructions
+8. Local development servers can run (backend on port 8000, frontend on port 5173)
+9. Tailwind CSS utility classes render correctly (verify with test element using `bg-primary` or similar)
 
 **Prerequisites:** None - first story in project
 

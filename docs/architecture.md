@@ -55,6 +55,13 @@ npm create vue@latest klipnote-frontend -- --typescript --router --pinia
 - Project structure: src/, components/, views/, stores/, router/
 - ESLint + Prettier for code quality
 
+**Tailwind CSS Configuration (v4):**
+- Version: 4.1.16+ (CSS-first, modern Vite integration)
+- Integration: `@tailwindcss/vite` plugin (NOT `@tailwindcss/postcss`)
+- Configuration approach: No `postcss.config.js` needed
+- CSS import: `@import "tailwindcss";` (replaces v3's `@tailwind` directives)
+- Rationale: v4 redesigned for native Vite integration, simpler config, better HMR performance
+
 ### Backend: Manual Setup with Docker Compose
 
 **Structure:**
@@ -241,6 +248,7 @@ npm list --depth=0
 | Redis | 7.x (alpine) | Dual-role: broker + result backend, Docker optimized | Epic 1 (job queue) |
 | Vue | 3.x | From create-vue starter, Composition API | All frontend epics |
 | TypeScript | 5.x | From create-vue starter, type safety | All frontend epics |
+| Tailwind CSS | 4.1.16+ | Modern CSS-first approach, native Vite integration via @tailwindcss/vite | All frontend epics |
 | Node.js | 20.x LTS | Frontend build tooling compatibility | Development only |
 | Pinia | Latest | Vue official state management | Epic 2 (review interface) |
 | Vue Router | 4.x | Vue 3 compatible routing | Epic 1 & 2 (navigation) |
@@ -1422,6 +1430,83 @@ watch(() => store.activeSegmentIndex, async (newIndex) => {
 ## Implementation Patterns
 
 These patterns ensure ALL AI agents write compatible, consistent code.
+
+### Frontend Build Configuration (Tailwind CSS v4)
+
+**Critical Pattern for ALL Frontend Agents:**
+
+Tailwind CSS v4 uses a modern, Vite-native integration approach. ALL agents implementing frontend stories MUST follow this exact configuration:
+
+**1. Dependencies:**
+```json
+// package.json
+{
+  "dependencies": {
+    "tailwindcss": "^4.1.16"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.16"  // ✅ USE THIS
+    // ❌ DO NOT USE: "@tailwindcss/postcss"
+  }
+}
+```
+
+**2. Vite Configuration Pattern:**
+```typescript
+// frontend/vite.config.ts
+import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
+import tailwindcss from '@tailwindcss/vite'  // ✅ MUST import
+
+export default defineConfig({
+  plugins: [
+    vue(),
+    vueDevTools(),
+    tailwindcss(),  // ✅ MUST add to plugins array
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  }
+})
+```
+
+**3. Main CSS Pattern:**
+```css
+/* frontend/src/assets/main.css */
+@import "tailwindcss";  /* ✅ v4 syntax - MUST be first line */
+
+/* Other styles below */
+```
+
+**❌ DO NOT USE (v3 syntax):**
+```css
+@tailwind base;      /* ❌ Old syntax */
+@tailwind components;
+@tailwind utilities;
+```
+
+**4. Files That Should NOT Exist:**
+- `postcss.config.js` - Delete if present (v4 doesn't need it with Vite)
+
+**Rationale:**
+- Tailwind v4 redesigned for modern build tools (Vite, Turbopack)
+- `@tailwindcss/vite` provides native Vite integration with better performance
+- Simpler configuration reduces complexity and potential conflicts
+- Unified `@import` directive replaces three separate `@tailwind` directives
+- No PostCSS config needed (eliminates extra configuration file)
+- Better Hot Module Replacement (HMR) performance during development
+
+**Common Mistakes to Avoid:**
+- ❌ Installing `@tailwindcss/postcss` instead of `@tailwindcss/vite`
+- ❌ Using old `@tailwind base/components/utilities` syntax
+- ❌ Creating unnecessary `postcss.config.js` file
+- ❌ Forgetting to add `tailwindcss()` to Vite plugins array
+
+**Affects:** All frontend stories (1.5-1.7, 2.2-2.4, 2.6)
 
 ### Naming Conventions
 

@@ -37,6 +37,17 @@ async function handleUpload() {
   }
 }
 
+async function onFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    // 1. 调用现有的函数来设置文件
+    handleFileSelected(target.files[0]) 
+    
+    // 2. 立即调用上传函数！
+    await handleUpload() 
+  }
+}
+
 // Expose for testing
 defineExpose({
   errorMessage
@@ -61,24 +72,30 @@ defineExpose({
           </p>
         </div>
 
-        <!-- FileUpload component (drag-and-drop area) -->
-        <div class="mt-6">
-          <FileUpload @file-selected="handleFileSelected" />
-        </div>
-
         <!-- Upload button with Material Symbol icon -->
         <div class="mt-8 flex justify-center">
-          <button
-            @click="handleUpload"
-            :disabled="!selectedFile || isUploading"
+          <label
             data-testid="upload-button"
-            class="flex h-12 min-w-[84px] w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-primary px-5 text-base font-bold leading-normal tracking-[0.015em] text-white shadow-lg transition-transform hover:scale-105 active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            :class="[
+              'flex h-12 min-w-[84px] w-full max-w-xs items-center justify-center gap-2 overflow-hidden rounded-full bg-primary px-5 text-base font-bold leading-normal tracking-[0.015em] text-white shadow-lg transition-transform',
+              isUploading
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:scale-105 active:scale-100 cursor-pointer'
+            ]"
           >
+            <input
+              type="file"
+              class="hidden"
+              @change="onFileChange" 
+              :disabled="isUploading"
+              accept="audio/mp3, audio/mp4, audio/wav, audio/x-m4a, video/mp4"
+            />
+            
             <span class="material-symbols-outlined text-xl">upload_file</span>
             <span class="truncate">
               {{ isUploading ? 'Uploading...' : 'Upload and Transcribe' }}
             </span>
-          </button>
+          </label>
         </div>
 
         <!-- Error message display -->
