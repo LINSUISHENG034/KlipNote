@@ -1,6 +1,89 @@
-# KlipNote
+# KlipNote - AI-Powered Transcription Tool
 
-Audio transcription service with GPU-accelerated WhisperX, built with FastAPI and Vue 3.
+Convert audio and video recordings into accurate, editable transcriptions powered by WhisperX AI.
+
+Perfect for meetings, interviews, podcasts, and lectures. Built with FastAPI (backend) and Vue 3 (frontend).
+
+## Overview
+
+KlipNote provides end-to-end transcription workflow:
+- **Upload** audio/video files (MP3, MP4, WAV, M4A)
+- **Monitor** real-time transcription progress
+- **Review** transcription with synchronized media playback
+- **Edit** subtitles inline with auto-save
+- **Export** in SRT or TXT format for further use
+
+**Key Features:**
+- GPU-accelerated transcription (1-2x real-time speed)
+- Click-to-timestamp navigation
+- Inline subtitle editing with keyboard shortcuts
+- Multiple export formats (SRT for video editors, TXT for LLMs)
+- Mobile-responsive design
+
+## User Guide
+
+### Quick Start
+
+1. **Navigate** to KlipNote at http://localhost:5173 (or your deployed URL)
+2. **Upload** your audio or video file (drag-and-drop or file picker)
+3. **Wait** for transcription to complete (progress bar shows status)
+4. **Review** your transcription with synchronized media playback
+5. **Edit** any errors by clicking subtitle text
+6. **Export** in SRT or TXT format
+
+### Supported Formats
+
+**Audio Formats:**
+- MP3 (audio/mpeg)
+- WAV (audio/wav)
+- M4A (audio/mp4, audio/x-m4a)
+
+**Video Formats:**
+- MP4 (video/mp4)
+
+**File Limits:**
+- **Maximum file size:** 2GB
+- **Maximum duration:** 2 hours
+- Files over these limits will be rejected with a clear error message
+
+### Export Formats
+
+**SRT (SubRip Subtitle):**
+- Industry-standard subtitle format
+- Compatible with video players (VLC, MPV, etc.)
+- Works with video editors (Premiere, Final Cut, DaVinci Resolve)
+- Includes timestamps for synchronization
+
+**TXT (Plain Text):**
+- Simple text format without timestamps
+- Ideal for LLM processing (ChatGPT, Claude, etc.)
+- Easy to copy/paste into documents
+- Clean, readable format
+
+### Browser Compatibility
+
+**Desktop Browsers:**
+- Chrome 90+ ✓
+- Firefox 88+ ✓
+- Safari 14+ ✓
+- Edge 90+ ✓
+
+**Mobile Browsers:**
+- Chrome Mobile (Android/iOS) ✓
+- Safari Mobile (iOS) ✓
+
+**Notes:**
+- Safari may handle media seeking slightly differently than Chrome/Firefox
+- Mobile devices: landscape orientation recommended for editing workflow
+
+### Known Limitations
+
+- **GPU required** for NFR001 performance targets (load <3s, playback <2s, seek <1s)
+- **CPU mode available** but 4-6x slower transcription (1 hour audio = 4-6 hours)
+- **File size limit:** 2GB maximum (technical constraint)
+- **Duration limit:** 2 hours maximum (reasonable transcription time)
+- **Single-user deployment:** No authentication or multi-tenancy in MVP
+- **Safari specifics:** Media seeking behavior may differ slightly from Chrome/Firefox
 
 ## System Requirements
 
@@ -344,13 +427,17 @@ klipnote/
 cd backend
 
 # Run all tests
-docker-compose exec web pytest tests/ -v
+../.venv/Scripts/python.exe -m pytest tests/ -v
 
 # Run with coverage report
-docker-compose exec web pytest tests/ -v --cov=app --cov-report=html
+../.venv/Scripts/python.exe -m pytest tests/ -v --cov=app --cov-report=html
+
+# Run specific test file
+../.venv/Scripts/python.exe -m pytest tests/test_api_upload.py -v
 
 # View coverage report
-open htmlcov/index.html
+start htmlcov/index.html  # Windows
+open htmlcov/index.html   # Mac/Linux
 ```
 
 ### Frontend Tests (Vitest)
@@ -364,13 +451,119 @@ npm run test:unit
 # Run with coverage
 npm run test:unit -- --coverage
 
-# Run in watch mode
+# Run in watch mode (auto-rerun on file changes)
 npm run test:unit -- --watch
 ```
 
+### End-to-End Tests (Playwright)
+
+**Story 2.7: Comprehensive E2E validation suite**
+
+```bash
+cd frontend
+
+# Prerequisites: Ensure backend is running
+cd ../backend && docker-compose up -d
+
+# Install Playwright browsers (first time only)
+npx playwright install --with-deps
+
+# Prepare test fixtures (see e2e/fixtures/README.md)
+# Create test media files: test-short.mp3, test-medium.mp3, test-video.mp4, test-audio.wav
+
+# Run all E2E tests
+npm run test:e2e
+
+# Run specific test suite
+npx playwright test workflow-validation
+npx playwright test cross-browser
+npx playwright test error-scenarios
+npx playwright test performance
+
+# Run tests in UI mode (interactive debugging)
+npm run test:e2e:ui
+
+# View test report
+npm run test:e2e:report
+```
+
+**E2E Test Coverage:**
+- **Workflow Validation:** Complete upload → progress → review → edit → export flow
+- **Cross-Browser:** Chrome, Firefox, Safari (webkit), Edge, Mobile browsers
+- **Error Scenarios:** Unsupported formats, network failures, corrupted files
+- **Performance:** NFR001 validation (load <3s, playback <2s, seek <1s)
+- **Mobile Responsiveness:** Tablet and phone viewports, touch interactions
+
+**Test Fixtures:**
+
+Create test media files in `frontend/e2e/fixtures/`:
+```bash
+# Using FFmpeg (if available)
+cd frontend/e2e/fixtures
+ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 10 -q:a 9 -acodec libmp3lame test-short.mp3
+ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 300 -q:a 9 -acodec libmp3lame test-medium.mp3
+
+# Or use your own audio/video files (rename to match test expectations)
+```
+
+See `frontend/e2e/fixtures/README.md` for detailed test file creation instructions.
+
 ## Troubleshooting
 
-### Upload Issues
+### User-Facing Issues
+
+**Upload fails with "File format not supported":**
+- Verify file is MP3, MP4, WAV, or M4A format
+- Check that file extension matches actual format
+- Try converting file to MP3 using a converter tool
+- Common issue: File extension changed but format didn't (e.g., .mp3 file that's actually .wav)
+
+**Upload fails with "File size exceeds 2GB limit":**
+- File is larger than 2GB maximum
+- Compress audio/video using tools like Handbrake or FFmpeg
+- Reduce audio bitrate (128kbps is sufficient for speech)
+- Split long recordings into smaller segments
+
+**Transcription stuck at "Processing...":**
+- Check Docker containers are running: `docker ps` (see all 4 containers: web, worker, redis, flower)
+- View Celery worker logs: `docker logs klipnote-worker-1 -f`
+- Verify GPU is available (if using GPU): Run `nvidia-smi`
+- First transcription takes longer due to model download (~1.5GB)
+- Expected processing time: 1-2x real-time (1 hour audio = 30-60 minutes with GPU)
+
+**Export downloads empty file:**
+- Check browser console for errors (F12 → Console tab)
+- Verify subtitles were saved (look for success message after editing)
+- Try different export format (SRT vs TXT)
+- Ensure pop-up blocker isn't preventing download
+- Try a different browser
+
+**Media player won't play / No audio:**
+- Verify original upload completed successfully
+- Check browser console for media loading errors
+- Safari users: Ensure file format is compatible (MP3/MP4 work best)
+- Try refreshing the page
+- Check media file isn't corrupted (re-upload if needed)
+
+**Click-to-timestamp doesn't work:**
+- Ensure media player has loaded (player should be visible)
+- Wait for media to buffer before clicking timestamps
+- Safari users: May need to wait slightly longer for seeking
+- Try clicking a different subtitle segment
+
+**Edits not saving / Lost edits after refresh:**
+- Edits are auto-saved to localStorage every 500ms
+- Verify localStorage is enabled in browser (not in incognito/private mode)
+- Check browser console for save errors
+- Export your work frequently as backup
+
+**Mobile: On-screen keyboard covers editing area:**
+- Switch to landscape orientation for better visibility
+- Scroll subtitle into view before editing
+- Use external keyboard if available
+- This is a known limitation - zoom out if needed
+
+### Developer/Backend Issues
 
 **Upload fails with "Unsupported file format":**
 - Ensure file is in supported format: MP3, MP4, WAV, or M4A

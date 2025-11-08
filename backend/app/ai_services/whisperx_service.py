@@ -114,15 +114,36 @@ class WhisperXService(TranscriptionService):
 
             # Transcribe with faster-whisper
             # Returns: (segments, info) where segments is an iterator
+            # Apply Chinese-specific optimizations when language is Chinese or auto-detect
             segments_iter, info = self.model.transcribe(
                 audio_path,
                 language=language,
-                beam_size=5,
-                vad_filter=True,  # Enable built-in VAD (no pyannote needed)
+                
+                # Beam search: smaller beam reduces hallucination tendency
+                beam_size=3,  # Reduced from 5 to prevent over-generation
+                
+                # Anti-hallucination parameters (critical for quality)
+                compression_ratio_threshold=2.4,  # Detect repetitive text (e.g., "我用了一尾" × 32)
+                log_prob_threshold=-1.0,          # Filter low-confidence segments
+                no_speech_threshold=0.6,          # Better silence detection
+                
+                # VAD: Optimized for Chinese speech patterns
+                vad_filter=True,
                 vad_parameters=dict(
-                    min_silence_duration_ms=500,
-                    speech_pad_ms=400
-                )
+                    min_silence_duration_ms=700,  # Chinese has different pause patterns
+                    speech_pad_ms=200,            # Tighter boundaries prevent bloat
+                    threshold=0.5                 # Balanced VAD sensitivity
+                ),
+                
+                # Chinese optimization: guide to Simplified Mandarin
+                initial_prompt="以下是普通话的句子。" if (language == "zh" or language is None) else None,
+                # Fully deterministic: eliminates sampling randomness
+                temperature=0.0,  # Changed from 0.2 for maximum stability
+                # Critical for Chinese: prevents context pollution and error propagation
+                condition_on_previous_text=False,
+                
+                # Segment-level timestamps (better for Chinese than word-level)
+                word_timestamps=False
             )
 
             logger.info(f"Detected language: {info.language} with probability {info.language_probability:.2f}")
@@ -137,14 +158,44 @@ class WhisperXService(TranscriptionService):
                 f"{detection_mode})"
             )
 
+            # Log Chinese-specific optimizations when applied
+            if detected_lang == "zh":
+                logger.info(
+                    "Chinese audio detected - optimizations active: "
+                    "beam_size=3, "
+                    "compression_ratio_threshold=2.4, "
+                    "log_prob_threshold=-1.0, "
+                    "no_speech_threshold=0.6, "
+                    "temperature=0.0, "
+                    "condition_on_previous_text=False, "
+                    "VAD: min_silence=700ms/speech_pad=200ms, "
+                    "post-processing: Traditional→Simplified conversion"
+                )
+
             # Extract segments with timestamps
             segments = []
             for segment in segments_iter:
                 # faster-whisper segments have: start, end, text, words (optional)
+                text = segment.text.strip()
+
+                # Convert Traditional Chinese to Simplified Chinese for zh language
+                if detected_lang == "zh":
+                    try:
+                        import zhconv
+                        # zh-cn = Simplified Chinese
+                        text = zhconv.convert(text, 'zh-cn')
+                    except ImportError:
+                        logger.warning(
+                            "zhconv library not installed - skipping Traditional→Simplified conversion. "
+                            "Install with: uv pip install zhconv"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Chinese conversion failed: {e} - using original text")
+
                 segments.append({
                     "start": float(segment.start),
                     "end": float(segment.end),
-                    "text": segment.text.strip()
+                    "text": text
                 })
 
             logger.info(f"Transcription complete: {len(segments)} segments")

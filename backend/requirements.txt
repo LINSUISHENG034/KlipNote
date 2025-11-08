@@ -42,6 +42,10 @@ av<16.0.0
 # Silero VAD (torch.hub model) provides voice activity detection without extra deps
 transformers>=4.48.0
 
+# Chinese Language Processing
+# Used for Traditional→Simplified Chinese conversion in transcription post-processing
+zhconv>=1.4.3
+
 # Note: torch, torchvision, and torchaudio are installed in Dockerfile
 # with CUDA 12.1-specific index URL: --index-url https://download.pytorch.org/whl/cu121
 # CUDA 12.1 wheels are forward-compatible with CUDA 12.3 runtime

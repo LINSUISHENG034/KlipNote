@@ -26,7 +26,7 @@ project: "KlipNote"
 project_type: "software"
 project_level: "2"
 field_type: "greenfield"
-workflow_path: "greenfield-level-2.yaml"
+workflow_path: "bmad/bmm/workflows/workflow-status/paths/method-greenfield.yaml"
 
 workflow_status:
   # Phase 1: Analysis

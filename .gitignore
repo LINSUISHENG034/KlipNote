@@ -17,6 +17,9 @@ backend/.venv/
 .venv
 env/
 venv/
+test-results/
+fixtures/
+reference/
 
 # AIGC Files
 .serena/
