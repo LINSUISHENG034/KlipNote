@@ -385,3 +385,290 @@ describe('Transcription Store', () => {
     })
   })
 })
+
+// Story 2.4: Inline Editing Tests
+describe('Transcription Store - Story 2.4: Editing Actions', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+  })
+
+  describe('updateSegmentText', () => {
+    it('should update segment text immediately', () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0.0, end: 2.5, text: 'Original text' }
+      ]
+
+      store.updateSegmentText(0, 'New text')
+
+      expect(store.segments[0].text).toBe('New text')
+    })
+
+    it('should handle index bounds', () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0.0, end: 2.5, text: 'Test' }]
+
+      // Out of bounds - should not crash
+      store.updateSegmentText(-1, 'Invalid')
+      store.updateSegmentText(5, 'Invalid')
+
+      expect(store.segments[0].text).toBe('Test')
+    })
+
+    it('should handle empty string', () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0.0, end: 2.5, text: 'Original' }]
+
+      store.updateSegmentText(0, '')
+
+      expect(store.segments[0].text).toBe('')
+    })
+  })
+
+  describe('cancelEdit', () => {
+    it('should revert to original text', () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0.0, end: 2.5, text: 'Edited text' }
+      ]
+      store.originalSegments = [
+        { start: 0.0, end: 2.5, text: 'Original text' }
+      ]
+      store.editingSegmentId = 0
+
+      store.cancelEdit(0)
+
+      expect(store.segments[0].text).toBe('Original text')
+      expect(store.editingSegmentId).toBeNull()
+    })
+
+    it('should handle index bounds', () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0.0, end: 2.5, text: 'Test' }]
+      store.originalSegments = [{ start: 0.0, end: 2.5, text: 'Original' }]
+      store.editingSegmentId = 0
+
+      // Out of bounds - should not crash
+      store.cancelEdit(-1)
+      store.cancelEdit(5)
+
+      expect(store.segments[0].text).toBe('Test')
+    })
+
+    it('should handle missing originalSegments', () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0.0, end: 2.5, text: 'Test' }]
+      store.originalSegments = []
+      store.editingSegmentId = 0
+
+      // Should not crash
+      store.cancelEdit(0)
+
+      expect(store.segments[0].text).toBe('Test')
+    })
+  })
+
+  describe('saveToLocalStorage', () => {
+    it('should persist segments with correct key', () => {
+      const store = useTranscriptionStore()
+      const jobId = 'test-job-123'
+      store.jobId = jobId
+      store.segments = [
+        { start: 0.5, end: 3.2, text: 'Test segment' }
+      ]
+
+      store.saveToLocalStorage(jobId)
+
+      const saved = localStorage.getItem(`klipnote_edits_${jobId}`)
+      expect(saved).not.toBeNull()
+
+      const parsed = JSON.parse(saved!)
+      expect(parsed.job_id).toBe(jobId)
+      expect(parsed.segments).toHaveLength(1)
+      expect(parsed.segments[0].text).toBe('Test segment')
+      expect(parsed.last_saved).toBeDefined()
+    })
+
+    it('should include ISO timestamp', () => {
+      const store = useTranscriptionStore()
+      const jobId = 'test-job-123'
+      store.segments = [{ start: 0.5, end: 3.2, text: 'Test' }]
+
+      store.saveToLocalStorage(jobId)
+
+      const saved = localStorage.getItem(`klipnote_edits_${jobId}`)
+      const parsed = JSON.parse(saved!)
+
+      // Verify ISO 8601 timestamp format
+      expect(parsed.last_saved).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+    })
+
+    it('should handle QuotaExceededError gracefully', () => {
+      const store = useTranscriptionStore()
+
+      // Setup console spy BEFORE mocking localStorage
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      // Mock localStorage.setItem to throw QuotaExceededError
+      const originalSetItem = Storage.prototype.setItem
+      Storage.prototype.setItem = vi.fn(() => {
+        const error = new DOMException('QuotaExceededError')
+        error.name = 'QuotaExceededError'
+        throw error
+      })
+
+      store.jobId = 'test-job-123'
+      store.segments = [{ start: 0.5, end: 3.2, text: 'Text' }]
+      store.saveToLocalStorage('test-job-123')
+
+      expect(consoleSpy).toHaveBeenCalled()
+      expect(consoleSpy.mock.calls[0][0]).toContain('quota exceeded')
+
+      // Restore
+      Storage.prototype.setItem = originalSetItem
+      consoleSpy.mockRestore()
+    })
+
+    it('should handle generic localStorage errors', () => {
+      const store = useTranscriptionStore()
+
+      // Setup console spy BEFORE mocking localStorage
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      // Mock localStorage.setItem to throw generic error
+      const originalSetItem = Storage.prototype.setItem
+      Storage.prototype.setItem = vi.fn(() => {
+        throw new Error('Generic error')
+      })
+
+      store.segments = [{ start: 0.5, end: 3.2, text: 'Text' }]
+      store.saveToLocalStorage('test-job-123')
+
+      expect(consoleSpy).toHaveBeenCalled()
+      expect(consoleSpy.mock.calls[0][0]).toContain('localStorage save failed')
+
+      // Restore
+      Storage.prototype.setItem = originalSetItem
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('loadFromLocalStorage', () => {
+    it('should restore saved segments', () => {
+      const jobId = 'test-job-123'
+      const editedSegments = [
+        { start: 0.5, end: 3.2, text: 'Edited text' }
+      ]
+
+      localStorage.setItem(
+        `klipnote_edits_${jobId}`,
+        JSON.stringify({
+          job_id: jobId,
+          segments: editedSegments,
+          last_saved: new Date().toISOString()
+        })
+      )
+
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0.5, end: 3.2, text: 'Original text' }
+      ]
+
+      store.loadFromLocalStorage(jobId)
+
+      expect(store.segments[0].text).toBe('Edited text')
+    })
+
+    it('should handle missing localStorage data', () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0.5, end: 3.2, text: 'Original text' }
+      ]
+
+      store.loadFromLocalStorage('nonexistent-job')
+
+      // Should keep original segments
+      expect(store.segments[0].text).toBe('Original text')
+    })
+
+    it('should handle corrupted JSON gracefully', () => {
+      const jobId = 'test-job-123'
+      localStorage.setItem(`klipnote_edits_${jobId}`, 'corrupted-json{')
+
+      const store = useTranscriptionStore()
+      const consoleSpy = vi.spyOn(console, 'error')
+
+      store.loadFromLocalStorage(jobId)
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to parse'),
+        expect.any(Error)
+      )
+
+      // Should clear corrupted key
+      expect(localStorage.getItem(`klipnote_edits_${jobId}`)).toBeNull()
+
+      consoleSpy.mockRestore()
+    })
+
+    it('should validate segments array structure', () => {
+      const jobId = 'test-job-123'
+
+      // Missing segments array
+      localStorage.setItem(
+        `klipnote_edits_${jobId}`,
+        JSON.stringify({
+          job_id: jobId,
+          last_saved: new Date().toISOString()
+        })
+      )
+
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0, end: 5, text: 'Original' }]
+
+      store.loadFromLocalStorage(jobId)
+
+      // Should keep original segments
+      expect(store.segments[0].text).toBe('Original')
+    })
+
+    it('should log restoration message', () => {
+      const jobId = 'test-job-123'
+      const timestamp = new Date().toISOString()
+
+      localStorage.setItem(
+        `klipnote_edits_${jobId}`,
+        JSON.stringify({
+          job_id: jobId,
+          segments: [{ start: 0, end: 5, text: 'Restored' }],
+          last_saved: timestamp
+        })
+      )
+
+      const store = useTranscriptionStore()
+      const consoleSpy = vi.spyOn(console, 'log')
+
+      store.loadFromLocalStorage(jobId)
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Restored edits from')
+      )
+
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('reset - Story 2.4', () => {
+    it('should reset originalSegments', () => {
+      const store = useTranscriptionStore()
+
+      store.segments = [{ start: 0, end: 5, text: 'Test' }]
+      store.originalSegments = [{ start: 0, end: 5, text: 'Original' }]
+
+      store.reset()
+
+      expect(store.originalSegments).toEqual([])
+    })
+  })
+})

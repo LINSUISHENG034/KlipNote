@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTranscriptionStore } from '@/stores/transcription'
 import SubtitleList from '@/components/SubtitleList.vue'
 import ExportModal from '@/components/ExportModal.vue'
 import MediaPlayer from '@/components/MediaPlayer.vue'
+import { throttle } from 'lodash-es'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,45 +20,65 @@ const restoredEditsMessage = ref<string | null>(null)
 // Compute media URL from job ID
 const mediaUrl = computed(() => `http://localhost:8000/media/${jobId.value}`)
 
-onMounted(async () => {
-  // Task 6: Check localStorage for existing edits before fetching from API
-  const localStorageKey = `klipnote_edits_${jobId.value}`
-
-  try {
-    const savedEdits = localStorage.getItem(localStorageKey)
-
-    if (savedEdits) {
-      // Parse and restore saved edits
-      const parsedEdits = JSON.parse(savedEdits)
-
-      if (parsedEdits.segments && Array.isArray(parsedEdits.segments)) {
-        store.segments = parsedEdits.segments
-        const timestamp = parsedEdits.timestamp ? new Date(parsedEdits.timestamp).toLocaleString() : 'unknown time'
-        restoredEditsMessage.value = `Restored unsaved edits from ${timestamp}`
-
-        // Clear message after 5 seconds
-        setTimeout(() => {
-          restoredEditsMessage.value = null
-        }, 5000)
-
-        return // Skip API fetch if we restored from localStorage
-      }
-    }
-  } catch (error) {
-    // JSON parse error or other localStorage error - fall back to API fetch
-    console.warn('Failed to restore edits from localStorage, falling back to API fetch:', error)
+// Story 2.4: Throttled auto-save to localStorage (500ms)
+const throttledSave = throttle((jobIdVal: string) => {
+  if (jobIdVal && store.segments.length > 0) {
+    store.saveToLocalStorage(jobIdVal)
   }
+}, 500)
 
+// Story 2.4: Watch segments for changes and trigger auto-save
+watch(() => store.segments, () => {
+  if (jobId.value) {
+    throttledSave(jobId.value)
+  }
+}, { deep: true })
+
+onMounted(async () => {
   // Check if segments already loaded (from Story 1.6 auto-nav)
   if (store.segments.length === 0) {
     isLoading.value = true
     try {
+      // Step 1: Fetch API result (original transcription)
       await store.fetchResult(jobId.value)
+
+      // Step 2: Store originalSegments as deep copy for revert functionality
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+
+      // Step 3: Check localStorage for edits (overrides API if present)
+      store.loadFromLocalStorage(jobId.value)
+
+      // Step 4: Show notification if edits were restored
+      const localStorageKey = `klipnote_edits_${jobId.value}`
+      const savedEdits = localStorage.getItem(localStorageKey)
+      if (savedEdits) {
+        try {
+          const parsedEdits = JSON.parse(savedEdits)
+          if (parsedEdits.last_saved) {
+            const timestamp = new Date(parsedEdits.last_saved).toLocaleString()
+            restoredEditsMessage.value = `Restored unsaved edits from ${timestamp}`
+
+            // Clear message after 5 seconds
+            setTimeout(() => {
+              restoredEditsMessage.value = null
+            }, 5000)
+          }
+        } catch (error) {
+          console.warn('Failed to parse localStorage timestamp:', error)
+        }
+      }
     } catch (error) {
       errorMessage.value = 'Failed to load transcription results. Please try again.'
     } finally {
       isLoading.value = false
     }
+  } else {
+    // Segments already loaded from previous navigation
+    // Still need to set originalSegments and check localStorage
+    if (store.originalSegments.length === 0) {
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+    }
+    store.loadFromLocalStorage(jobId.value)
   }
 })
 
@@ -66,6 +87,8 @@ async function handleRetry() {
   isLoading.value = true
   try {
     await store.fetchResult(jobId.value)
+    store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+    store.loadFromLocalStorage(jobId.value)
   } catch (error) {
     errorMessage.value = 'Failed to load transcription results. Please try again.'
   } finally {

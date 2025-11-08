@@ -328,3 +328,336 @@ describe('SubtitleList - Story 2.3: Click-to-Timestamp Navigation', () => {
     })
   })
 })
+
+// Story 2.4: Inline Subtitle Editing Tests
+describe('SubtitleList - Story 2.4: Inline Editing', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    Element.prototype.scrollIntoView = vi.fn()
+  })
+
+  const createMockSegments = (count: number): Segment[] => {
+    return Array.from({ length: count }, (_, i) => ({
+      start: i * 5,
+      end: (i + 1) * 5,
+      text: `Segment ${i + 1} text content`
+    }))
+  }
+
+  describe('Edit Mode Activation (AC #1)', () => {
+    it('should enable edit mode on double-click', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0.5, end: 3.2, text: 'Original text' }]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+
+      const wrapper = mount(SubtitleList)
+      const segment = wrapper.find('[data-testid="subtitle-segment"]')
+
+      await segment.trigger('dblclick')
+
+      expect(store.editingSegmentId).toBe(0)
+      expect(wrapper.find('[data-testid="text-editor"]').exists()).toBe(true)
+    })
+
+    it('should hide regular text and show contenteditable div when editing', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0, end: 5, text: 'Test text' }]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+
+      expect(wrapper.find('[data-testid="text"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="text-editor"]').exists()).toBe(true)
+    })
+
+    it('should apply editing styles (yellow border) to editing segment', async () => {
+      const store = useTranscriptionStore()
+      store.segments = createMockSegments(3)
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 1
+
+      const wrapper = mount(SubtitleList)
+      const segments = wrapper.findAll('[data-testid="subtitle-segment"]')
+
+      expect(segments[1].classes()).toContain('bg-yellow-900/30')
+      expect(segments[1].classes()).toContain('border-yellow-500')
+    })
+  })
+
+  describe('Text Updates (AC #2)', () => {
+    it('should update segment text on input', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0.5, end: 3.2, text: 'Original' }]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      // Simulate contenteditable input
+      const editorEl = editor.element as HTMLElement
+      editorEl.textContent = 'Edited text'
+      await editor.trigger('input')
+
+      expect(store.segments[0].text).toBe('Edited text')
+    })
+
+    it('should handle empty text input', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0, end: 5, text: 'Test' }]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      const editorEl = editor.element as HTMLElement
+      editorEl.textContent = ''
+      await editor.trigger('input')
+
+      expect(store.segments[0].text).toBe('')
+    })
+  })
+
+  describe('Keyboard Navigation (AC #3, #4)', () => {
+    it('should save and move to next on Tab key', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0.5, end: 3.2, text: 'Segment 1' },
+        { start: 3.5, end: 7.8, text: 'Segment 2' }
+      ]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      await editor.trigger('keydown', { key: 'Tab' })
+
+      // Should have moved to next segment after a tick
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick() // Extra tick for handleDoubleClick nextTick
+      expect(store.editingSegmentId).toBe(1)
+    })
+
+    it('should save and move to next on Enter key', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0, end: 5, text: 'First' },
+        { start: 5, end: 10, text: 'Second' }
+      ]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      await editor.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      expect(store.editingSegmentId).toBe(1)
+    })
+
+    it('should revert to original text on Escape key', async () => {
+      const store = useTranscriptionStore()
+      const originalText = 'Original text'
+      store.segments = [{ start: 0.5, end: 3.2, text: 'Edited text' }]
+      store.originalSegments = [{ start: 0.5, end: 3.2, text: originalText }]
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      await editor.trigger('keydown', { key: 'Escape' })
+
+      expect(store.segments[0].text).toBe(originalText)
+      expect(store.editingSegmentId).toBeNull()
+    })
+
+    it('should stay on last segment when Tab pressed on last', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0, end: 5, text: 'First' },
+        { start: 5, end: 10, text: 'Last' }
+      ]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 1
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      await editor.trigger('keydown', { key: 'Tab' })
+      await wrapper.vm.$nextTick()
+
+      // Should exit edit mode, not wrap to first
+      expect(store.editingSegmentId).toBeNull()
+    })
+  })
+
+  describe('Visual Indicators (AC #5)', () => {
+    it('should show visual indicator for edited segments', () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0.5, end: 3.2, text: 'Edited text' }]
+      store.originalSegments = [{ start: 0.5, end: 3.2, text: 'Original text' }]
+
+      const wrapper = mount(SubtitleList)
+      const text = wrapper.find('[data-testid="text"]')
+
+      expect(text.text()).toContain('Edited text')
+      expect(text.text()).toContain('●')
+    })
+
+    it('should NOT show indicator for unedited segments', () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0, end: 5, text: 'Same text' }]
+      store.originalSegments = [{ start: 0, end: 5, text: 'Same text' }]
+
+      const wrapper = mount(SubtitleList)
+      const text = wrapper.find('[data-testid="text"]')
+
+      expect(text.text()).toBe('Same text')
+      expect(text.text()).not.toContain('●')
+    })
+  })
+
+  describe('Multiple Edits in Succession (AC #6)', () => {
+    it('should allow multiple segments to be edited in succession', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0.5, end: 3.2, text: 'Segment 1' },
+        { start: 3.5, end: 7.8, text: 'Segment 2' },
+        { start: 8.0, end: 12.0, text: 'Segment 3' }
+      ]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+
+      const wrapper = mount(SubtitleList)
+      const segments = wrapper.findAll('[data-testid="subtitle-segment"]')
+
+      // Edit first segment
+      await segments[0].trigger('dblclick')
+      expect(store.editingSegmentId).toBe(0)
+
+      // Tab to second
+      await wrapper.find('[data-testid="text-editor"]').trigger('keydown', { key: 'Tab' })
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+      expect(store.editingSegmentId).toBe(1)
+
+      // Tab to third
+      await wrapper.find('[data-testid="text-editor"]').trigger('keydown', { key: 'Tab' })
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+      expect(store.editingSegmentId).toBe(2)
+    })
+
+    it('should maintain edited text when navigating between segments', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0, end: 5, text: 'First' },
+        { start: 5, end: 10, text: 'Second' }
+      ]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+
+      // Edit first segment
+      let editor = wrapper.find('[data-testid="text-editor"]')
+      const editorEl = editor.element as HTMLElement
+      editorEl.textContent = 'Modified first'
+      await editor.trigger('input')
+
+      // Move to second segment
+      await editor.trigger('keydown', { key: 'Tab' })
+      await wrapper.vm.$nextTick()
+      await wrapper.vm.$nextTick()
+
+      // Verify first segment retained changes
+      expect(store.segments[0].text).toBe('Modified first')
+      expect(store.editingSegmentId).toBe(1)
+    })
+  })
+
+  describe('Blur Handler (AC #6)', () => {
+    it('should exit edit mode on blur', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0, end: 5, text: 'Test' }]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      await editor.trigger('blur')
+
+      expect(store.editingSegmentId).toBeNull()
+    })
+
+    it('should save changes on blur', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [{ start: 0, end: 5, text: 'Original' }]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+
+      const wrapper = mount(SubtitleList)
+      const editor = wrapper.find('[data-testid="text-editor"]')
+
+      // Edit text
+      const editorEl = editor.element as HTMLElement
+      editorEl.textContent = 'Modified'
+      await editor.trigger('input')
+
+      // Blur should save
+      await editor.trigger('blur')
+
+      expect(store.segments[0].text).toBe('Modified')
+      expect(store.editingSegmentId).toBeNull()
+    })
+  })
+
+  describe('Integration with Click Handler (AC #1)', () => {
+    it('should not interfere with subtitle highlighting during playback', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0, end: 5, text: 'Segment 1' },
+        { start: 5, end: 10, text: 'Segment 2' }
+      ]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.activeSegmentIndex = 0
+      store.editingSegmentId = 1
+
+      const wrapper = mount(SubtitleList)
+      const segments = wrapper.findAll('[data-testid="subtitle-segment"]')
+
+      // Active segment should still be highlighted
+      expect(segments[0].classes()).toContain('bg-blue-900/40')
+      // Editing segment should have edit styles
+      expect(segments[1].classes()).toContain('bg-yellow-900/30')
+    })
+
+    it('should block click-to-timestamp during editing', async () => {
+      const store = useTranscriptionStore()
+      store.segments = [
+        { start: 0, end: 5, text: 'Test' },
+        { start: 5, end: 10, text: 'Another' }
+      ]
+      store.originalSegments = JSON.parse(JSON.stringify(store.segments))
+      store.editingSegmentId = 0
+      const initialTime = store.currentTime
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      const wrapper = mount(SubtitleList)
+      const segment = wrapper.findAll('[data-testid="subtitle-segment"]')[1]
+      await segment.trigger('click')
+
+      // Should not change currentTime when editing
+      expect(store.currentTime).toBe(initialTime)
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Cannot seek while editing. Please finish editing first.')
+
+      consoleWarnSpy.mockRestore()
+    })
+  })
+})

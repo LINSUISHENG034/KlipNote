@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Segment, StatusResponse } from '@/types/api'
 import * as api from '@/services/api'
+import { throttle } from 'lodash-es'
 
 export const useTranscriptionStore = defineStore('transcription', {
   state: () => ({
@@ -21,6 +22,9 @@ export const useTranscriptionStore = defineStore('transcription', {
 
     // Story 2.4 prep: Inline editing
     editingSegmentId: null as number | null,  // Segment being edited (null = none)
+
+    // Story 2.4: Inline editing with revert capability
+    originalSegments: [] as Segment[],  // Pristine segments from API (for cancel/revert)
   }),
 
   getters: {
@@ -69,6 +73,9 @@ export const useTranscriptionStore = defineStore('transcription', {
       this.isPlaying = false
       this.activeSegmentIndex = -1
       this.editingSegmentId = null
+
+      // Reset editing state (Story 2.4)
+      this.originalSegments = []
     },
 
     // Epic 2: Media player state actions
@@ -122,6 +129,65 @@ export const useTranscriptionStore = defineStore('transcription', {
     // Story 2.4 prep: Editing state management
     setEditingSegment(segmentId: number | null) {
       this.editingSegmentId = segmentId
+    },
+
+    // Story 2.4: Inline editing actions
+    updateSegmentText(index: number, newText: string) {
+      if (index >= 0 && index < this.segments.length) {
+        this.segments[index].text = newText
+      }
+    },
+
+    cancelEdit(index: number) {
+      if (index >= 0 && index < this.segments.length && this.originalSegments[index]) {
+        this.segments[index].text = this.originalSegments[index].text
+        this.editingSegmentId = null
+      }
+    },
+
+    // Story 2.4: localStorage persistence
+    saveToLocalStorage(jobId: string) {
+      const key = `klipnote_edits_${jobId}`
+      const data = {
+        job_id: jobId,
+        segments: this.segments,
+        last_saved: new Date().toISOString()
+      }
+
+      try {
+        localStorage.setItem(key, JSON.stringify(data))
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          console.warn('localStorage quota exceeded. Auto-save disabled.')
+          // TODO: Show user warning notification
+        } else {
+          console.error('localStorage save failed:', error)
+        }
+      }
+    },
+
+    loadFromLocalStorage(jobId: string) {
+      const key = `klipnote_edits_${jobId}`
+      const saved = localStorage.getItem(key)
+
+      if (saved) {
+        try {
+          const data = JSON.parse(saved)
+
+          // Validate structure
+          if (data.segments && Array.isArray(data.segments)) {
+            // Priority: localStorage overrides API
+            this.segments = data.segments
+
+            console.log(`Restored edits from ${data.last_saved}`)
+            // TODO: Show user notification
+          }
+        } catch (error) {
+          console.error('Failed to parse localStorage edits:', error)
+          // Fall back to API result (already loaded)
+          localStorage.removeItem(key)
+        }
+      }
     },
   },
 })
