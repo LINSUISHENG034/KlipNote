@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTranscriptionStore } from '@/stores/transcription'
 import SubtitleList from '@/components/SubtitleList.vue'
 import ExportModal from '@/components/ExportModal.vue'
+import MediaPlayer from '@/components/MediaPlayer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,8 +14,40 @@ const jobId = ref(route.params.job_id as string)
 const isLoading = ref(false)
 const errorMessage = ref<string | null>(null)
 const isExportModalOpen = ref(false)
+const restoredEditsMessage = ref<string | null>(null)
+
+// Compute media URL from job ID
+const mediaUrl = computed(() => `http://localhost:8000/media/${jobId.value}`)
 
 onMounted(async () => {
+  // Task 6: Check localStorage for existing edits before fetching from API
+  const localStorageKey = `klipnote_edits_${jobId.value}`
+
+  try {
+    const savedEdits = localStorage.getItem(localStorageKey)
+
+    if (savedEdits) {
+      // Parse and restore saved edits
+      const parsedEdits = JSON.parse(savedEdits)
+
+      if (parsedEdits.segments && Array.isArray(parsedEdits.segments)) {
+        store.segments = parsedEdits.segments
+        const timestamp = parsedEdits.timestamp ? new Date(parsedEdits.timestamp).toLocaleString() : 'unknown time'
+        restoredEditsMessage.value = `Restored unsaved edits from ${timestamp}`
+
+        // Clear message after 5 seconds
+        setTimeout(() => {
+          restoredEditsMessage.value = null
+        }, 5000)
+
+        return // Skip API fetch if we restored from localStorage
+      }
+    }
+  } catch (error) {
+    // JSON parse error or other localStorage error - fall back to API fetch
+    console.warn('Failed to restore edits from localStorage, falling back to API fetch:', error)
+  }
+
   // Check if segments already loaded (from Story 1.6 auto-nav)
   if (store.segments.length === 0) {
     isLoading.value = true
@@ -103,44 +136,14 @@ function handleExportFormat(format: 'txt' | 'srt') {
 
     <!-- Results Display -->
     <div v-else-if="store.segments.length > 0" class="flex-1 pb-24">
-      <!-- Media Player Placeholder -->
+      <!-- Restored Edits Notification -->
+      <div v-if="restoredEditsMessage" class="sticky top-[72px] z-20 bg-green-900/30 border-b border-green-500/50 px-4 py-2">
+        <p class="text-green-300 text-sm text-center">{{ restoredEditsMessage }}</p>
+      </div>
+
+      <!-- Media Player -->
       <div class="sticky top-[72px] z-10 bg-dark-bg px-4 pt-2 pb-4">
-        <!-- 16:9 Video Container -->
-        <div class="relative flex w-full flex-col items-center justify-center rounded-xl bg-zinc-800 aspect-video overflow-hidden">
-          <!-- Placeholder Content -->
-          <div class="flex flex-col items-center justify-center gap-3">
-            <span class="material-symbols-outlined text-6xl text-zinc-600">videocam_off</span>
-            <p class="text-zinc-400 text-sm font-medium">Media Player (Coming in Epic 2)</p>
-          </div>
-
-          <!-- Placeholder Progress Bar (bottom overlay) -->
-          <div class="absolute inset-x-0 bottom-0 px-4 py-3 bg-gradient-to-t from-black/60 to-transparent opacity-50">
-            <div class="flex items-center justify-center gap-2">
-              <div class="h-1 flex-1 rounded-full bg-primary"></div>
-              <div class="relative">
-                <div class="absolute -left-2 -top-2 size-4 rounded-full bg-white shadow"></div>
-              </div>
-              <div class="h-1 flex-1 rounded-full bg-white/40"></div>
-            </div>
-            <div class="flex items-center justify-between mt-1">
-              <p class="text-white text-xs font-medium">0:00</p>
-              <p class="text-white text-xs font-medium">0:00</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Placeholder Controls -->
-        <div class="mt-4 flex items-center justify-evenly text-white opacity-50">
-          <button disabled class="flex size-12 items-center justify-center rounded-full cursor-not-allowed">
-            <span class="material-symbols-outlined text-3xl">replay_10</span>
-          </button>
-          <button disabled class="flex size-16 items-center justify-center rounded-full bg-primary/50 text-white shadow-lg cursor-not-allowed">
-            <span class="material-symbols-outlined text-5xl">play_arrow</span>
-          </button>
-          <button disabled class="flex size-12 items-center justify-center rounded-full cursor-not-allowed">
-            <span class="material-symbols-outlined text-3xl">forward_10</span>
-          </button>
-        </div>
+        <MediaPlayer :mediaUrl="mediaUrl" :jobId="jobId" />
       </div>
 
       <!-- Subtitle List -->

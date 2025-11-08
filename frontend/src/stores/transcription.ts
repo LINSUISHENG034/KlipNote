@@ -10,6 +10,11 @@ export const useTranscriptionStore = defineStore('transcription', {
     message: '',
     segments: [] as Segment[],
     error: null as string | null,
+
+    // Epic 2: Media player state synchronization
+    currentTime: 0,       // Commanded seek position (Story 2.3 uses this)
+    playbackTime: 0,      // Actual player position
+    isPlaying: false,     // Player play/pause state
   }),
 
   getters: {
@@ -51,6 +56,25 @@ export const useTranscriptionStore = defineStore('transcription', {
       this.message = ''
       this.segments = []
       this.error = null
+
+      // Reset player state
+      this.currentTime = 0
+      this.playbackTime = 0
+      this.isPlaying = false
+    },
+
+    // Epic 2: Media player state actions
+    seekTo(time: number) {
+      this.currentTime = time
+    },
+
+    updatePlaybackTime(time: number) {
+      this.playbackTime = time
+      // Story 2.3 will add: this.updateActiveSegment(time)
+    },
+
+    setIsPlaying(playing: boolean) {
+      this.isPlaying = playing
     },
   },
 })

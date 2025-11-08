@@ -45,11 +45,11 @@ development_status:
   1-6-frontend-progress-monitoring: done
   1-7-frontend-transcription-display: done
   1-8-ui-refactoring-with-stitch-design-system: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: contexted
   2-1-media-playback-api-endpoint: done
-  2-2-frontend-media-player-integration: backlog
+  2-2-frontend-media-player-integration: done
   2-3-click-to-timestamp-navigation: backlog
   2-4-inline-subtitle-editing: backlog
   2-5-export-api-endpoint-with-data-flywheel: backlog
