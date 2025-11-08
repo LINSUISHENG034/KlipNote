@@ -128,10 +128,9 @@ describe('ResultsView', () => {
     const wrapper = mount(ResultsView)
     await flushPromises()
 
-    // SubtitleList component should be rendered
+    // SubtitleList component should be rendered (uses store directly)
     const subtitleList = wrapper.findComponent({ name: 'SubtitleList' })
     expect(subtitleList.exists()).toBe(true)
-    expect(subtitleList.props('segments')).toEqual(store.segments)
   })
 
   it('should display empty state when no segments available', async () => {

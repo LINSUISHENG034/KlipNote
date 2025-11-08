@@ -148,7 +148,7 @@ function handleExportFormat(format: 'txt' | 'srt') {
 
       <!-- Subtitle List -->
       <div class="px-4 space-y-3 pb-4">
-        <SubtitleList :segments="store.segments" />
+        <SubtitleList />
       </div>
 
       <!-- Bottom Fixed Export Button -->

@@ -50,7 +50,7 @@ development_status:
   epic-2: contexted
   2-1-media-playback-api-endpoint: done
   2-2-frontend-media-player-integration: done
-  2-3-click-to-timestamp-navigation: backlog
+  2-3-click-to-timestamp-navigation: done
   2-4-inline-subtitle-editing: backlog
   2-5-export-api-endpoint-with-data-flywheel: backlog
   2-6-frontend-export-functionality: backlog

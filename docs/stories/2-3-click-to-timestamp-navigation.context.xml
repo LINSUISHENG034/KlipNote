@@ -1,0 +1,273 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>3</storyId>
+    <title>Click-to-Timestamp Navigation</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-08</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>E:\Projects\KlipNote\docs\stories\2-3-click-to-timestamp-navigation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to click any subtitle segment and jump to that exact moment in the media</iWant>
+    <soThat>I can quickly verify what was actually said</soThat>
+    <tasks>- Task 1: Extend Pinia store with active segment tracking (AC: #3, #4)
+  - Add `activeSegmentIndex: number` state field to transcription store (default: -1)
+  - Add `updateActiveSegment(time: number)` action with incremental search optimization
+  - Implement O(1) fast path: check current segment first, then next segment
+  - Fallback to full search only when user seeks/scrubs
+  - Test: Store correctly identifies active segment during sequential playback
+  - Test: Store handles user seeking to arbitrary timestamps
+
+- Task 2: Implement click handler in SubtitleList.vue (AC: #1, #2)
+  - Add `@click` event handler to subtitle segment elements
+  - Implement `handleClick(segment, index)` method
+  - Call `store.seekTo(segment.start)` on click
+  - Add guard: block seek if `store.editingSegmentId !== null` (Story 2.4 integration)
+  - Log warning to console if seek blocked during editing
+  - Test: Click subtitle updates `store.currentTime` to segment start
+  - Test: MediaPlayer seeks to new time (integration with Story 2.2)
+
+- Task 3: Add visual highlighting for active segment (AC: #3, #4)
+  - Add computed class binding: `:class="{ active: index === store.activeSegmentIndex }"`
+  - Define `.active` CSS class with distinct background color (e.g., #e3f2fd)
+  - Add font-weight or border for additional emphasis
+  - Watch `store.activeSegmentIndex` changes for reactivity
+  - Test: Active segment highlights during playback
+  - Test: Highlight updates as playback progresses through segments
+
+- Task 4: Implement auto-scroll for active segment (AC: #3, #4)
+  - Add `ref` to subtitle segment elements: `segmentRefs`
+  - Watch `store.activeSegmentIndex` changes
+  - Call `scrollIntoView({ behavior: 'smooth', block: 'center' })` on active element
+  - Use `nextTick()` to ensure DOM updated before scrolling
+  - Test: Active subtitle scrolls into viewport center during playback
+  - Test: Smooth scroll animation works (no jarring jumps)
+
+- Task 5: Add hover/touch visual feedback (AC: #7)
+  - Add CSS `:hover` pseudo-class for desktop: cursor pointer, subtle background change
+  - Add CSS transition for smooth hover effect (e.g., 150ms ease)
+  - Ensure hover state doesn't conflict with active state (use separate classes)
+  - Test touch devices: tap highlights briefly before seeking
+  - Test: Cursor changes to pointer on hover
+  - Test: Subtle visual feedback indicates clickability
+
+- Task 6: Validate touch device support (AC: #6)
+  - Test on tablet device (iPad or Android tablet)
+  - Verify tap triggers click event correctly
+  - Ensure no double-tap zoom interference
+  - Test on mobile phone device
+  - Verify responsive layout: subtitle list remains usable on small screens
+  - Test: Touch interaction works smoothly without delays
+
+- Task 7: Performance validation - Response time <1s (AC: #5, NFR001)
+  - Measure click-to-seek latency using browser Performance API
+  - Add `performance.now()` markers: click event → player.currentTime updated
+  - Log timing to console (development only)
+  - Test with 100+ segment transcription (stress test)
+  - Verify throttled timeupdate (250ms from Story 2.2) doesn't delay highlighting
+  - Test: 90%+ of clicks respond within 1 second
+  - Test: Incremental search optimization prevents lag on long transcriptions
+
+- Task 8: Integration testing with MediaPlayer (Story 2.2)
+  - Verify `store.currentTime` changes trigger MediaPlayer seek
+  - Verify `store.isPlaying` state preserved during seek
+  - Test: Paused player remains paused after click-to-timestamp
+  - Test: Playing player continues playing after seek
+  - Verify no infinite loops between SubtitleList and MediaPlayer state sync
+  - Test: Native player controls (play/pause) remain functional
+
+- Task 9: Component unit tests with Vitest (AC: all)
+  - Create/update `frontend/src/components/SubtitleList.test.ts`
+  - Test: Click handler calls `store.seekTo()` with correct timestamp
+  - Test: Active segment highlights based on `store.activeSegmentIndex`
+  - Test: Auto-scroll triggers on `activeSegmentIndex` change
+  - Test: Hover state applies cursor pointer and background change
+  - Test: Seek blocked when `editingSegmentId` is set (Story 2.4 prep)
+  - Create `frontend/src/stores/transcription.test.ts` (if not exists)
+  - Test: `updateActiveSegment()` correctly identifies segment for given time
+  - Test: Incremental search optimization (O(1) fast paths)
+  - Run: `npm run test:unit` and verify all tests pass</tasks>
+  </story>
+
+  <acceptanceCriteria>1. Clicking any subtitle segment seeks media player to that segment's start time
+2. Player automatically starts playing after seek
+3. Currently playing segment is visually highlighted
+4. Highlight updates automatically as playback progresses
+5. Click response time &lt;1 second (per NFR001)
+6. Works on touch devices (tap interaction)
+7. Visual feedback on hover/touch to indicate clickability</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR011: Click-to-Timestamp Navigation</section>
+        <snippet>System shall enable click-to-timestamp navigation - clicking any subtitle jumps to exact media position. This transforms tedious verification into rapid workflow.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR013: Active Segment Highlighting</section>
+        <snippet>System shall highlight active subtitle segment during media playback, providing visual feedback of current playback position.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>NFR001: Performance Requirements</section>
+        <snippet>Timestamp seeking shall respond in &lt;1 second. UI shall load in &lt;3 seconds, media playback shall start within 2 seconds.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Document</title>
+        <section>Novel Architectural Patterns: Click-to-Timestamp Synchronization</section>
+        <snippet>KlipNote's killer feature - bidirectional synchronization between subtitle list and media player. Uses Pinia store for state management with optimized incremental search (O(1) for linear playback, O(n) for seeking).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-2.md</path>
+        <title>Technical Specification - Epic 2</title>
+        <section>Story 2.3: Implementation Details</section>
+        <snippet>Extends Pinia store with activeSegmentIndex tracking. Implements incremental segment search: check current segment first (99% case), then next segment, fallback to full search only on user seeks.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-2.md</path>
+        <title>Technical Specification - Epic 2</title>
+        <section>Workflows and Sequencing: Click-to-Timestamp Navigation</section>
+        <snippet>User click triggers store.seekTo() → MediaPlayer watches currentTime → seeks player → timeupdate fires → updateActiveSegment() → SubtitleList highlights and auto-scrolls. Performance target: &lt;1 second total.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Definitions</title>
+        <section>Epic 2: Story 2.3 Definition</section>
+        <snippet>As a user, I want to click any subtitle segment and jump to that exact moment in the media, so that I can quickly verify what was actually said. Prerequisites: Story 2.2 completed.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>frontend/src/stores/transcription.ts</path>
+        <kind>store</kind>
+        <symbol>useTranscriptionStore</symbol>
+        <lines>5-80</lines>
+        <reason>MODIFY: Add activeSegmentIndex state and updateActiveSegment() action for tracking currently playing segment. Existing state includes currentTime, playbackTime, isPlaying from Story 2.2.</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/components/SubtitleList.vue</path>
+        <kind>component</kind>
+        <symbol>SubtitleList</symbol>
+        <lines>1-33</lines>
+        <reason>MODIFY: Add @click handlers, active segment highlighting via :class binding, watch() for auto-scroll, and ref tracking. Currently displays segments as simple list.</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/components/MediaPlayer.vue</path>
+        <kind>component</kind>
+        <symbol>MediaPlayer</symbol>
+        <lines>1-84</lines>
+        <reason>REFERENCE ONLY: Already watches store.currentTime and syncs player state (Story 2.2). No modifications needed for Story 2.3. Provides throttled timeupdate events every 250ms.</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/views/ResultsView.vue</path>
+        <kind>view</kind>
+        <symbol>ResultsView</symbol>
+        <lines>1-193</lines>
+        <reason>REFERENCE ONLY: Already integrates MediaPlayer and SubtitleList components. No changes needed - components communicate via Pinia store.</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/types/api.ts</path>
+        <kind>types</kind>
+        <symbol>Segment</symbol>
+        <lines>17-21</lines>
+        <reason>REFERENCE: Segment interface defines start, end, text fields used for timestamp navigation and highlighting logic.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <frontend>
+        <runtime>
+          <dependency name="vue" version="^3.5.22" />
+          <dependency name="pinia" version="^3.0.3" />
+          <dependency name="vue-router" version="^4.6.3" />
+        </runtime>
+        <devDependencies>
+          <dependency name="lodash-es" version="^4.17.21" note="Used for throttle() in MediaPlayer" />
+          <dependency name="@types/lodash-es" version="^4.17.12" />
+          <dependency name="vitest" version="^3.2.4" note="Unit testing framework" />
+          <dependency name="@vue/test-utils" version="^2.4.6" note="Vue component testing" />
+          <dependency name="@vitest/coverage-v8" version="^3.2.4" />
+          <dependency name="typescript" version="~5.9.0" />
+          <dependency name="tailwindcss" version="^4.1.16" note="CSS framework" />
+          <dependency name="vite" version="^7.1.11" note="Build tool" />
+        </devDependencies>
+      </frontend>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - DO NOT MODIFY MediaPlayer.vue - state sync already implemented in Story 2.2
+    - DO NOT MODIFY ResultsView.vue - integration already complete
+    - MUST use incremental search optimization: O(1) for linear playback, O(n) fallback for seeking
+    - MUST throttle timeupdate events at 250ms (already implemented in MediaPlayer)
+    - MUST use Pinia store as single source of truth for all state
+    - MUST preserve existing localStorage edit recovery functionality (Story 2.4 prep)
+    - Seek threshold: 0.5 seconds (from MediaPlayer watch condition)
+    - Response time requirement: &lt;1 second total (NFR001)
+    - Auto-scroll behavior: scrollIntoView with smooth animation, block: 'center'
+    - Highlight updates driven by store.activeSegmentIndex reactive changes
+    - Use Vue 3 Composition API (script setup) - consistent with existing codebase
+    - Use Tailwind CSS classes - avoid scoped styles where possible
+    - Follow existing component patterns: defineProps, ref, watch, computed
+  </constraints>
+  <interfaces>
+    <interface>
+      <name>store.seekTo(time: number)</name>
+      <kind>Pinia action</kind>
+      <signature>seekTo(time: number): void</signature>
+      <path>frontend/src/stores/transcription.ts</path>
+      <description>Sets store.currentTime which triggers MediaPlayer to seek. Used by SubtitleList click handler.</description>
+    </interface>
+    <interface>
+      <name>store.updatePlaybackTime(time: number)</name>
+      <kind>Pinia action</kind>
+      <signature>updatePlaybackTime(time: number): void</signature>
+      <path>frontend/src/stores/transcription.ts</path>
+      <description>Called by MediaPlayer's throttled timeupdate. Story 2.3 extends this to call updateActiveSegment().</description>
+    </interface>
+    <interface>
+      <name>Segment interface</name>
+      <kind>TypeScript interface</kind>
+      <signature>{ start: number, end: number, text: string }</signature>
+      <path>frontend/src/types/api.ts</path>
+      <description>Defines subtitle segment structure. start/end are float seconds, text is transcribed content.</description>
+    </interface>
+    <interface>
+      <name>throttledTimeUpdate</name>
+      <kind>throttled function</kind>
+      <signature>throttle((currentTime: number) => void, 250ms)</signature>
+      <path>frontend/src/components/MediaPlayer.vue</path>
+      <description>Throttled using lodash-es. Limits store updates to 4x/second (250ms interval) to prevent excessive rendering.</description>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>Frontend testing uses Vitest with @vue/test-utils for component testing. Coverage target: 70%+ for all frontend code. Story 2.3 focuses on click-to-timestamp pattern testing which requires 80%+ coverage as it's a novel architectural feature. Tests should validate both component behavior (click handlers, highlighting, auto-scroll) and store logic (incremental search optimization). Manual browser testing required for performance validation (NFR001: &lt;1 second response time) and touch device support (AC #6).</standards>
+    <locations>
+      - frontend/src/components/SubtitleList.test.ts (create/update for click handler and highlighting tests)
+      - frontend/src/stores/transcription.test.ts (create for activeSegmentIndex and updateActiveSegment tests)
+      - frontend/tests/ (general test directory)
+    </locations>
+    <ideas>
+      - AC #1 (Click seeks to segment start): Test SubtitleList click event calls store.seekTo() with correct timestamp
+      - AC #2 (Auto-play after seek): Integration test with MediaPlayer, verify isPlaying state preserved
+      - AC #3 (Active segment highlighted): Test :class binding applies 'active' class based on store.activeSegmentIndex
+      - AC #4 (Highlight updates during playback): Test watch() on activeSegmentIndex triggers on playbackTime changes
+      - AC #5 (Response time &lt;1s): Performance measurement using browser Performance API in dev mode
+      - AC #6 (Touch device support): Manual testing on tablet/mobile - verify tap triggers click event
+      - AC #7 (Hover feedback): Test CSS hover state applies cursor pointer and background change
+      - Store incremental search: Test O(1) fast paths (current segment, next segment) vs O(n) fallback
+      - Auto-scroll behavior: Test scrollIntoView called with correct options when activeSegmentIndex changes
+      - Edge cases: Test activeSegmentIndex = -1 (between segments), empty segments array, rapid clicking
+      - Integration: Test MediaPlayer seek triggered by store.currentTime changes from SubtitleList clicks
+      - Story 2.4 prep: Test seek blocked when editingSegmentId is not null (guard condition)
+    </ideas>
+  </tests>
+</story-context>
