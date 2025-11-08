@@ -52,6 +52,11 @@ export const useTranscriptionStore = defineStore('transcription', {
       try {
         const response = await api.fetchResult(jobId)
         this.segments = response.segments
+
+        // Story 2.4: Initialize originalSegments with pristine API data (deep copy)
+        // This is the baseline for detecting edits - must happen BEFORE loadFromLocalStorage
+        this.originalSegments = JSON.parse(JSON.stringify(response.segments))
+
         this.error = null
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Failed to fetch result'

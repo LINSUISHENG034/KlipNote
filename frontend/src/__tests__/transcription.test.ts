@@ -136,6 +136,23 @@ describe('Transcription Store', () => {
       expect(store.error).toBeNull()
     })
 
+    it('initializes originalSegments with pristine API data (Story 2.4)', async () => {
+      const store = useTranscriptionStore()
+      const mockSegments = [
+        { start: 0, end: 5.2, text: 'Hello world' },
+        { start: 5.2, end: 10.5, text: 'This is a test' },
+      ]
+
+      vi.mocked(api.fetchResult).mockResolvedValue({ segments: mockSegments })
+
+      await store.fetchResult('test-job-123')
+
+      // originalSegments should be deep copy of segments
+      expect(store.originalSegments).toEqual(mockSegments)
+      // Verify it's a deep copy, not a reference
+      expect(store.originalSegments).not.toBe(store.segments)
+    })
+
     it('sets error and throws on API failure', async () => {
       const store = useTranscriptionStore()
       const errorMessage = 'Result not ready yet or job not found.'

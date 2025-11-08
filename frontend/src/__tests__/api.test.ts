@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { uploadFile, fetchStatus, fetchResult } from '@/services/api'
+import { uploadFile, fetchStatus, fetchResult, exportTranscription } from '@/services/api'
 
 describe('API Service', () => {
   const mockFetch = vi.fn()
@@ -292,6 +292,141 @@ describe('API Service', () => {
       })
 
       await expect(fetchResult('test-job')).rejects.toThrow('Failed to fetch result')
+    })
+  })
+
+  describe('exportTranscription', () => {
+    it('sends POST request to /export endpoint with correct parameters', async () => {
+      const mockBlob = new Blob(['test content'], { type: 'application/x-subrip' })
+      const segments = [
+        { start: 0.5, end: 3.2, text: 'Test subtitle 1' },
+        { start: 3.2, end: 6.8, text: 'Test subtitle 2' },
+      ]
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: async () => mockBlob,
+      })
+
+      await exportTranscription('test-job-123', segments, 'srt')
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8000/export/test-job-123',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ segments, format: 'srt' }),
+        }
+      )
+    })
+
+    it('returns Blob from response for SRT format', async () => {
+      const mockBlob = new Blob(['test content'], { type: 'application/x-subrip' })
+      const segments = [{ start: 0, end: 1, text: 'Test' }]
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: async () => mockBlob,
+      })
+
+      const blob = await exportTranscription('test-job-123', segments, 'srt')
+
+      expect(blob).toBe(mockBlob)
+    })
+
+    it('returns Blob from response for TXT format', async () => {
+      const mockBlob = new Blob(['test content'], { type: 'text/plain' })
+      const segments = [{ start: 0, end: 1, text: 'Test' }]
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: async () => mockBlob,
+      })
+
+      const blob = await exportTranscription('test-job-123', segments, 'txt')
+
+      expect(blob).toBe(mockBlob)
+    })
+
+    it('throws error with user-friendly message on 404 response', async () => {
+      const segments = [{ start: 0, end: 1, text: 'Test' }]
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => 'Job not found',
+      })
+
+      await expect(
+        exportTranscription('nonexistent-job', segments, 'txt')
+      ).rejects.toThrow('Export failed: Transcription not found.')
+    })
+
+    it('throws error with user-friendly message on 400 response', async () => {
+      const segments = [{ start: 0, end: 1, text: 'Test' }]
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => 'Invalid format',
+      })
+
+      await expect(
+        exportTranscription('test-job', segments, 'txt')
+      ).rejects.toThrow('Export failed: Invalid format selected.')
+    })
+
+    it('throws error with user-friendly message on 500 response', async () => {
+      const segments = [{ start: 0, end: 1, text: 'Test' }]
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => 'Server error',
+      })
+
+      await expect(
+        exportTranscription('test-job-123', segments, 'srt')
+      ).rejects.toThrow('Export failed: Server error. Please try again.')
+    })
+
+    it('throws network error when fetch fails', async () => {
+      const segments = [{ start: 0, end: 1, text: 'Test' }]
+
+      mockFetch.mockRejectedValue(new TypeError('Network request failed'))
+
+      await expect(
+        exportTranscription('test-job', segments, 'txt')
+      ).rejects.toThrow('Network request failed')
+    })
+
+    it('throws generic network error for non-Error exceptions', async () => {
+      const segments = [{ start: 0, end: 1, text: 'Test' }]
+
+      mockFetch.mockRejectedValue('Unknown error')
+
+      await expect(
+        exportTranscription('test-job', segments, 'srt')
+      ).rejects.toThrow('Export failed: Network error. Check your connection.')
+    })
+
+    it('handles empty segments array', async () => {
+      const mockBlob = new Blob([''], { type: 'text/plain' })
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: async () => mockBlob,
+      })
+
+      const blob = await exportTranscription('test-job', [], 'txt')
+
+      expect(blob).toBe(mockBlob)
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8000/export/test-job',
+        expect.objectContaining({
+          body: JSON.stringify({ segments: [], format: 'txt' }),
+        })
+      )
     })
   })
 })

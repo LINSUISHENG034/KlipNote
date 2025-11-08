@@ -1,0 +1,364 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>6</storyId>
+    <title>Frontend Export Functionality</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-08</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/2-6-frontend-export-functionality.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a user</asA>
+    <iWant>to download my edited transcription in standard formats</iWant>
+    <soThat>I can use it in LLM tools or subtitle players</soThat>
+    <tasks>
+- [ ] Task 1: Add `exportTranscription()` function to API client (AC: #3)
+  - [ ] Create `exportTranscription(jobId, segments, format)` in `frontend/src/services/api.ts`
+  - [ ] POST to `/export/{job_id}` with JSON body: `{ segments, format }`
+  - [ ] Return `Blob` from response for download
+  - [ ] Error handling: 404 (job not found), 400 (invalid format), 500 (server error)
+  - [ ] Test: Mock API call, verify POST request with correct body
+
+- [ ] Task 2: Implement export UI in ExportModal.vue (AC: #1, #2, #5, #6)
+  - [ ] Add format selection UI: Radio buttons for SRT vs TXT
+  - [ ] Default selection: TXT (LLM-friendly per PRD use case)
+  - [ ] Add "Export" button (visible, styled consistently with app design)
+  - [ ] Add loading state: `isExporting` reactive variable
+  - [ ] Show loading spinner/indicator during export
+  - [ ] Disable export button while `isExporting === true`
+  - [ ] Add error display area for failed exports
+  - [ ] Test: Render component, verify UI elements present
+
+- [ ] Task 3: Implement browser download trigger (AC: #4)
+  - [ ] Create `triggerDownload(blob, filename)` utility function
+  - [ ] Use Blob URL API: `URL.createObjectURL(blob)`
+  - [ ] Create temporary `<a>` element with `download` attribute
+  - [ ] Set `href` to blob URL, `download` to filename
+  - [ ] Programmatically click `<a>` element
+  - [ ] Revoke blob URL after download: `URL.revokeObjectURL()`
+  - [ ] Filename format: `transcript-{job_id}.{ext}` (matches backend)
+  - [ ] Test: Verify download triggered, filename correct
+
+- [ ] Task 4: Integrate export functionality with Pinia store (AC: #3)
+  - [ ] Access `store.jobId` and `store.segments` for export
+  - [ ] Handle `handleExport(format)` method in ExportModal.vue
+  - [ ] Call `api.exportTranscription(jobId, segments, format)`
+  - [ ] On success: Trigger download with Blob response
+  - [ ] On error: Display error message to user
+  - [ ] Reset loading state after success/failure
+  - [ ] Test: Mock store data, verify export call with correct parameters
+
+- [ ] Task 5: Error handling and user feedback (AC: #6)
+  - [ ] Catch API errors in try/catch block
+  - [ ] Display user-friendly error messages (not technical stack traces)
+  - [ ] Error messages:
+    - Job not found: "Export failed: Transcription not found."
+    - Invalid format: "Export failed: Invalid format selected."
+    - Server error: "Export failed: Server error. Please try again."
+    - Network error: "Export failed: Network error. Check your connection."
+  - [ ] Show error in modal (red background, error icon)
+  - [ ] Test: Mock 404/400/500 errors, verify messages displayed
+
+- [ ] Task 6: Support multiple exports (AC: #7)
+  - [ ] Allow user to export SRT, then TXT (or vice versa)
+  - [ ] Do not clear segments or close modal after successful export
+  - [ ] Reset error state when starting new export
+  - [ ] Test: Export SRT, then export TXT, verify both work
+
+- [ ] Task 7: Frontend unit tests for export functionality (AC: all)
+  - [ ] Create `frontend/src/components/ExportModal.test.ts`
+  - [ ] Test: Format selection UI renders (radio buttons for SRT/TXT)
+  - [ ] Test: Export button click calls API with correct parameters
+  - [ ] Test: Loading state displays during export
+  - [ ] Test: Success triggers browser download
+  - [ ] Test: Error displays user-friendly message
+  - [ ] Test: Multiple exports work sequentially
+  - [ ] Create `frontend/src/services/api.test.ts`
+  - [ ] Test: `exportTranscription()` sends correct POST request
+  - [ ] Test: Blob returned from response
+  - [ ] Run: `npm run test:unit -- --coverage`
+
+- [ ] Task 8: Manual validation and integration testing (AC: all)
+  - [ ] Manual test: Open ResultsView after transcription complete
+  - [ ] Verify: Export button visible
+  - [ ] Verify: Format selection works (radio buttons clickable)
+  - [ ] Test: Export SRT format, verify file downloads to browser
+  - [ ] Test: Export TXT format, verify plain text file downloads
+  - [ ] Verify: Filename format matches `transcript-{job_id}.{ext}`
+  - [ ] Test: Export while offline, verify error message
+  - [ ] Test: Export with non-existent job_id (mock), verify 404 error
+  - [ ] Verify: Can export both formats sequentially without issues
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. Export button visible on editor page
+2. Format selection: SRT or TXT (radio buttons or dropdown)
+3. Export button calls POST /export/{job_id} with edited subtitle array
+4. Success: Browser downloads file with appropriate name (`transcript-{job_id}.srt`/`.txt`)
+5. Loading state during export processing
+6. Error handling if export fails with clear message
+7. Multiple exports allowed (user can export both formats sequentially)
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Export & Delivery (FR014, FR015)</section>
+        <snippet>FR014: System shall export edited transcriptions in SRT (SubRip) subtitle format. FR015: System shall export edited transcriptions in plain TXT format for LLM processing.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Non-Functional Requirements (NFR002: Usability)</section>
+        <snippet>Non-technical users shall complete the upload → review → export workflow without documentation or technical assistance. System shall provide clear error messages and visual feedback throughout all operations.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>Frontend API Client</section>
+        <snippet>Decision: Native `fetch()` API (no external HTTP library). Rationale: Built into modern browsers, TypeScript types included, zero dependencies, sufficient for simple REST API calls. Usage pattern shows fetch() with error handling via try/catch blocks.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>Export File Naming Convention</section>
+        <snippet>Decision: `transcript-{job_id}.{ext}` format. Examples: `transcript-550e8400-e29b-41d4-a716-446655440000.srt` or `.txt`. Rationale: Prefix identifies file type clearly, job ID ensures uniqueness, file extension indicates format, browser downloads use this name by default.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>Error Handling Strategy - Frontend (Vue/TypeScript)</section>
+        <snippet>Catch fetch errors and HTTP error responses. Display user-friendly messages (avoid technical jargon). Error UI: Toast/alert for temporary errors, inline validation for forms. Never expose stack traces or internal details to users.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-2.md</path>
+        <title>Technical Specification: Epic 2 - Integrated Review & Export Experience</title>
+        <section>APIs and Interfaces - Export API</section>
+        <snippet>POST /export/{job_id} - Request body: { segments: TranscriptionSegment[], format: 'srt' | 'txt' }. Response: FileResponse with Content-Disposition header for download. Filename: transcript-{job_id}.{ext}. Error codes: 404 (job not found), 400 (invalid format/empty segments), 500 (generation failure).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-2.md</path>
+        <title>Technical Specification: Epic 2 - Integrated Review & Export Experience</title>
+        <section>Workflow 4: Export with Data Flywheel</section>
+        <snippet>User clicks Export, frontend sends edited segments to POST /export/{job_id}, backend generates SRT/TXT file, stores both original and edited versions for data flywheel, returns file via FileResponse, browser triggers download with Content-Disposition header.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Breakdown - KlipNote</title>
+        <section>Epic 2, Story 2.6: Frontend Export Functionality</section>
+        <snippet>User story: As a user, I want to download my edited transcription in standard formats, so that I can use it in LLM tools or subtitle players. Acceptance criteria include export button visibility, format selection (SRT/TXT), POST API call, browser download, loading state, error handling, and multiple exports support.</snippet>
+      </doc>
+      <doc>
+        <path>docs/stories/2-5-export-api-endpoint-with-data-flywheel.md</path>
+        <title>Story 2.5: Export API Endpoint with Data Flywheel</title>
+        <section>Dev Notes - Learnings from Previous Story</section>
+        <snippet>Backend POST /export/{job_id} endpoint complete. ExportRequest model: { segments: List[TranscriptionSegment], format: Literal['srt', 'txt'] }. Response: FileResponse with Content-Disposition header. Data flywheel captures original vs edited transcriptions. ExportModal.vue component exists with privacy notice.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>frontend/src/services/api.ts</path>
+        <kind>service</kind>
+        <symbol>API_BASE_URL, uploadFile, fetchStatus, fetchResult</symbol>
+        <lines>1-83</lines>
+        <reason>API client service with existing functions. Need to add exportTranscription() function following the same pattern (fetch, error handling, TypeScript types).</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/components/ExportModal.vue</path>
+        <kind>component</kind>
+        <symbol>ExportModal component</symbol>
+        <lines>entire file</lines>
+        <reason>Existing modal component with privacy notice (from Story 2.5). Needs export functionality added: format selection UI, export button, loading state, download trigger, error handling.</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/stores/transcription.ts</path>
+        <kind>store</kind>
+        <symbol>useTranscriptionStore</symbol>
+        <lines>entire file</lines>
+        <reason>Pinia store containing jobId and segments array. Export functionality will read these values to send to backend API.</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/types/api.ts</path>
+        <kind>types</kind>
+        <symbol>Segment, TranscriptionResult, StatusResponse, UploadResponse, ErrorResponse</symbol>
+        <lines>1-26</lines>
+        <reason>TypeScript interface definitions for API contracts. Segment interface defines the structure exported to backend. May need ExportRequest interface added.</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/__tests__/api.test.ts</path>
+        <kind>test</kind>
+        <symbol>API Service test suite</symbol>
+        <lines>1-50</lines>
+        <reason>Testing pattern reference: uses Vitest, mocks fetch, tests request construction and error handling. Same pattern should be followed for exportTranscription() tests.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <frontend>
+        <package name="vue" version="^3.5.22" />
+        <package name="pinia" version="^3.0.3" />
+        <package name="vue-router" version="^4.6.3" />
+        <package name="typescript" version="~5.9.0" />
+        <package name="tailwindcss" version="^4.1.16" />
+        <package name="@tailwindcss/vite" version="^4.1.17" />
+        <package name="vitest" version="^3.2.4" devDependency="true" />
+        <package name="@vue/test-utils" version="^2.4.6" devDependency="true" />
+        <package name="lodash-es" version="^4.17.21" devDependency="true" />
+        <note>lodash-es available if throttle/debounce needed for download triggers</note>
+      </frontend>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+**Development Environment:**
+- Frontend environment: Node.js 20.x LTS, npm package manager
+- No backend changes required (export API complete in Story 2.5)
+- Must activate frontend environment: cd frontend && npm install
+
+**Code Patterns:**
+- MUST use native fetch() API (no axios or other HTTP libraries)
+- MUST follow existing API client pattern in frontend/src/services/api.ts
+- MUST use TypeScript with explicit type annotations
+- MUST follow Vue 3 Composition API pattern (script setup lang="ts")
+- MUST use Pinia store for state management (useTranscriptionStore)
+- MUST follow Tailwind CSS v4 styling approach (@tailwindcss/vite plugin)
+
+**Error Handling:**
+- MUST catch fetch errors in try/catch blocks
+- MUST display user-friendly error messages (no stack traces to users)
+- MUST handle HTTP status codes: 404 (job not found), 400 (invalid format), 500 (server error)
+- MUST provide clear visual feedback for loading states and errors
+
+**Browser APIs:**
+- MUST use Blob API for download trigger: URL.createObjectURL(blob)
+- MUST use temporary anchor element with download attribute
+- MUST revoke blob URL after download: URL.revokeObjectURL()
+- MUST use native fetch() for HTTP requests
+
+**Testing Requirements:**
+- MUST write unit tests using Vitest + @vue/test-utils
+- MUST maintain 70%+ test coverage (Epic 1 standard)
+- MUST mock fetch API in tests (follow pattern in api.test.ts)
+- MUST test success cases, error cases, loading states
+- MUST run tests before marking story complete: npm run test:unit -- --coverage
+
+**File Naming and Structure:**
+- Export filename format: transcript-{job_id}.{ext} (matches backend)
+- Component tests: frontend/src/components/ExportModal.test.ts (co-located)
+- Service tests: frontend/src/__tests__/api.test.ts (existing test directory)
+- Type definitions: frontend/src/types/api.ts (add ExportRequest interface if needed)
+
+**User Experience:**
+- Default format selection: TXT (LLM-friendly per PRD use case)
+- Loading state must be visible during API call (disable export button)
+- Error messages must be clear and actionable
+- Modal must remain open after successful export (allow multiple exports)
+- Privacy notice must be visible (already in ExportModal from Story 2.5)
+
+**Cross-Story Dependencies:**
+- Depends on Story 2.5: Backend POST /export/{job_id} endpoint complete
+- Depends on Story 2.4: Pinia store has segments array from editing
+- Depends on Story 1.7: ResultsView displays transcription results
+- Enables Story 2.7: Complete MVP validation includes export workflow
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>POST /export/{job_id}</name>
+      <kind>REST endpoint</kind>
+      <signature>
+POST /export/{job_id}
+Request Body: { segments: Segment[], format: 'srt' | 'txt' }
+Request Headers: { 'Content-Type': 'application/json' }
+Response: Blob (file download)
+Response Headers: { 'Content-Disposition': 'attachment; filename=transcript-{job_id}.{ext}', 'Content-Type': 'application/x-subrip' | 'text/plain' }
+Error Responses:
+  - 404: Job not found
+  - 400: Invalid format or empty segments
+  - 500: Server error during file generation
+      </signature>
+      <path>backend/app/main.py (implementation in Story 2.5)</path>
+    </interface>
+    <interface>
+      <name>exportTranscription</name>
+      <kind>TypeScript function</kind>
+      <signature>
+export async function exportTranscription(
+  jobId: string,
+  segments: Segment[],
+  format: 'srt' | 'txt'
+): Promise&lt;Blob&gt;
+      </signature>
+      <path>frontend/src/services/api.ts (to be added in this story)</path>
+    </interface>
+    <interface>
+      <name>Segment</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+export interface Segment {
+  start: number  // Float seconds
+  end: number    // Float seconds
+  text: string
+}
+      </signature>
+      <path>frontend/src/types/api.ts (existing)</path>
+    </interface>
+    <interface>
+      <name>useTranscriptionStore</name>
+      <kind>Pinia store</kind>
+      <signature>
+Store state includes:
+  - jobId: string | null
+  - segments: Segment[]
+  - status: 'pending' | 'processing' | 'completed' | 'failed'
+Access via: const store = useTranscriptionStore()
+      </signature>
+      <path>frontend/src/stores/transcription.ts (existing)</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+Testing framework: Vitest v3.2.4 with @vue/test-utils v2.4.6 for Vue component testing. Test pattern: Mock fetch API using vi.fn(), test request construction (method, URL, headers, body), test response handling (success returns Blob, errors throw with user-friendly messages), test component rendering (format selection UI, export button, loading states, error display). Coverage target: 70%+ maintained from Epic 1. Test locations: Component tests co-located (.test.ts files) or in src/__tests__/ directory. Run tests: npm run test:unit -- --coverage
+    </standards>
+    <locations>
+- frontend/src/components/ExportModal.test.ts (co-located component test)
+- frontend/src/__tests__/api.test.ts (service test directory)
+- Test command: npm run test:unit
+- Coverage command: npm run test:unit -- --coverage
+    </locations>
+    <ideas>
+**API Client Tests (frontend/src/__tests__/api.test.ts):**
+- AC #3: Test exportTranscription() sends POST to /export/{job_id}
+- AC #3: Test request body contains segments array and format
+- AC #3: Test Content-Type header is application/json
+- AC #4: Test success returns Blob with correct type
+- AC #6: Test 404 error throws with "Job not found" message
+- AC #6: Test 400 error throws with "Invalid format" message
+- AC #6: Test 500 error throws with "Server error" message
+- AC #6: Test network error throws with "Network error" message
+
+**ExportModal Component Tests (frontend/src/components/ExportModal.test.ts):**
+- AC #1: Test export button renders and is visible
+- AC #2: Test format selection renders with SRT and TXT radio buttons
+- AC #2: Test default format selection is TXT
+- AC #3: Test export button click calls exportTranscription with correct parameters
+- AC #4: Test successful export triggers browser download (mock URL.createObjectURL)
+- AC #4: Test download filename matches transcript-{job_id}.{ext} pattern
+- AC #5: Test loading state displays during export (spinner visible, button disabled)
+- AC #6: Test error message displays for failed exports
+- AC #6: Test error message content matches expected user-friendly text
+- AC #7: Test multiple sequential exports (SRT then TXT) both succeed
+- AC #7: Test modal remains open after successful export
+
+**Integration/Manual Tests:**
+- AC #1-7: End-to-end test: Upload → Transcribe → Edit → Export SRT → Export TXT
+- AC #6: Test offline scenario (network disconnected)
+- AC #4: Verify downloaded files open correctly (SRT in subtitle player, TXT in text editor)
+    </ideas>
+  </tests>
+</story-context>
