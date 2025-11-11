@@ -4,7 +4,7 @@ Loads environment variables from .env file or environment
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 import json
 
 
@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     WHISPER_MODEL: str = "base"  # large-v2, large-v3, medium, small, base, tiny
     WHISPER_DEVICE: str = "cuda"  # cuda, cpu
     WHISPER_COMPUTE_TYPE: str = "float16"
+
+    # BELLE-2 model settings
+    BELLE2_MODEL_NAME: Optional[str] = None
 
     # File Storage Configuration
     UPLOAD_DIR: str = "/uploads"

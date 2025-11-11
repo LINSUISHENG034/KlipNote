@@ -1,16 +1,19 @@
 """
-Celery task for audio transcription using WhisperX
-Implements 5-stage progress tracking and result storage
+Celery task for audio transcription using WhisperX and BELLE-2
+Implements 5-stage progress tracking with multi-model support
 """
 
 import os
 import json
 import logging
 import uuid
-from typing import Dict, Any
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional, Tuple
 from celery import shared_task
 from celery.exceptions import Retry
 from app.ai_services.whisperx_service import WhisperXService
+from app.ai_services.belle2_service import Belle2Service
+from app.ai_services.base import TranscriptionService
 from app.services.redis_service import RedisService
 from app.config import settings
 
@@ -36,6 +39,136 @@ def validate_job_id(job_id: str) -> None:
         raise ValueError(f"Invalid job_id: must be UUID v4 format, got {job_id}") from e
 
 
+def select_transcription_service(
+    job_id: str,
+    redis_service: RedisService,
+    language: Optional[str] = None
+) -> Tuple[TranscriptionService, str, Dict[str, Any]]:
+    """
+    Select appropriate transcription service based on language
+
+    Args:
+        job_id: Job identifier for logging
+        redis_service: Redis service for status updates
+        language: Language code ('zh' for Chinese, 'en' for English, None for auto-detect)
+
+    Returns:
+        Tuple of (transcription_service, model_name, selection_details)
+    """
+    selection_details: Dict[str, Any] = {
+        "detected_language": language or "auto",
+        "user_language_hint": language,
+        "selection_reason": None,
+        "fallback_reason": None
+    }
+
+    # Try BELLE-2 for Chinese audio (explicit or auto-detected)
+    if language == "zh" or language is None:
+        try:
+            logger.info(f"[Job {job_id}] Attempting to load BELLE-2 for Chinese audio")
+            redis_service.set_status(
+                job_id=job_id,
+                status="processing",
+                progress=20,
+                message="Loading BELLE-2 model for Mandarin..."
+            )
+
+            service = Belle2Service()
+            logger.info(f"[Job {job_id}] BELLE-2 loaded successfully")
+            selection_details["selection_reason"] = (
+                "language_hint_zh" if language == "zh" else "auto_detected_zh"
+            )
+            return service, "belle2", selection_details
+
+        except Exception as e:
+            # BELLE-2 load failed, fall back to WhisperX
+            logger.warning(
+                f"[Job {job_id}] BELLE-2 load failed: {e}. Falling back to WhisperX."
+            )
+
+            redis_service.set_status(
+                job_id=job_id,
+                status="processing",
+                progress=20,
+                message="BELLE-2 unavailable, using WhisperX fallback..."
+            )
+
+            selection_details["selection_reason"] = "belle2_load_failed"
+            selection_details["fallback_reason"] = str(e)
+
+    # Use WhisperX as default or fallback
+    logger.info(f"[Job {job_id}] Using WhisperX service")
+    redis_service.set_status(
+        job_id=job_id,
+        status="processing",
+        progress=20,
+        message="Loading AI model..."
+    )
+
+    service = WhisperXService()
+    if not selection_details.get("selection_reason"):
+        selection_details["selection_reason"] = (
+            "language_not_chinese" if language and language != "zh" else "default_whisperx"
+        )
+
+    return service, "whisperx", selection_details
+
+
+def save_model_metadata(
+    job_id: str,
+    model_name: str,
+    service: TranscriptionService,
+    selection_details: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Save model metadata to job directory
+
+    Args:
+        job_id: Job identifier
+        model_name: Model name ('belle2' or 'whisperx')
+        service: Transcription service instance
+    """
+    try:
+        job_dir = os.path.join(settings.UPLOAD_DIR, job_id)
+        os.makedirs(job_dir, exist_ok=True)
+
+        metadata_file = os.path.join(job_dir, "model_metadata.json")
+
+        # Get model info if service supports it
+        model_info = {}
+        if hasattr(service, 'get_model_info'):
+            model_info = service.get_model_info()
+        else:
+            model_info = {
+                "engine": model_name,
+                "model_version": "unknown"
+            }
+
+        enriched_metadata = {
+            "job_id": job_id,
+            "selected_engine": model_info.get("engine", model_name),
+            "model_version": model_info.get("model_version", "unknown"),
+            "device": model_info.get("device"),
+            "vram_usage_gb": model_info.get("vram_usage_gb"),
+            "model_load_time_ms": round(
+                float(model_info.get("load_time_seconds") or 0.0) * 1000, 3
+            ),
+            "detected_language": (selection_details or {}).get("detected_language"),
+            "user_language_hint": (selection_details or {}).get("user_language_hint"),
+            "selection_reason": (selection_details or {}).get("selection_reason"),
+            "fallback_reason": (selection_details or {}).get("fallback_reason"),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+        with open(metadata_file, "w", encoding="utf-8") as f:
+            json.dump(enriched_metadata, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"[Job {job_id}] Model metadata saved: {model_name}")
+
+    except Exception as e:
+        logger.warning(f"[Job {job_id}] Failed to save model metadata: {e}")
+
+
 @shared_task(
     bind=True,
     name="app.tasks.transcription.transcribe_audio",
@@ -45,13 +178,13 @@ def validate_job_id(job_id: str) -> None:
     retry_backoff_max=600,  # Max 10 minutes
     retry_jitter=True
 )
-def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
+def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] = None) -> Dict[str, Any]:
     """
-    Transcribe audio file using WhisperX with 5-stage progress tracking
+    Transcribe audio file using BELLE-2 (Chinese) or WhisperX with fallback
 
     Stages:
     1. (10%) Task queued...
-    2. (20%) Loading AI model...
+    2. (20%) Loading AI model... (BELLE-2 for Chinese, WhisperX fallback)
     3. (40%) Transcribing audio...
     4. (80%) Aligning timestamps...
     5. (100%) Processing complete!
@@ -60,6 +193,7 @@ def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
         self: Celery task instance (from bind=True)
         job_id: Unique job identifier (UUID v4)
         file_path: Path to audio file to transcribe
+        language: Language code ('zh', 'en', etc.) or None for auto-detect
 
     Returns:
         Dictionary with transcription result:
@@ -100,20 +234,18 @@ def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
         # STAGE 2: Loading AI model (20%)
         # ======================================================================
         logger.info(f"[Job {job_id}] Stage 2: Loading AI model")
-        redis_service.set_status(
-            job_id=job_id,
-            status="processing",
-            progress=20,
-            message="Loading AI model..."
-        )
 
-        # Initialize WhisperX service (model is cached after first load)
-        whisperx_service = WhisperXService()
+        # Select appropriate transcription service (BELLE-2 for Chinese, WhisperX fallback)
+        transcription_service, model_name, selection_details = select_transcription_service(
+            job_id=job_id,
+            redis_service=redis_service,
+            language=language
+        )
 
         # ======================================================================
         # STAGE 3: Transcribing audio (40%)
         # ======================================================================
-        logger.info(f"[Job {job_id}] Stage 3: Transcribing audio")
+        logger.info(f"[Job {job_id}] Stage 3: Transcribing audio with {model_name}")
         redis_service.set_status(
             job_id=job_id,
             status="processing",
@@ -121,16 +253,16 @@ def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
             message="Transcribing audio..."
         )
 
-        # Call WhisperX transcription with automatic language detection
-        segments = whisperx_service.transcribe(
+        # Call transcription with automatic language detection if not specified
+        segments = transcription_service.transcribe(
             audio_path=file_path,
-            language=None  # Auto-detect language (zh, en, etc.)
+            language=language  # None = auto-detect, 'zh' = Chinese, 'en' = English
         )
 
         # ======================================================================
         # STAGE 4: Aligning timestamps (80%)
         # ======================================================================
-        logger.info(f"[Job {job_id}] Stage 4: Aligning timestamps (already done in WhisperX)")
+        logger.info(f"[Job {job_id}] Stage 4: Aligning timestamps (already done in service)")
         redis_service.set_status(
             job_id=job_id,
             status="processing",
@@ -138,7 +270,7 @@ def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
             message="Aligning timestamps..."
         )
 
-        # Note: Alignment is already done in WhisperXService.transcribe()
+        # Note: Alignment is already done in transcription services
         # This stage is kept for UI progress consistency
 
         # ======================================================================
@@ -165,6 +297,9 @@ def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
 
         logger.info(f"[Job {job_id}] Transcription saved to {transcription_file}")
 
+        # Save model metadata
+        save_model_metadata(job_id, model_name, transcription_service, selection_details)
+
         # Update status to completed
         redis_service.set_status(
             job_id=job_id,
@@ -173,7 +308,7 @@ def transcribe_audio(self, job_id: str, file_path: str) -> Dict[str, Any]:
             message="Processing complete!"
         )
 
-        logger.info(f"[Job {job_id}] Transcription task completed successfully")
+        logger.info(f"[Job {job_id}] Transcription task completed successfully using {model_name}")
         return result_data
 
     except FileNotFoundError as e:

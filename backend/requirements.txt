@@ -42,6 +42,10 @@ av<16.0.0
 # Silero VAD (torch.hub model) provides voice activity detection without extra deps
 transformers>=4.48.0
 
+# Audio Processing for BELLE-2
+# librosa used for audio loading and preprocessing in belle2_service.py
+librosa>=0.10.0
+
 # Chinese Language Processing
 # Used for Traditional→Simplified Chinese conversion in transcription post-processing
 zhconv>=1.4.3

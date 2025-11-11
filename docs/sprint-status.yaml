@@ -56,3 +56,12 @@ development_status:
   2-6-frontend-export-functionality: done
   2-7-mvp-release-checklist-and-final-validation: done
   epic-2-retrospective: done
+
+  epic-3: contexted
+  3-1-belle2-integration: done
+  3-2-model-routing-logic: backlog
+  3-3-quality-validation-framework: backlog
+  3-4-sensevoice-pilot: backlog
+  3-5-monitoring-logging: backlog
+  3-6-documentation-deployment: backlog
+  epic-3-retrospective: optional

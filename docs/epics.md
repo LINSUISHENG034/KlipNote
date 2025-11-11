@@ -354,6 +354,133 @@ So that we can confidently release a reliable, production-ready application.
 
 ---
 
+## Epic 3: Multi-Model Transcription Foundation
+
+**Expanded Goal:**
+
+Dramatically improve Mandarin Chinese transcription quality by establishing a pluggable multi-model ASR architecture. The current WhisperX pipeline produces severe quality issues on Mandarin audio—generating repetitive "gibberish loops" and high character error rates—while the Const-me Whisper Desktop benchmark demonstrates that high-quality Mandarin transcription is achievable using the same base models with proper configuration. Integrate BELLE-2 whisper-large-v3-zh (achieving 24-65% relative CER reduction) as the Mandarin-optimized decoder, implement automatic language detection and model routing, and establish a quality validation framework. Pilot SenseVoice-Small for low-latency optimization paths. Upon completion, users experience dramatically improved Mandarin transcription quality matching reference baselines, with a scalable architecture supporting future language-specific optimizations.
+
+**Deliverable:** Multi-model ASR support with Mandarin quality parity to reference baseline
+
+---
+
+**Story 3.1: BELLE-2 Integration**
+
+As a user transcribing Mandarin Chinese audio,
+I want the system to automatically use the BELLE-2 model optimized for Chinese language,
+So that I receive significantly more accurate transcriptions with fewer repetitive errors and gibberish loops.
+
+**Acceptance Criteria:**
+1. `belle2_service.py` implements `TranscriptionService` interface with Chinese-optimized decoder settings
+2. BELLE-2 model downloads from HuggingFace on first use, subsequent loads from cache in <5 seconds
+3. Transcription output format matches existing WhisperX format (segments with start, end, text)
+4. Timestamp alignment stability verified via click-to-timestamp navigation tests
+5. Unit tests mock BELLE-2 model to avoid GPU dependency during CI
+6. Integration test transcribes 5-minute Mandarin audio and verifies CER improvement
+7. Memory footprint validated: ~6GB VRAM usage
+8. Fallback mechanism tested: BELLE-2 load failure defaults to WhisperX with warning
+
+**Prerequisites:** Story 2.7 (all MVP functionality complete)
+
+---
+
+**Story 3.2: Language Detection & Model Routing Logic**
+
+As a system,
+I want to automatically detect audio language and select the optimal transcription model,
+So that users receive the best quality without manual configuration.
+
+**Acceptance Criteria:**
+1. `model_router.py` implements language detection using Whisper-small on 30-second samples
+2. Router selects BELLE-2 for Mandarin (zh/zh-CN/zh-TW), WhisperX for English and other languages
+3. User language hint parameter overrides automatic detection
+4. Model selection decisions logged with reasoning (language detected, confidence, selected engine)
+5. Language detection completes in <5 seconds
+6. Unit tests cover all routing branches (detected zh, detected en, user hint, fallback)
+7. Integration test validates ≥95% detection accuracy on 30-sample test corpus (15 Mandarin, 15 English)
+
+**Prerequisites:** Story 3.1 (BELLE-2 available as routing option)
+
+---
+
+**Story 3.3: Quality Validation Framework**
+
+As a system maintainer,
+I want automated quality validation comparing transcriptions against reference baselines,
+So that I can objectively measure improvements and prevent quality regressions.
+
+**Acceptance Criteria:**
+1. `quality_validator.py` calculates WER/CER using `jiwer` library
+2. Repetition loop detection via n-gram counting (3+ repetitions of 3-5 word phrases)
+3. Regression harness compares against reference files in `/reference/{job_id}/` directory
+4. Quality metrics stored in `quality_metrics.json` alongside transcription results
+5. Validation runs automatically if reference available, doesn't block job completion on failure
+6. CLI tool provided for manual validation of specific jobs
+7. Test suite validates `case1` corpus: current WhisperX pipeline fails repetition check, BELLE-2 passes
+8. CER threshold configured at ≤0.15 for Mandarin quality gate
+
+**Prerequisites:** Story 3.1 (BELLE-2 transcription), Story 3.2 (model routing provides engine metadata)
+
+---
+
+**Story 3.4: SenseVoice Pilot Implementation**
+
+As a system operator,
+I want to pilot SenseVoice-Small ONNX runtime for low-latency Mandarin transcription,
+So that I can validate a 15× faster processing path for future optimization.
+
+**Acceptance Criteria:**
+1. `sensevoice_service.py` implements `TranscriptionService` using FunASR ONNX runtime
+2. Pilot mode enabled via `ENABLE_SENSEVOICE=true` environment variable (default: false)
+3. Latency benchmark: 1-hour Mandarin audio completes in <60 minutes on RTX 3070 Ti (validates <1× realtime)
+4. Accuracy benchmark: CER within ±5% of BELLE-2 on 10 Mandarin test samples
+5. FunASR dependencies isolated in `requirements-sensevoice.txt` (optional install)
+6. Integration test verifies segment format compatibility with existing player
+7. Documentation includes setup instructions, known limitations, and pilot status disclaimer
+
+**Prerequisites:** Story 3.1 (TranscriptionService interface), Story 3.2 (model routing extensibility)
+
+---
+
+**Story 3.5: Model Performance Monitoring & Logging**
+
+As a system operator,
+I want structured logging of model selection, performance metrics, and quality scores,
+So that I can monitor ASR system health and make data-driven optimization decisions.
+
+**Acceptance Criteria:**
+1. Structured logging for model selection (job_id, detected_language, selected_engine, selection_reason, confidence)
+2. Structured logging for transcription performance (engine, audio_duration, processing_duration, realtime_factor, vram_used, segment_count)
+3. Structured logging for quality validation (engine, wer, cer, has_repetitions, passes_threshold)
+4. Log aggregation script generates daily reports (model usage distribution, average WER/CER by engine, failure rates)
+5. Alert thresholds configured for failure rates (>10% BELLE-2 load failures, >5% language detection failures)
+6. Logs output to stdout in JSON format for log aggregation tools
+7. Sample Grafana dashboard mockup created with key metrics (model usage, quality trends, latency P95)
+
+**Prerequisites:** Story 3.1 (BELLE-2), Story 3.2 (model routing), Story 3.3 (quality validation)
+
+---
+
+**Story 3.6: Documentation & Deployment Updates**
+
+As a developer or system administrator,
+I want comprehensive documentation for multi-model ASR architecture and deployment,
+So that I can understand the system, deploy updates, and troubleshoot issues effectively.
+
+**Acceptance Criteria:**
+1. Architecture documentation updated with multi-model ASR section (services, routing logic, model storage)
+2. Deployment guide created (`docs/deployment-epic3.md`) covering BELLE-2 and SenseVoice setup
+3. User-facing documentation updated with accuracy expectations by language (Mandarin vs English)
+4. README updated with new dependencies (transformers, jiwer, funasr), environment variables, model cache configuration
+5. Migration guide created for Epic 2 → Epic 3 upgrade path with backward compatibility notes
+6. Troubleshooting guide covers model downloads, VRAM issues, language detection problems, quality validation failures
+7. Performance tuning guide documents optimization strategies (model cache, concurrent jobs, VRAM management)
+8. All documentation examples tested on fresh Windows 10 + RTX 3070 Ti environment
+
+**Prerequisites:** All previous stories in Epic 3 (documents complete system)
+
+---
+
 ## Story Guidelines Reference
 
 **Story Format:**

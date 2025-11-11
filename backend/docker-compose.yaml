@@ -56,11 +56,15 @@ services:
       - WHISPER_COMPUTE_TYPE=float16
       - UPLOAD_DIR=/uploads
       - NVIDIA_VISIBLE_DEVICES=all
+      # BELLE-2 configuration
+      - BELLE2_MODEL_NAME=BELLE-2/Belle-whisper-large-v3-zh
     volumes:
       - .:/app
       - ./uploads:/uploads
       # Model cache volume to avoid re-downloading WhisperX models
       - whisperx-models:/root/.cache/whisperx
+      # HuggingFace model cache for BELLE-2 (~3.1GB first download)
+      - model-cache:/root/.cache/huggingface
     # Wait for Redis health check before starting
     depends_on:
       redis:
@@ -79,6 +83,11 @@ services:
       redis:
         condition: service_healthy
 
-# Named volume for WhisperX model caching
+# Named volumes for model caching
 volumes:
+  # WhisperX model cache (faster-whisper)
   whisperx-models:
+  # HuggingFace model cache (BELLE-2 and other transformer models)
+  # First-run BELLE-2 download: ~3.1GB, 5-10 minutes
+  # Subsequent loads: <5 seconds from cache
+  model-cache:

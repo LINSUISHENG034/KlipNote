@@ -2,19 +2,22 @@
 docs/bmm-*.md
 docs/implementation-*.md
 docs/validation-*.md
+archive/
 
 test.mp3
 
 # Development Tools
 acli.exe
 _backend_old/
-.vscode
+.vscode/
+.cache/
 
 # Python Virtual Environments (Backend)
 # uv-managed environment
 backend/.venv/
 .venv/
-.venv
+.uv-cache/
+.venv-linux/
 env/
 venv/
 test-results/
@@ -26,7 +29,8 @@ reference/
 .claude/
 .gemini/
 .pytest_cache/
-bmad/
+.bmad/
+.bmad-ephemeral/
 temp/
 
 # Python Compiled Files
