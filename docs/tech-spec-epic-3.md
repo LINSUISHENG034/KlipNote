@@ -1,655 +1,829 @@
-# Epic Technical Specification: Multi-Model Transcription Foundation
+# Epic Technical Specification: Chinese Transcription Quality Optimization
 
-Date: 2025-11-10
-Author: Link
+Date: 2025-11-13 (Updated)
+Author: Link, PM (John)
 Epic ID: 3
-Status: Draft
+Status: In Progress - Architectural Adjustment Approved
 
 ---
 
 ## Overview
 
-Epic 3 establishes a multi-model transcription foundation to dramatically improve Mandarin Chinese ASR accuracy while maintaining KlipNote's offline, self-hosted architecture. The current WhisperX pipeline produces severe quality issues on Mandarin audio—generating repetitive "gibberish loops" (e.g., "我用了一尾" repeated dozens of times in `case1` reference transcripts)—while the Const-me Whisper Desktop benchmark demonstrates that high-quality Mandarin transcription is achievable using the same base models with proper decoder configuration.
+Epic 3 dramatically improves Mandarin Chinese transcription segmentation quality through a **pluggable optimizer architecture** that supports multiple timestamp optimization implementations. Story 3.1 successfully integrated BELLE-2 to eliminate repetitive "gibberish loops," but production testing revealed that BELLE-2 produces overly long subtitle segments that violate standard subtitle timestamp conventions.
 
-This epic delivers a pluggable ASR architecture that integrates **BELLE-2 whisper-large-v3-zh** (a full fine-tune of Whisper large-v3 achieving 24-65% relative CER reduction) as the default Mandarin decoder, adds **model routing logic** to automatically select optimal engines per language/use-case, and establishes a **quality validation framework** comparing outputs against reference transcripts (Const-me baseline). A pilot implementation of **SenseVoice-Small** (FunAudioLLM's non-autoregressive model achieving ~15× faster inference) validates low-latency paths for future optimization.
+### Architectural Approach
 
-The epic also implements comprehensive **monitoring and logging** to track WER/CER metrics across models, plus deployment tooling and documentation for maintaining multiple ASR runtimes within the RTX 3070 Ti 16GB GPU constraint.
+Following user requirements for **architectural flexibility over technology lock-in**, Epic 3 adopts a two-phase implementation strategy:
+
+1. **Phase 1 (Stories 3.2a-3.2b): Pluggable Architecture + WhisperX Validation**
+   - Implement `TimestampOptimizer` abstract interface enabling multiple optimizer implementations
+   - Validate WhisperX wav2vec2 forced alignment as mature solution for timestamp optimization
+   - Phase Gate decision: GO/NO-GO for WhisperX based on objective success criteria
+
+2. **Phase 2 (Stories 3.3-3.5): Heuristic Optimizer Implementation** *(Conditional)*
+   - Self-developed optimizer using VAD preprocessing, energy refinement, intelligent splitting
+   - Activates ONLY if Phase Gate decision is NO-GO for WhisperX
+   - Fallback ensures Epic 3 objectives achieved regardless of dependency conflicts
+
+3. **Phase 3 (Story 3.6): Quality Validation Framework** *(Required)*
+   - Automated CER/WER calculation and segment length statistics
+   - Works with BOTH WhisperXOptimizer and HeuristicOptimizer implementations
+
+### Key Architectural Decisions
+
+**ADR-001: Pluggable TimestampOptimizer Interface**
+- **Decision:** Abstract interface with multiple implementations (WhisperX, Heuristic)
+- **Rationale:** Prevents technology lock-in, enables future optimizer upgrades, provides fallback strategy
+- **Trade-offs:** +3-5 days implementation time vs. long-term architectural flexibility
+
+**ADR-002: Two-Phase Implementation with Phase Gate**
+- **Decision:** Prioritize mature solution (WhisperX) validation before self-developed fallback
+- **Rationale:** Minimize development effort if proven solution works, de-risk through early validation
+- **Trade-offs:** Sequential execution (no parallel work) vs. early risk discovery
 
 ## Objectives and Scope
 
 **In Scope:**
 
-- **BELLE-2 Integration (Story 3.1):** Replace current Whisper decoder with BELLE-2 whisper-large-v3-zh for Mandarin audio, preserving timestamp alignment and existing WhisperX tooling
-- **Model Routing Logic (Story 3.2):** Implement ASR engine abstraction layer with automatic language detection and model selection (Whisper for English, BELLE-2 for Mandarin, extensible for future engines)
-- **Quality Validation Framework (Story 3.3):** Build automated regression harness comparing transcription outputs against Const-me reference transcripts, measuring WER/CER and timestamp stability
-- **SenseVoice Pilot (Story 3.4):** Integrate FunASR SenseVoice-Small ONNX runtime as optional backend, benchmark latency and accuracy on RTX 3070 Ti hardware
-- **Monitoring & Logging (Story 3.5):** Add structured logging for model selection decisions, transcription quality metrics, and performance tracking (latency, throughput, GPU utilization)
-- **Documentation & Deployment (Story 3.6):** Document multi-model architecture, create deployment guides for BELLE-2 and SenseVoice runtimes, update user-facing accuracy expectations
+- **Pluggable Optimizer Architecture (Story 3.2a):** `TimestampOptimizer` abstract interface, `OptimizerFactory` with auto-selection logic, `OPTIMIZER_ENGINE` configuration setting
+- **WhisperX Integration Validation (Story 3.2b):** Isolated dependency testing, WhisperXOptimizer implementation, performance benchmarking, quality A/B testing, Phase Gate decision report
+- **Heuristic Optimizer - VAD Preprocessing (Story 3.3 - CONDITIONAL):** Voice Activity Detection filtering, silence removal, parameter optimization
+- **Heuristic Optimizer - Timestamp Refinement (Story 3.4 - CONDITIONAL):** Token-level timestamp extraction, energy-based boundary refinement
+- **Heuristic Optimizer - Segment Splitting (Story 3.5 - CONDITIONAL):** Intelligent splitting to meet 1-7 second conventions, Chinese text length estimation
+- **Quality Validation Framework (Story 3.6 - REQUIRED):** Automated CER/WER calculation, segment length statistics, regression testing
 
 **Out of Scope:**
 
-- **Paraformer integration:** Deferred to post-Epic 3 (research identified as viable but BELLE-2 + SenseVoice sufficient for MVP)
-- **FireRedASR integration:** Requires ≥40GB VRAM (exceeds RTX 3070 Ti constraint); future consideration for high-accuracy mode
-- **Fine-tuning on custom data:** Epic 3 uses pretrained models; domain adaptation left for Phase 2
-- **Real-time streaming transcription:** Focus on batch/offline processing; streaming deferred to future epic
-- **Multi-language mixing within single file:** Initial routing assumes single dominant language per audio file
-- **Advanced model ensembling:** Simple routing logic only; weighted ensemble or confidence-based fallback left for future optimization
+- **Model routing logic:** Deferred to Epic 4 (BELLE-2 remains default for Chinese)
+- **SenseVoice integration:** Deferred to Epic 4 (optimization precedes model sophistication)
+- **Performance monitoring dashboard:** Deferred to Epic 4
+- **Real-time streaming optimization:** Focus on batch/offline processing
+- **Speaker diarization integration:** Future epic consideration
+- **Advanced punctuation models:** Use BELLE-2 built-in punctuation
 
 **Success Criteria:**
 
-- Mandarin transcription quality matches or exceeds Const-me Whisper Desktop baseline (measured via automated WER/CER comparison on `case1` reference corpus)
-- Zero regression in English transcription accuracy
-- Timestamp alignment stability maintained across all models (click-to-timestamp functionality unaffected)
-- Model switching overhead <5 seconds per job
-- SenseVoice pilot demonstrates ≤1.5× realtime latency on RTX 3070 Ti (validates future optimization path)
+- **95% of output segments meet length constraints:** 1-7 seconds duration AND <200 characters
+- **Segment length reduction ≥20% vs. baseline:** Mean segment duration improves from 8-12s to 5-7s
+- **Optimization pipeline overhead <25% of transcription time:** Optimization adds <15 minutes to 1-hour transcription
+- **Zero regression in transcription accuracy:** CER/WER maintains or improves vs. Story 3.1 baseline
+- **Click-to-timestamp alignment maintains <200ms accuracy:** Timestamp optimization preserves existing functionality
+- **Architectural flexibility:** Configuration-driven optimizer selection without code changes
 
 ## System Architecture Alignment
 
-**Components Referenced:**
+### Pluggable Optimizer Architecture (Story 3.2a)
 
-1. **AI Services Layer (`app/ai_services/`):** Epic 3 expands the existing `TranscriptionService` abstract interface (architecture.md lines 666-706) to support multiple implementations:
-   - `whisperx_service.py` (existing)
-   - `belle2_service.py` (new - Story 3.1)
-   - `sensevoice_service.py` (new - Story 3.4)
-   - `model_router.py` (new - Story 3.2)
+**Component Structure:**
 
-2. **Celery Tasks (`app/tasks/transcription.py`):** Modified to invoke `model_router.select_engine()` before transcription, log model selection decisions, and capture quality metrics
-
-3. **File Storage (`/uploads/{job_id}/`):** Extended to store:
-   - `model_metadata.json` (selected engine, language detected, model version)
-   - `quality_metrics.json` (WER/CER if reference available, confidence scores)
-
-4. **Redis Progress Tracking:** Status messages updated to include model selection info (e.g., "Loading BELLE-2 model for Mandarin...", "Transcribing with SenseVoice-Small...")
-
-**Constraints Satisfied:**
-
-- **GPU Memory (NFR-004, Architecture Decision):** BELLE-2 maintains Whisper large-v3 footprint (~1.55B parameters, fits within RTX 3070 Ti 16GB); SenseVoice-Small (~220M parameters) fits comfortably with headroom for concurrency
-- **Performance (NFR-001):** BELLE-2 targets same 1-2× realtime throughput as current Whisper; SenseVoice pilot aims for <1× realtime (70ms per 10s audio per research)
-- **Compatibility (NFR-004):** Model routing transparent to frontend; existing API contracts (`/upload`, `/status`, `/result`) unchanged
-- **Reliability (NFR-003):** Quality validation framework prevents deployment of regression-prone models
-
-**Architecture Pattern Extensions:**
-
-- **Service Abstraction (architecture.md lines 650-706):** Epic 3 proves the AI service abstraction strategy by adding two new implementations without frontend changes
-- **Pluggable Runtime Strategy:** BELLE-2 uses HuggingFace Transformers (existing), SenseVoice requires FunASR runtime (containerized separately to isolate dependencies)
-- **Quality Gate Integration:** Regression harness (Story 3.3) runs as part of CI/CD before model promotions, aligning with Testing Strategy (architecture.md lines 806-1071)
-
-## Detailed Design
-
-### Services and Modules
-
-| Module | Responsibility | Inputs | Outputs | Owner |
-|--------|---------------|--------|---------|-------|
-| **`belle2_service.py`** | BELLE-2 Whisper-L3-zh transcription for Mandarin audio | Audio file path, language="zh" | Segment list with timestamps | Story 3.1 |
-| **`sensevoice_service.py`** | FunASR SenseVoice-Small ONNX runtime wrapper | Audio file path, config params | Segment list with timestamps | Story 3.4 |
-| **`model_router.py`** | Language detection and ASR engine selection logic | Audio file path, user preferences | Selected engine instance | Story 3.2 |
-| **`quality_validator.py`** | WER/CER calculation and regression checking | Hypothesis transcript, reference transcript | Quality metrics dict | Story 3.3 |
-| **`transcription_logger.py`** | Structured logging for model selection, performance metrics | Job metadata, timing data, model selection | Log entries to stdout/file | Story 3.5 |
-| **`model_manager.py`** | Lazy model loading, caching, GPU memory management | Model name, device config | Loaded model instance | Story 3.1, 3.4 |
-
-**Module Implementation Notes:**
-
-- **`belle2_service.py`:** Implements `TranscriptionService` interface, uses HuggingFace Transformers to load BELLE-2 model, configures Chinese-specific decoder settings (forced language ID, temperature fallback, beam search)
-- **`model_router.py`:** Uses Whisper-small for fast 30-second language detection, maintains engine registry, logs selection decisions with reasoning
-- **`quality_validator.py`:** Uses `jiwer` library for WER/CER calculation, implements repetition detection via n-gram counting, compares against reference transcripts in `/reference/{job_id}/` directory
-- **`model_manager.py`:** Lazy-loads models to conserve GPU memory, implements LRU cache for frequently-used models, monitors VRAM usage
-
-### Data Models and Contracts
-
-**Model Metadata (stored as `model_metadata.json`):**
-```python
-class ModelMetadata(BaseModel):
-    job_id: str
-    selected_engine: str  # "whisperx", "belle2", "sensevoice"
-    model_version: str  # e.g., "BELLE-2/Belle-whisper-large-v3-zh"
-    detected_language: str  # "en", "zh", "auto"
-    user_language_hint: Optional[str]
-    model_load_time_ms: float
-    selection_reason: str  # "user_hint", "detected_chinese", "default"
-    timestamp: str  # ISO 8601
+```
+app/ai_services/optimization/
+├── base.py                 # TimestampOptimizer abstract interface + OptimizationResult
+├── factory.py              # OptimizerFactory with auto-selection logic
+├── whisperx_optimizer.py   # WhisperX wav2vec2 forced alignment (Story 3.2b)
+├── heuristic_optimizer.py  # Self-developed VAD+refinement+splitting (Stories 3.3-3.5)
+└── quality_validator.py    # CER/WER calculation, metrics (Story 3.6)
 ```
 
-**Quality Metrics (stored as `quality_metrics.json`):**
+**Core Interfaces:**
+
 ```python
-class QualityMetrics(BaseModel):
-    job_id: str
-    wer: Optional[float]  # None if no reference
-    cer: Optional[float]
-    timestamp_drift_ms: Optional[float]
-    has_repetitions: bool
-    passes_threshold: bool
-    reference_available: bool
-    validation_timestamp: str
-```
+# app/ai_services/optimization/base.py
+from abc import ABC, abstractmethod
+from typing import List, Dict, Any
+from dataclasses import dataclass
 
-**Transcription Segment (unchanged from Epic 1):**
-```python
-class TranscriptionSegment(BaseModel):
-    start: float  # seconds
-    end: float    # seconds
-    text: str
-```
+@dataclass
+class OptimizationResult:
+    """Standardized optimizer output"""
+    segments: List[Dict[str, Any]]  # Optimized segments with start, end, text, words
+    metrics: Dict[str, float]        # Performance metrics (processing_time_ms, segments_optimized)
+    optimizer_name: str              # "whisperx" | "heuristic"
 
-**Router Configuration:**
-```python
-class RouterConfig(BaseModel):
-    enable_belle2: bool = True
-    enable_sensevoice: bool = False  # Pilot mode
-    default_engine: str = "whisperx"
-    language_detection_duration: int = 30  # seconds
-    quality_validation_enabled: bool = True
-    cer_threshold: float = 0.15
-```
+class TimestampOptimizer(ABC):
+    """Abstract interface for timestamp optimization strategies"""
 
-### APIs and Interfaces
-
-**No new external API endpoints required.** Epic 3 changes are backend-only; existing endpoints remain unchanged:
-
-- `POST /upload` → Unchanged
-- `GET /status/{job_id}` → Enhanced status messages include model info
-- `GET /result/{job_id}` → Unchanged (returns same segment format)
-- `GET /media/{job_id}` → Unchanged
-- `POST /export/{job_id}` → Unchanged
-
-**Enhanced Status Response (backward compatible):**
-```json
-{
-  "status": "processing",
-  "progress": 40,
-  "message": "Transcribing audio with BELLE-2 (Mandarin mode)...",
-  "created_at": "2025-11-10T10:30:00Z",
-  "updated_at": "2025-11-10T10:31:15Z",
-  "model_info": {
-    "engine": "belle2",
-    "detected_language": "zh",
-    "model_version": "BELLE-2/Belle-whisper-large-v3-zh"
-  }
-}
-```
-
-**Internal Service Interface (TranscriptionService abstract):**
-```python
-class TranscriptionService(ABC):
     @abstractmethod
-    def transcribe(self, audio_path: str, language: str = "auto") -> List[Dict]:
-        """Returns: [{"start": 0.5, "end": 3.2, "text": "..."}]"""
+    def optimize(
+        self,
+        segments: List[Dict[str, Any]],
+        audio_path: str,
+        language: str = "zh"
+    ) -> OptimizationResult:
+        """
+        Optimize transcription segments' timestamps and splitting
+
+        Args:
+            segments: Raw transcription segments from BELLE-2/faster-whisper
+            audio_path: Path to original audio file
+            language: Language code (default: "zh" for Chinese)
+
+        Returns:
+            OptimizationResult with optimized segments and performance metrics
+        """
         pass
 
+    @staticmethod
     @abstractmethod
-    def get_model_info(self) -> Dict:
-        """Return model metadata for logging."""
+    def is_available() -> bool:
+        """Check if optimizer dependencies are installed and functional"""
         pass
 ```
 
-### Workflows and Sequencing
+**Factory Pattern (Story 3.2a):**
 
-**Transcription Job Flow (Epic 3 Enhanced):**
+```python
+# app/ai_services/optimization/factory.py
+from app.config import settings
+from .base import TimestampOptimizer
+from .whisperx_optimizer import WhisperXOptimizer
+from .heuristic_optimizer import HeuristicOptimizer
+import logging
+
+logger = logging.getLogger(__name__)
+
+class OptimizerFactory:
+    """Factory for creating timestamp optimizer instances"""
+
+    @staticmethod
+    def create(engine: str = None) -> TimestampOptimizer:
+        """
+        Create optimizer instance based on engine configuration
+
+        Args:
+            engine: "whisperx" | "heuristic" | "auto" (default from settings)
+
+        Returns:
+            TimestampOptimizer instance
+
+        Raises:
+            ValueError: If engine is unknown
+        """
+        engine = engine or settings.OPTIMIZER_ENGINE
+
+        if engine == "whisperx":
+            if WhisperXOptimizer.is_available():
+                logger.info("Creating WhisperXOptimizer")
+                return WhisperXOptimizer()
+            else:
+                logger.warning("WhisperX unavailable, falling back to HeuristicOptimizer")
+                return HeuristicOptimizer()
+
+        elif engine == "heuristic":
+            logger.info("Creating HeuristicOptimizer")
+            return HeuristicOptimizer()
+
+        elif engine == "auto":
+            # Auto-select: Prefer WhisperX, fallback to Heuristic
+            if WhisperXOptimizer.is_available():
+                logger.info("Auto-selecting WhisperXOptimizer")
+                return WhisperXOptimizer()
+            else:
+                logger.info("Auto-selecting HeuristicOptimizer (WhisperX unavailable)")
+                return HeuristicOptimizer()
+
+        else:
+            raise ValueError(f"Unknown optimizer engine: {engine}. Valid: whisperx, heuristic, auto")
+```
+
+**Configuration (Story 3.2a):**
+
+```python
+# app/config.py
+class Settings(BaseSettings):
+    # Existing settings...
+
+    # Epic 3 Optimization Settings
+    OPTIMIZER_ENGINE: str = "auto"  # "whisperx" | "heuristic" | "auto"
+    ENABLE_OPTIMIZATION: bool = True  # Feature flag for Epic 3 pipeline
+
+    class Config:
+        env_file = ".env"
+```
+
+```bash
+# .env
+OPTIMIZER_ENGINE=auto  # Prefer WhisperX, fallback to Heuristic
+ENABLE_OPTIMIZATION=true
+```
+
+### WhisperXOptimizer Implementation (Story 3.2b)
+
+**Module:** `app/ai_services/optimization/whisperx_optimizer.py`
+
+**Dependencies:**
+```python
+# Conditional dependencies - install only if Phase Gate = GO
+# See requirements.txt conditional section
+whisperx>=3.1.1  # CONDITIONAL: Only if Story 3.2b succeeds
+pyannote.audio==3.1.1  # CONDITIONAL: Dependency conflict risk
+torch==2.0.1+cu118 OR torch==2.1.0+cu118  # CONDITIONAL: Validated versions
+torchaudio==2.0.2 OR torchaudio==2.1.0  # CONDITIONAL: Match torch version
+```
+
+**Implementation:**
+
+```python
+class WhisperXOptimizer(TimestampOptimizer):
+    """WhisperX wav2vec2 forced alignment optimizer"""
+
+    def __init__(self):
+        if not self.is_available():
+            raise OptimizerUnavailableError(
+                "WhisperX dependencies not installed. "
+                "Install with: pip install whisperx pyannote.audio"
+            )
+        import whisperx
+        self.whisperx = whisperx
+        self.align_model = None  # Lazy-loaded on first optimize() call
+        self.align_metadata = None
+
+    @staticmethod
+    def is_available() -> bool:
+        """Check if WhisperX and pyannote.audio are installed"""
+        try:
+            import whisperx
+            import pyannote.audio
+            return True
+        except ImportError:
+            return False
+
+    def optimize(
+        self,
+        segments: List[Dict[str, Any]],
+        audio_path: str,
+        language: str = "zh"
+    ) -> OptimizationResult:
+        """
+        Apply WhisperX wav2vec2 forced alignment for word-level timestamps
+
+        Args:
+            segments: Raw transcription segments from BELLE-2
+            audio_path: Path to audio file for alignment
+            language: Language code (default: "zh")
+
+        Returns:
+            OptimizationResult with word-aligned segments
+        """
+        import time
+        start_time = time.time()
+
+        # Lazy-load alignment model on first call
+        if self.align_model is None:
+            self.align_model, self.align_metadata = self.whisperx.load_align_model(
+                language_code=language,
+                device="cuda"
+            )
+
+        # Load audio
+        audio = self.whisperx.load_audio(audio_path)
+
+        # Apply forced alignment
+        aligned_result = self.whisperx.align(
+            segments,
+            self.align_model,
+            self.align_metadata,
+            audio,
+            device="cuda",
+            return_char_alignments=False
+        )
+
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        return OptimizationResult(
+            segments=aligned_result["segments"],
+            metrics={
+                "processing_time_ms": processing_time_ms,
+                "segments_optimized": len(aligned_result["segments"]),
+                "word_count": sum(len(seg.get("words", [])) for seg in aligned_result["segments"])
+            },
+            optimizer_name="whisperx"
+        )
+```
+
+**Phase Gate Decision Criteria (Story 3.2b):**
+
+| Criterion | Threshold | Measurement Method |
+|-----------|-----------|-------------------|
+| **Dependency Installation** | SUCCESS | pyannote.audio + torch + BELLE-2 install without conflicts |
+| **GPU Acceleration** | torch.cuda.is_available() == True | GPU compatibility validated |
+| **Quality Metrics** | CER/WER ≤ baseline, segment length improvement ≥10% | A/B testing with 10+ test files |
+| **Performance** | Optimization overhead <25% of transcription time | Benchmarking with 10 test files |
+| **Reliability** | 100% success rate | 10 test runs without exceptions |
+
+**Phase Gate Decision: GO** → Integrate WhisperXOptimizer, defer Stories 3.3-3.5
+**Phase Gate Decision: NO-GO** → Proceed with Stories 3.3-3.5 (HeuristicOptimizer)
+
+### HeuristicOptimizer Implementation (Stories 3.3-3.5)
+
+**Module:** `app/ai_services/optimization/heuristic_optimizer.py`
+
+**Dependencies:**
+```python
+# Always-available dependencies (no conflicts)
+webrtcvad==2.0.10
+librosa==0.10.1
+scipy==1.11.4
+numpy>=1.24.0
+```
+
+**Implementation:**
+
+```python
+class HeuristicOptimizer(TimestampOptimizer):
+    """Self-developed heuristic optimizer: VAD + Energy Refinement + Intelligent Splitting"""
+
+    def __init__(self):
+        import webrtcvad
+        import librosa
+        self.vad = webrtcvad.Vad(aggressiveness=2)  # 0-3, default 2
+        self.librosa = librosa
+
+    @staticmethod
+    def is_available() -> bool:
+        """HeuristicOptimizer always available (no dependency conflicts)"""
+        return True
+
+    def optimize(
+        self,
+        segments: List[Dict[str, Any]],
+        audio_path: str,
+        language: str = "zh"
+    ) -> OptimizationResult:
+        """
+        Apply heuristic optimization pipeline:
+        1. VAD Preprocessing (Story 3.3)
+        2. Token-level timestamp extraction (Story 3.4)
+        3. Energy-based boundary refinement (Story 3.4)
+        4. Intelligent segment splitting (Story 3.5)
+
+        Args:
+            segments: Raw transcription segments from BELLE-2
+            audio_path: Path to audio file for analysis
+            language: Language code (default: "zh")
+
+        Returns:
+            OptimizationResult with optimized segments
+        """
+        import time
+        start_time = time.time()
+
+        # Step 1: VAD Preprocessing (Story 3.3)
+        vad_stats = self._apply_vad_preprocessing(audio_path, segments)
+
+        # Step 2: Token-level timestamps (Story 3.4)
+        # Note: BELLE-2 provides word-level timestamps in segment["words"]
+        segments_with_tokens = self._extract_token_timestamps(segments)
+
+        # Step 3: Energy-based refinement (Story 3.4)
+        refined_segments = self._refine_boundaries_by_energy(segments_with_tokens, audio_path)
+
+        # Step 4: Intelligent splitting (Story 3.5)
+        split_segments = self._split_long_segments(refined_segments, language=language)
+
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        return OptimizationResult(
+            segments=split_segments,
+            metrics={
+                "processing_time_ms": processing_time_ms,
+                "segments_optimized": len(split_segments),
+                "vad_silence_removed_pct": vad_stats["silence_percentage"],
+                "segments_split": len(split_segments) - len(segments)
+            },
+            optimizer_name="heuristic"
+        )
+
+    def _apply_vad_preprocessing(self, audio_path: str, segments: List[Dict]) -> Dict:
+        """Story 3.3: VAD filtering to remove silence segments"""
+        # Implementation details in Story 3.3 technical specification
+        pass
+
+    def _extract_token_timestamps(self, segments: List[Dict]) -> List[Dict]:
+        """Story 3.4: Extract word-level timestamps from BELLE-2 outputs"""
+        # BELLE-2 provides word timestamps in segment["words"]
+        pass
+
+    def _refine_boundaries_by_energy(self, segments: List[Dict], audio_path: str) -> List[Dict]:
+        """Story 3.4: Refine segment boundaries using audio energy analysis"""
+        # Load audio waveform with librosa
+        # Analyze energy at segment boundaries
+        # Search ±200ms for minimum energy point
+        pass
+
+    def _split_long_segments(self, segments: List[Dict], language: str = "zh") -> List[Dict]:
+        """Story 3.5: Split segments >7s to meet subtitle conventions"""
+        # Chinese text length estimation: char_count * 0.4s
+        # Split at natural boundaries (punctuation, pauses)
+        # Merge segments <1s when safe
+        pass
+```
+
+### Quality Validation Framework (Story 3.6)
+
+**Module:** `app/ai_services/optimization/quality_validator.py`
+
+**Shared by BOTH WhisperXOptimizer and HeuristicOptimizer**
+
+```python
+class QualityValidator:
+    """Quality metrics calculation and regression testing"""
+
+    def __init__(self):
+        import jiwer
+        self.jiwer = jiwer
+
+    def calculate_metrics(
+        self,
+        segments: List[Dict[str, Any]],
+        reference_text: str = None
+    ) -> Dict[str, Any]:
+        """
+        Calculate quality metrics for optimized segments
+
+        Args:
+            segments: Optimized transcription segments
+            reference_text: Optional reference transcript for CER/WER calculation
+
+        Returns:
+            Dict with CER, WER, segment length statistics, constraint compliance
+        """
+        metrics = {
+            "segment_count": len(segments),
+            "segment_length_stats": self._calculate_length_stats(segments),
+            "constraint_compliance": self._check_constraints(segments)
+        }
+
+        if reference_text:
+            hypothesis_text = " ".join(seg["text"] for seg in segments)
+            metrics["cer"] = self.jiwer.cer(reference_text, hypothesis_text)
+            metrics["wer"] = self.jiwer.wer(reference_text, hypothesis_text)
+
+        return metrics
+
+    def _calculate_length_stats(self, segments: List[Dict]) -> Dict[str, float]:
+        """Calculate mean, median, P95 segment lengths"""
+        durations = [seg["end"] - seg["start"] for seg in segments]
+        char_counts = [len(seg["text"]) for seg in segments]
+
+        return {
+            "mean_duration_s": np.mean(durations),
+            "median_duration_s": np.median(durations),
+            "p95_duration_s": np.percentile(durations, 95),
+            "mean_char_count": np.mean(char_counts),
+            "median_char_count": np.median(char_counts)
+        }
+
+    def _check_constraints(self, segments: List[Dict]) -> Dict[str, float]:
+        """Check % of segments meeting 1-7s, <200 char constraints"""
+        meets_duration = sum(1 for seg in segments if 1.0 <= (seg["end"] - seg["start"]) <= 7.0)
+        meets_char_limit = sum(1 for seg in segments if len(seg["text"]) < 200)
+        meets_both = sum(
+            1 for seg in segments
+            if 1.0 <= (seg["end"] - seg["start"]) <= 7.0 and len(seg["text"]) < 200
+        )
+
+        return {
+            "pct_1_7_seconds": (meets_duration / len(segments)) * 100,
+            "pct_under_200_chars": (meets_char_limit / len(segments)) * 100,
+            "pct_meets_both_constraints": (meets_both / len(segments)) * 100
+        }
+```
+
+### Transcription Pipeline Integration
+
+**Updated Pipeline Flow:**
 
 ```
-1. User uploads audio → POST /upload
-   ↓
-2. Celery task starts: transcribe_audio(job_id, file_path)
-   ↓
-3. Model Selection (NEW)
-   - ModelRouter.select_engine(file_path, user_hint)
-   - Quick language detection (30s sample)
-   - Decision: WhisperX vs BELLE-2 vs SenseVoice
-   - Log selection decision
-   ↓
-4. Model Loading (NEW)
-   - ModelManager.load_model(selected_engine)
-   - Update Redis: "Loading BELLE-2 model for Mandarin..."
-   ↓
-5. Transcription Processing
-   - Engine-specific transcribe() call
-   - Progress updates: "Transcribing audio with BELLE-2..."
-   ↓
-6. Quality Validation (NEW, if reference available)
-   - QualityValidator.validate_against_reference()
-   - Calculate WER/CER, detect repetitions
-   - Store quality_metrics.json
-   ↓
-7. Metadata Storage (NEW)
-   - Save model_metadata.json
-   - Log performance metrics
-   ↓
-8. Store transcription.json → Redis status: "completed"
+Audio Input → BELLE-2/faster-whisper Transcription →
+┌─────────────────────────────────────────────────────┐
+│ Optimization Layer (if ENABLE_OPTIMIZATION=true)   │
+├─────────────────────────────────────────────────────┤
+│ OptimizerFactory.create(engine="auto")             │
+│                                                      │
+│ IF WhisperXOptimizer.is_available():                │
+│   └→ WhisperX wav2vec2 forced alignment            │
+│ ELSE:                                                │
+│   └→ HeuristicOptimizer:                            │
+│      1. VAD Preprocessing                            │
+│      2. Token Timestamp Extraction                   │
+│      3. Energy-Based Refinement                      │
+│      4. Intelligent Segment Splitting                │
+└─────────────────────────────────────────────────────┘
+→ QualityValidator.calculate_metrics() →
+→ Save to /uploads/{job_id}/ → Return to Frontend
 ```
 
-**Model Router Decision Tree:**
+**File Storage (`/uploads/{job_id}/`):**
 
 ```
-Audio File → User language hint?
-  ├─ Yes (zh) → BELLE-2
-  ├─ Yes (en) → WhisperX
-  └─ No → Language Detection (30s sample)
-       ↓
-    Detected "zh"?
-      ├─ Yes → BELLE-2
-      └─ No → WhisperX (default)
+/uploads/{job_id}/
+├── audio.mp3 (original)
+├── transcription.json (BELLE-2 raw output)
+├── optimized_transcription.json (optimizer output)
+├── optimization_metadata.json (optimizer name, metrics, processing time)
+├── quality_metrics.json (CER, WER, length stats, constraint compliance)
+└── segments_baseline.json (pre-optimization for A/B comparison)
+```
+
+**Redis Progress Tracking Updates:**
+
+```python
+# Progress messages during optimization
+"Applying timestamp optimization..."  # Before OptimizerFactory.create()
+"Using WhisperX forced alignment..."  # If WhisperXOptimizer
+"Using heuristic optimization..."     # If HeuristicOptimizer
+"Validating output quality..."        # QualityValidator
+"Optimization complete"               # After pipeline
 ```
 
 ## Non-Functional Requirements
 
-### Performance
+**NFR-001: Performance**
+- **Requirement:** Optimization pipeline overhead <25% of transcription time
+- **Measurement:** 1-hour audio: 30-60 min transcription + max 15 min optimization
+- **Validation:** Benchmarking in Story 3.2b (WhisperX) and Story 3.5 (Heuristic)
 
-**Targets (from PRD NFR-001):**
+**NFR-002: Transcription Quality**
+- **Requirement:** 95% of output segments meet 1-7 second, <200 character constraints
+- **Measurement:** QualityValidator constraint compliance metrics
+- **Validation:** Story 3.6 automated quality metrics
 
-- **Transcription Speed:** Maintain 1-2× realtime throughput for BELLE-2 (same as current Whisper large-v3); SenseVoice pilot targets <1× realtime (≤70ms per 10s audio)
-- **Model Selection Overhead:** Language detection must complete in <5 seconds (30-second audio sample processed by Whisper-small)
-- **Model Loading Time:** First load ≤30 seconds for BELLE-2 (model download on first use), subsequent loads <5 seconds (from cache)
-- **Memory Footprint:** BELLE-2 maintains ~6GB VRAM (same as Whisper large-v3), SenseVoice-Small ~2GB VRAM, leaving headroom for 1-2 concurrent jobs on RTX 3070 Ti 16GB
+**NFR-003: Accuracy Preservation**
+- **Requirement:** Zero regression in transcription accuracy (CER/WER ≤ baseline)
+- **Measurement:** QualityValidator CER/WER calculation vs. Story 3.1 baseline
+- **Validation:** Story 3.6 regression testing framework
 
-**Performance Validation:**
+**NFR-004: Architectural Flexibility**
+- **Requirement:** Configuration-driven optimizer selection without code changes
+- **Measurement:** OPTIMIZER_ENGINE setting changes optimizer at runtime
+- **Validation:** Story 3.2a factory pattern unit tests
 
-- Benchmark 1-hour Mandarin audio on RTX 3070 Ti: BELLE-2 must complete in 30-60 minutes
-- SenseVoice pilot must demonstrate <60 minutes for same 1-hour audio (validates 15× speedup claim)
-- Quality validation overhead <2 seconds per job (WER/CER calculation on 1-hour transcript)
-- Model router decision logic <100ms (excluding 5s language detection)
+**NFR-005: Compatibility**
+- **Requirement:** Optimization transparent to frontend; existing API contracts unchanged
+- **Measurement:** Frontend continues using GET /result/{job_id} without modifications
+- **Validation:** Story 3.6 integration tests with existing frontend
 
-**Degradation Strategy:**
-
-- If BELLE-2 load fails → fallback to WhisperX with warning log
-- If GPU memory insufficient → queue job and retry after model unload
-- If language detection times out → default to WhisperX (safe fallback)
-
-### Security
-
-**Threat Model Updates:**
-
-Epic 3 introduces new attack surfaces related to model loading and external dependencies:
-
-1. **Model Poisoning Risk:** BELLE-2 and SenseVoice models loaded from HuggingFace/ModelScope could be compromised
-   - **Mitigation:** Pin exact model versions in requirements, verify SHA256 checksums on first download, document trusted model sources
-
-2. **Dependency Chain Risk:** FunASR runtime (SenseVoice) introduces new Python dependencies
-   - **Mitigation:** Isolate FunASR in separate Docker container, use `requirements-sensevoice.txt` for clear dependency boundaries, run security scans (`safety check`)
-
-3. **Resource Exhaustion:** Multiple concurrent model loads could exhaust GPU memory
-   - **Mitigation:** ModelManager enforces max concurrent models (default: 2), implements LRU eviction policy
-
-**Security Requirements:**
-
-- All model downloads use HTTPS (HuggingFace, ModelScope enforced)
-- Model files stored in protected directory (`/models/` with restricted permissions)
-- No user-provided model paths accepted (prevent path traversal)
-- Logging sanitizes file paths to prevent information disclosure
-
-**Privacy Considerations (from Domain Brief):**
-
-- All processing remains local/offline (no cloud API calls)
-- Model weights and inference entirely on user-controlled hardware
-- No telemetry or model usage data transmitted externally
-- Quality metrics stored locally alongside transcription results
-
-### Reliability/Availability
-
-**Failure Handling:**
-
-1. **Model Load Failure:** Log error, fallback to WhisperX, update Redis status with fallback message
-2. **Language Detection Failure:** Log warning, default to WhisperX, mark metadata as "unknown" language
-3. **Quality Validation Failure:** Log error but do not block transcription, mark validation status as "error"
-4. **VRAM Exhaustion:** Return HTTP 503, Celery retries with exponential backoff (3 attempts)
-
-**Availability Targets:**
-
-- Same 90%+ completion rate as Epic 1 (NFR-003)
-- Model fallback strategy prevents hard failures
-- Quality validation failures do not impact user-facing functionality
-- Graceful degradation: English transcription always available (WhisperX fallback)
-
-**Monitoring Requirements (Story 3.5):**
-
-- Track model selection distribution (% BELLE-2 vs WhisperX vs SenseVoice)
-- Alert if BELLE-2 load failure rate >10%
-- Alert if language detection failure rate >5%
-- Monitor GPU memory utilization (alert if >90% sustained)
-
-### Observability
-
-**Structured Logging Requirements (Story 3.5):**
-
-```python
-# Model Selection Logging
-logger.info("model_selection", extra={
-    "job_id": job_id,
-    "detected_language": "zh",
-    "selected_engine": "belle2",
-    "selection_reason": "detected_chinese",
-    "detection_confidence": 0.95,
-    "detection_duration_ms": 4200
-})
-
-# Transcription Performance Logging
-logger.info("transcription_complete", extra={
-    "job_id": job_id,
-    "engine": "belle2",
-    "audio_duration_s": 3600,
-    "processing_duration_s": 2100,
-    "realtime_factor": 1.72,
-    "vram_used_mb": 6200,
-    "segment_count": 450
-})
-
-# Quality Validation Logging
-logger.info("quality_validation", extra={
-    "job_id": job_id,
-    "engine": "belle2",
-    "wer": 0.12,
-    "cer": 0.06,
-    "has_repetitions": False,
-    "passes_threshold": True,
-    "reference_available": True
-})
-```
-
-**Metrics to Track (Story 3.5):**
-
-- **Model Usage:** Count of jobs per engine (belle2, whisperx, sensevoice)
-- **Language Distribution:** Count of detected languages (zh, en, other)
-- **Quality Metrics:** Average WER/CER by engine and language
-- **Performance:** P50/P95/P99 transcription latency by engine
-- **Reliability:** Model load failure rate, fallback trigger rate
-- **Resource Utilization:** GPU memory usage per engine, model cache hit rate
+**NFR-006: Reliability**
+- **Requirement:** OptimizerFactory gracefully falls back if preferred optimizer unavailable
+- **Measurement:** "auto" mode falls back to HeuristicOptimizer if WhisperX unavailable
+- **Validation:** Story 3.2a factory pattern tests, Story 3.2b dependency validation
 
 ## Dependencies and Integrations
 
-### Python Dependencies (Backend)
+### Internal Dependencies
 
-**New Dependencies for Epic 3:**
+| Component | Dependency | Reason |
+|-----------|-----------|--------|
+| **OptimizerFactory** | app.config.Settings | Read OPTIMIZER_ENGINE configuration |
+| **WhisperXOptimizer** | BELLE-2 transcription segments | Input for forced alignment |
+| **HeuristicOptimizer** | BELLE-2 transcription segments | Input for optimization pipeline |
+| **QualityValidator** | Optimized segments | Calculate metrics on optimizer output |
+| **Transcription Pipeline** | OptimizerFactory | Create optimizer instance |
 
-```txt
-# Epic 3 - Multi-Model Transcription
-transformers==4.36.0          # BELLE-2 model loading (HuggingFace)
-jiwer==3.0.3                  # WER/CER calculation for quality validation
-funasr==1.0.12                # SenseVoice runtime (Story 3.4)
-onnxruntime-gpu==1.16.3       # SenseVoice ONNX inference
-modelscope==1.11.0            # Alternative model hub for BELLE-2/SenseVoice
+### External Dependencies
+
+**Always Required:**
+```
+# Epic 3 core dependencies (no conflicts)
+webrtcvad==2.0.10          # VAD for HeuristicOptimizer
+librosa==0.10.1            # Audio analysis for HeuristicOptimizer
+scipy==1.11.4              # Signal processing
+jiwer==3.0.3               # CER/WER calculation
+numpy>=1.24.0              # Numerical operations
 ```
 
-**Dependency Management:**
-
-- Use `uv pip install` for all backend dependencies (per architecture.md)
-- Pin exact versions to ensure reproducibility
-- Separate `requirements-sensevoice.txt` for FunASR pilot (optional dependencies)
-- Run `uv pip freeze > requirements.txt` after adding new packages
-
-### Model Weights and Storage
-
-**Model Download Locations:**
-
-| Model | Source | Size | Download Path |
-|-------|--------|------|---------------|
-| BELLE-2 whisper-large-v3-zh | HuggingFace | ~3.1 GB | `/root/.cache/huggingface/hub/` |
-| Whisper-small (language detection) | OpenAI | ~461 MB | `/root/.cache/whisper/` |
-| SenseVoice-Small ONNX | ModelScope | ~220 MB | `/root/.cache/funasr/` |
-| WhisperX large-v3 (existing) | OpenAI | ~2.9 GB | `/root/.cache/whisperx/` |
-
-**Cache Volume Configuration:**
-
-```yaml
-# docker-compose.yaml
-services:
-  worker:
-    volumes:
-      - model-cache:/root/.cache  # Persist model downloads
-      - ./uploads:/uploads
-
-volumes:
-  model-cache:
-    driver: local
+**Conditional (IF Story 3.2b Phase Gate = GO):**
+```
+# ONLY install if WhisperX integration succeeds
+whisperx>=3.1.1
+pyannote.audio==3.1.1
+torch==2.0.1+cu118 OR torch==2.1.0+cu118
+torchaudio==2.0.2 OR torchaudio==2.1.0
+lightning==2.3.0
 ```
 
-**First-Run Model Download Strategy:**
+**Installation Strategy:**
 
-- Models downloaded on-demand during first job execution
-- Download progress logged to Redis status: "Downloading BELLE-2 model (3.1 GB)... 45%"
-- Subsequent jobs use cached models (fast startup)
-- Environment variable `PRELOAD_MODELS=true` to download all models on container start
+```bash
+# Phase 1: Core dependencies (always install)
+pip install webrtcvad==2.0.10 librosa==0.10.1 scipy==1.11.4 jiwer==3.0.3
 
-### Integration Points
+# Phase 2: WhisperX validation (isolated environment)
+# Story 3.2b creates .venv-test for dependency testing
 
-**Existing System Integration:**
+# Phase 3: Production deployment (conditional)
+# IF Phase Gate = GO:
+pip install whisperx pyannote.audio==3.1.1 torch==2.1.0+cu118 torchaudio==2.1.0 \
+  --extra-index-url https://download.pytorch.org/whl/cu118
 
-1. **Celery Tasks:** Add model router invocation before transcription, import `ModelRouter`, call `select_engine()`
-2. **Redis Progress Tracking:** Enhanced status messages include `model_info` field (backward compatible)
-3. **File Storage:** Add `model_metadata.json` and `quality_metrics.json` alongside existing files
+# IF Phase Gate = NO-GO:
+# Continue with core dependencies only (HeuristicOptimizer)
+```
 
-**External System Integration:**
+### API Contract Extensions
 
-1. **HuggingFace Hub:** Download BELLE-2 model weights (public model, no auth required)
-2. **ModelScope (optional):** Alternative source for China region or blocked networks
+**Existing API (unchanged):**
+```
+GET /result/{job_id}
+Response: {
+  "status": "completed",
+  "transcription": [...segments...],
+  "created_at": "2025-11-13T10:30:00Z"
+}
+```
 
-### Third-Party Tools
-
-- **jiwer:** WER/CER calculation (MIT license)
-- **HuggingFace Transformers:** BELLE-2 and Whisper model loading (Apache 2.0)
-- **FunASR:** SenseVoice runtime (MIT license, Alibaba DAMO Academy)
-- **ONNX Runtime:** Accelerated inference for SenseVoice (MIT license)
-
-### Version Compatibility Matrix
-
-| Component | Epic 1 Version | Epic 3 Version | Breaking Changes |
-|-----------|---------------|----------------|------------------|
-| Python | 3.12.x | 3.12.x | None |
-| PyTorch | 2.1.0+cu118 | 2.1.0+cu118 | None |
-| Transformers | N/A | 4.36.0 | None (additive) |
-| jiwer | N/A | 3.0.3 | None (new) |
-| FunASR | N/A | 1.0.12 | None (optional) |
+**New Metadata (optional in response):**
+```
+GET /result/{job_id}?include_metadata=true
+Response: {
+  "status": "completed",
+  "transcription": [...optimized segments...],
+  "created_at": "2025-11-13T10:30:00Z",
+  "optimization_metadata": {
+    "optimizer_used": "whisperx",
+    "processing_time_ms": 45000,
+    "segments_optimized": 120
+  },
+  "quality_metrics": {
+    "segment_count": 120,
+    "mean_duration_s": 5.2,
+    "pct_meets_both_constraints": 96.7
+  }
+}
+```
 
 ## Acceptance Criteria (Authoritative)
 
-**Epic-Level Acceptance Criteria:**
+### Story 3.2a: Pluggable Optimizer Architecture
 
-1. **Mandarin Quality Target:** BELLE-2 transcription on `reference/zh_quality_optimization/case1` audio achieves CER ≤0.15 and eliminates repetitive "gibberish loops" present in current pipeline
-2. **English Quality Preservation:** WhisperX transcription on English test audio maintains same quality as Epic 1 baseline (zero regression)
-3. **Model Routing Accuracy:** Language detection correctly identifies Mandarin vs English with ≥95% accuracy on test corpus (30 audio samples)
-4. **Performance Baseline:** BELLE-2 transcription completes within 1-2× realtime on RTX 3070 Ti hardware (validated with 1-hour audio)
-5. **Backward Compatibility:** All existing API endpoints function identically for frontend clients
-6. **Deployment Readiness:** Documentation complete for deploying BELLE-2 on self-hosted infrastructure
+1. `app/ai_services/optimization/base.py` defines `TimestampOptimizer` abstract interface with `optimize()` and `is_available()` methods
+2. `OptimizationResult` dataclass standardizes optimizer output (segments, metrics, optimizer_name)
+3. `app/ai_services/optimization/factory.py` implements `OptimizerFactory.create(engine)` with three modes: "whisperx", "heuristic", "auto"
+4. `OPTIMIZER_ENGINE` configuration added to `app/config.py` with default "auto"
+5. "auto" mode: Prefers WhisperXOptimizer if available, falls back to HeuristicOptimizer with logging
+6. Factory pattern unit tests verify mode selection and fallback logic
+7. Documentation updated: architecture.md §704-708 reflects pluggable design
+8. Zero disruption to Story 3.1 BELLE-2 integration (optimization layer is post-transcription)
 
-**Story-Level Acceptance Criteria:**
+### Story 3.2b: WhisperX Integration Validation Experiment
 
-**Story 3.1: BELLE-2 Integration**
-1. `belle2_service.py` implements `TranscriptionService` interface with Chinese-optimized decoder settings
-2. BELLE-2 model downloads from HuggingFace on first use, subsequent loads from cache in <5 seconds
-3. Transcription output format matches existing WhisperX format
-4. Timestamp alignment stability verified via click-to-timestamp navigation tests
-5. Unit tests mock BELLE-2 model to avoid GPU dependency during CI
-6. Integration test transcribes 5-minute Mandarin audio and verifies CER improvement
-7. Memory footprint validated: ~6GB VRAM usage
-8. Fallback mechanism tested: BELLE-2 load failure defaults to WhisperX with warning
+1. Isolated test environment (`.venv-test`) created with dependency resolution attempts
+2. Dependency installation validated: `pyannote.audio==3.1.1` + `torch==2.0.1/2.1.0` + BELLE-2 compatibility
+3. `app/ai_services/optimization/whisperx_optimizer.py` implements `TimestampOptimizer` interface
+4. `WhisperXOptimizer.is_available()` returns True only if dependencies successfully installed
+5. Performance benchmarking: 10 test files, optimization overhead <25% of transcription time
+6. Quality A/B testing: CER/WER ≤ baseline, segment length improvement ≥10%
+7. BELLE-2 compatibility validated: No regressions in transcription accuracy
+8. **Phase Gate Decision Report** generated with GO/NO-GO recommendation
+9. IF GO: Integrate WhisperXOptimizer into production pipeline
+10. IF NO-GO: Document failure reasons, proceed with Story 3.3 (HeuristicOptimizer)
 
-**Story 3.2: Model Routing Logic**
-1. `model_router.py` implements language detection using Whisper-small on 30-second samples
-2. Router selects BELLE-2 for Mandarin (zh/zh-CN/zh-TW), WhisperX for English
-3. User language hint overrides automatic detection
-4. Model selection decisions logged with reasoning
-5. Language detection completes in <5 seconds
-6. Unit tests cover all routing branches
+### Story 3.3: Heuristic Optimizer - VAD Preprocessing *(CONDITIONAL)*
 
-**Story 3.3: Quality Validation Framework**
-1. `quality_validator.py` calculates WER/CER using `jiwer` library
-2. Repetition loop detection via n-gram counting (3+ repetitions of 3-5 word phrases)
-3. Regression harness compares against reference files in `/reference/{job_id}/`
-4. Quality metrics stored in `quality_metrics.json`
-5. Validation runs automatically if reference available, doesn't block job on failure
-6. CLI tool provided for manual validation
-7. Test suite validates `case1`: current pipeline fails, BELLE-2 passes
+1. `app/ai_services/optimization/heuristic_optimizer.py` implements `TimestampOptimizer` interface with VAD preprocessing
+2. WebRTC VAD integrated with configurable aggressiveness (0-3)
+3. VAD filtering removes silence segments >1s duration, generates statistics (original/filtered duration, silence %)
+4. BELLE-2 decoder parameters configurable via environment variables (beam size, temperature)
+5. A/B testing framework saves pre-optimization baseline (`segments_baseline.json`) for comparison
+6. VAD processing completes in <5 minutes for 1-hour audio
+7. Unit tests mock audio files, verify VAD filtering logic
+8. Integration test on noisy audio validates silence removal effectiveness
 
-**Story 3.4: SenseVoice Pilot**
-1. `sensevoice_service.py` implements `TranscriptionService` using FunASR ONNX runtime
-2. Pilot mode enabled via `ENABLE_SENSEVOICE=true` environment variable
-3. Latency benchmark: 1-hour audio completes in <60 minutes on RTX 3070 Ti
-4. Accuracy benchmark: CER within ±5% of BELLE-2 on 10 Mandarin samples
-5. FunASR dependencies isolated in `requirements-sensevoice.txt`
-6. Integration test verifies segment format compatibility
-7. Documentation includes setup instructions and known limitations
+### Story 3.4: Heuristic Optimizer - Timestamp Refinement *(CONDITIONAL)*
 
-**Story 3.5: Monitoring & Logging**
-1. Structured logging for model selection, performance metrics, quality validation
-2. Log aggregation script generates daily reports (model usage, WER/CER, failures)
-3. Alert thresholds configured for failure rates and resource usage
-4. Logs output to stdout in JSON format
-5. Sample Grafana dashboard mockup created
-6. Documentation includes log schema reference and troubleshooting queries
+1. HeuristicOptimizer extends with timestamp refinement capability
+2. Token-level timestamps extracted from BELLE-2 decoder outputs
+3. Energy-based refinement analyzes audio waveform using librosa, identifies low-energy boundaries
+4. Boundary refinement searches ±200ms for optimal split point (minimum energy)
+5. Timestamp alignment maintains <200ms accuracy vs. original BELLE-2 outputs
+6. Processing completes in <5 minutes for 500 segments
+7. Unit tests mock decoder outputs and waveforms
+8. Integration test validates click-to-timestamp functionality after refinement
 
-**Story 3.6: Documentation & Deployment**
-1. Architecture documentation updated with multi-model ASR section
-2. Deployment guide created (`docs/deployment-epic3.md`)
-3. User-facing documentation updated with accuracy expectations
-4. README updated with new dependencies and environment variables
-5. Migration guide created for Epic 2 → Epic 3 upgrade
-6. Troubleshooting guide covers model downloads, VRAM, detection issues
-7. Performance tuning guide documents optimization strategies
-8. All examples tested on fresh Windows 10 + RTX 3070 Ti environment
+### Story 3.5: Heuristic Optimizer - Segment Splitting *(CONDITIONAL)*
+
+1. HeuristicOptimizer extends with segment splitting capability
+2. Segments >7 seconds split at natural boundaries (punctuation, pauses)
+3. Chinese text length estimation implemented (character count × 0.4s)
+4. Splitting respects word/sentence boundaries from token timestamps
+5. Short segments <1s merged when safe (no interruption of natural flow)
+6. 95% of output segments meet 1-7s, <200 char constraints
+7. Processing completes in <3 minutes for 500 segments
+8. Unit tests cover splitting/merging logic with synthetic segments
+9. Integration test on real Chinese audio validates constraint compliance
+
+### Story 3.6: Quality Validation Framework *(REQUIRED)*
+
+1. `quality_validator.py` calculates CER/WER using jiwer library
+2. Segment length statistics calculated (mean, median, P95, % meeting constraints)
+3. Baseline comparison implemented (CER delta, length improvement %)
+4. Regression testing framework compares against stored baseline transcripts
+5. Quality metrics stored in `quality_metrics.json`
+6. CLI tool provided for manual validation and baseline generation
+7. Unit tests verify metric calculations with known inputs
+8. Integration test validates Story 3.1 baseline vs. optimized outputs show ≥20% length improvement
 
 ## Traceability Mapping
 
-| Acceptance Criterion | Spec Section(s) | Component(s)/API(s) | Test Idea |
-|---------------------|----------------|---------------------|-----------|
-| **AC1: Mandarin Quality (CER ≤0.15)** | Detailed Design → Belle2Service, Quality Validation | `belle2_service.py`, `quality_validator.py` | Integration test: transcribe `case1` audio, assert CER ≤0.15, assert no repetition loops detected |
-| **AC2: English Quality Preservation** | Model Router → Fallback Logic | `model_router.py`, `whisperx_service.py` | Regression test: transcribe Epic 1 English baseline audio, compare WER against stored baseline, assert delta <0.02 |
-| **AC3: Model Routing Accuracy (≥95%)** | Detailed Design → Model Router Decision Tree | `model_router.py` | Unit test: 30 labeled audio samples (15 zh, 15 en), assert language detection accuracy ≥95%, verify correct engine selected |
-| **AC4: Performance (1-2× realtime)** | NFR Performance → Transcription Speed | `belle2_service.py`, Celery worker | Benchmark test: transcribe 1-hour Mandarin audio on RTX 3070 Ti, assert completion time 30-60 minutes, log realtime_factor |
-| **AC5: Backward Compatibility** | APIs and Interfaces → No Breaking Changes | FastAPI endpoints, Redis status format | API contract test: frontend mock calls all endpoints, assert response schemas unchanged, assert new `model_info` field optional |
-| **AC6: Deployment Readiness** | Documentation & Deployment (Story 3.6) | `docs/deployment-epic3.md`, README | Manual checklist: fresh VM setup following docs, verify BELLE-2 downloads, verify first transcription succeeds |
-| **Story 3.1: BELLE-2 Interface** | Detailed Design → Services and Modules | `belle2_service.py` | Unit test: mock HuggingFace model, call `transcribe()`, assert returns List[Dict] with start/end/text keys |
-| **Story 3.1: Timestamp Stability** | Detailed Design → Belle2Service, Workflows | `belle2_service.py`, WhisperX alignment | Integration test: transcribe 10-min audio, compare timestamps against WhisperX baseline, assert drift <200ms per segment |
-| **Story 3.1: Fallback Mechanism** | NFR Reliability → Model Load Failure | `model_manager.py`, `belle2_service.py` | Fault injection test: simulate HuggingFace download failure, assert job defaults to WhisperX, assert warning logged |
-| **Story 3.2: Language Detection** | Detailed Design → Model Router | `model_router.py._detect_language()` | Unit test: 30s audio samples (zh/en/mixed), assert correct language code returned, assert <5s execution time |
-| **Story 3.2: User Hint Override** | Detailed Design → Model Router Decision Tree | `model_router.py.select_engine()` | Unit test: pass `user_hint="zh"` for English audio, assert BELLE-2 selected (user preference respected) |
-| **Story 3.3: WER/CER Calculation** | Detailed Design → QualityValidator | `quality_validator.py` | Unit test: known hypothesis/reference pairs with known WER/CER values, assert calculations match expected within 0.01 |
-| **Story 3.3: Repetition Detection** | Detailed Design → QualityValidator._detect_repetitions() | `quality_validator.py` | Unit test: synthetic transcript with repeated phrases, assert `has_repetitions=True`; normal transcript, assert `False` |
-| **Story 3.3: Regression Harness** | Detailed Design → QualityValidator.validate_against_reference() | `quality_validator.py`, `/reference/{job_id}/` | Integration test: `case1` audio with known reference, assert validation detects current pipeline failure, BELLE-2 success |
-| **Story 3.4: SenseVoice Latency** | NFR Performance → SenseVoice Targets | `sensevoice_service.py`, FunASR runtime | Benchmark test: 1-hour audio on RTX 3070 Ti, assert completion <60 minutes, log realtime_factor for comparison |
-| **Story 3.4: SenseVoice Accuracy** | Detailed Design → SenseVoiceService | `sensevoice_service.py` | Integration test: 10 Mandarin samples, compare SenseVoice CER vs BELLE-2 CER, assert delta ≤0.05 (within ±5%) |
-| **Story 3.5: Structured Logging** | NFR Observability → Logging Requirements | `transcription_logger.py`, Celery tasks | Integration test: run transcription, parse stdout logs, assert JSON format with required fields (job_id, engine, etc.) |
-| **Story 3.5: Log Aggregation** | NFR Observability → Metrics to Track | Log parsing script | Functional test: generate 100 synthetic log entries, run aggregation script, assert daily report contains model usage distribution |
-| **Story 3.6: Deployment Guide** | Documentation & Deployment | `docs/deployment-epic3.md` | Manual test: follow deployment guide on fresh Windows VM, verify BELLE-2 setup completes without errors |
-| **Story 3.6: Migration Guide** | Documentation & Deployment | Migration guide document | Manual test: upgrade Epic 2 environment to Epic 3, verify existing jobs still work, verify new models available |
+| Story ID | PRD Requirement | Architecture Component | Success Metric |
+|----------|----------------|------------------------|----------------|
+| **3.2a** | REQ-015 (Optimization Pipeline) | TimestampOptimizer interface, OptimizerFactory | Factory pattern unit tests pass |
+| **3.2b** | REQ-015 (Optimization Pipeline) | WhisperXOptimizer | Phase Gate decision report |
+| **3.3** | REQ-015 (Optimization Pipeline) | HeuristicOptimizer (VAD) | VAD processing <5 min for 1-hour audio |
+| **3.4** | REQ-015 (Optimization Pipeline) | HeuristicOptimizer (Refinement) | Timestamp alignment <200ms accuracy |
+| **3.5** | REQ-016 (Subtitle Standards) | HeuristicOptimizer (Splitting) | 95% segments meet 1-7s constraints |
+| **3.6** | REQ-017 (Quality Validation) | QualityValidator | CER/WER calculation, length stats |
 
 ## Risks, Assumptions, Open Questions
 
-**RISKS:**
+### High-Priority Risks
 
-1. **RISK: BELLE-2 Accuracy Expectations** - Research benchmarks use clean audio; noisy meeting recordings may not achieve same CER improvements
-   - **Impact:** HIGH | **Likelihood:** MEDIUM
-   - **Mitigation:** Validate on `case1` reference corpus before rollout; keep WhisperX fallback; document expectations conservatively
+| Risk | Likelihood | Impact | Mitigation | Owner |
+|------|-----------|--------|------------|-------|
+| **pyannote.audio dependency conflicts (Story 3.2b)** | 🟡 Medium | 🟡 Medium | Isolated test environment + HeuristicOptimizer fallback | Dev |
+| **CUDA version incompatibility (Story 3.2b)** | 🟡 Medium | 🟡 Medium | Test CUDA 11.8 and 12.1 configurations | Dev |
+| **Timeline overrun (Phase 1→Phase 2)** | 🟡 Medium | 🟢 Low | Phase Gate at Day 5-8 for early decision | SM/PM |
+| **Quality below baseline (either optimizer)** | 🟢 Low | 🔴 High | Mandatory quality validation (Story 3.6) with regression testing | QA |
+| **BELLE-2 compatibility breaks (Story 3.2b)** | 🟢 Low | 🔴 High | Validate BELLE-2 + WhisperX in Phase 1 experiment | Dev |
+| **Performance overhead >25% (either optimizer)** | 🟢 Low | 🟡 Medium | Benchmarking in Stories 3.2b/3.5, fallback if exceeded | Dev |
 
-2. **RISK: GPU Memory Contention** - Multiple models simultaneously could exceed RTX 3070 Ti 16GB VRAM
-   - **Impact:** MEDIUM | **Likelihood:** MEDIUM
-   - **Mitigation:** ModelManager LRU cache (max 2 models); queue jobs when memory insufficient; alert at 90% VRAM
+### Assumptions
 
-3. **RISK: Model Download Failures** - HuggingFace/ModelScope connectivity issues prevent first-time downloads
-   - **Impact:** MEDIUM | **Likelihood:** LOW
-   - **Mitigation:** Pre-download during deployment (`PRELOAD_MODELS=true`); offline installation docs; retry logic
+1. **BELLE-2 provides word-level timestamps:** Assumed BELLE-2 decoder outputs include token timestamps for Story 3.4
+2. **GPU available for WhisperX:** Assumed CUDA-enabled GPU accessible for wav2vec2 alignment
+3. **Chinese text length estimation accuracy:** Assumed 0.4s per character heuristic is sufficient (validated in Story 3.5)
+4. **Reference transcripts available for CER/WER:** Optional but preferred for Story 3.6 validation
 
-4. **RISK: Timestamp Drift with BELLE-2** - Fine-tuning may affect alignment, breaking click-to-timestamp
-   - **Impact:** HIGH | **Likelihood:** LOW
-   - **Mitigation:** Comprehensive timestamp stability testing; regression tests vs WhisperX baseline; rollback plan if drift >200ms
+### Open Questions
 
-5. **RISK: SenseVoice Accuracy Not Meeting Expectations** - 15× speedup claims may not translate; FunASR stability unknown
-   - **Impact:** LOW | **Likelihood:** MEDIUM
-   - **Mitigation:** Isolated pilot (opt-in only); comprehensive benchmarking; clear pilot status documentation
+1. **Q:** Should Phase Gate decision require user approval or be automated based on objective criteria?
+   - **A (from Sprint Change Proposal):** Phase Gate decision meeting with Dev, SM, PM (user) - collaborative decision with user final say
 
-6. **RISK: Language Detection False Positives** - Whisper-small may misclassify mixed-language or accented speech
-   - **Impact:** MEDIUM | **Likelihood:** MEDIUM
-   - **Mitigation:** User language hint override; log confidence scores; future: confidence threshold → user confirmation
+2. **Q:** If WhisperX succeeds, should HeuristicOptimizer still be implemented for A/B comparison?
+   - **A (from Sprint Change Proposal):** Deferred to future epic; Stories 3.3-3.5 remain in backlog for potential future implementation
 
-**ASSUMPTIONS:**
-
-1. RTX 3070 Ti GPU availability unchanged from Epic 1/2
-2. BELLE-2 and SenseVoice models remain publicly accessible on HuggingFace/ModelScope
-3. `case1` reference transcripts accurately represent typical meeting audio quality
-4. WhisperX English performance remains unchanged
-5. Model licensing (Apache 2.0, MIT) allows commercial self-hosted use
-6. Celery infrastructure handles model loading overhead without additional provisioning
-7. Users have internet access for initial model downloads (~10GB total)
-
-**OPEN QUESTIONS:**
-
-1. **Q: Should language detection be exposed to frontend for user override?**
-   - **Resolution:** Story 3.2 implements API parameter `language_hint`; frontend UI deferred to future epic
-
-2. **Q: What CER threshold should trigger quality alerts?**
-   - **Resolution:** Start with fixed 0.15 threshold; collect data during Epic 3; tune in Epic 4 based on observed distribution
-
-3. **Q: Should SenseVoice pilot be enabled by default?**
-   - **Resolution:** Story 3.4 implements opt-in pilot (`ENABLE_SENSEVOICE=false` default); promote in Epic 4 if benchmarks pass
-
-4. **Q: How to handle model version updates?**
-   - **Resolution:** Pin exact model revision in code; document manual upgrade process; future automation in Phase 2
+3. **Q:** Should optimization be applied to non-Chinese languages (English, etc.)?
+   - **A:** Deferred to Epic 4; Epic 3 focuses on Chinese optimization only
 
 ## Test Strategy Summary
 
-**Test Pyramid:**
+### Unit Testing
 
-```
-         E2E Tests (Story 2.7 + Epic 3 validation)
-              /\
-             /  \
-    Integration Tests (Stories 3.1, 3.3, 3.4)
-          /          \
-    Unit Tests (All stories, ~70% coverage)
-```
+**Story 3.2a: Factory Pattern**
+- Test OptimizerFactory.create() with all three modes ("whisperx", "heuristic", "auto")
+- Test fallback logic when WhisperXOptimizer.is_available() returns False
+- Mock WhisperXOptimizer and HeuristicOptimizer for factory tests
 
-**Testing Scope by Story:**
+**Story 3.2b: WhisperXOptimizer**
+- Test WhisperXOptimizer.is_available() with/without dependencies installed
+- Mock whisperx.align() for unit testing optimizer logic
+- Test exception handling when dependencies unavailable
 
-**Story 3.1: BELLE-2 Integration**
-- Unit: Mock HuggingFace, test `belle2_service.py` methods, verify output format
-- Integration: Real BELLE-2 model, transcribe 5-min audio, compare CER vs baseline
-- Performance: Benchmark 1-hour audio, measure realtime factor and VRAM usage
-- Regression: Transcribe `case1`, assert CER ≤0.15 and no repetition loops
+**Stories 3.3-3.5: HeuristicOptimizer**
+- Test each pipeline stage independently (VAD, refinement, splitting)
+- Mock audio files, transcription segments, decoder outputs
+- Test constraint compliance (1-7s, <200 chars)
 
-**Story 3.2: Model Routing Logic**
-- Unit: Mock language detection, test all routing branches, verify logging
-- Integration: 30 labeled samples, measure detection accuracy (≥95%)
-- Performance: Measure detection latency on various audio lengths
+**Story 3.6: QualityValidator**
+- Test CER/WER calculation with known reference/hypothesis pairs
+- Test segment length statistics with synthetic segments
+- Test constraint compliance metrics
 
-**Story 3.3: Quality Validation Framework**
-- Unit: Test WER/CER calculation, repetition detection with synthetic transcripts
-- Integration: Validate `case1` corpus (current pipeline fails, BELLE-2 passes)
-- Regression: Automated harness runs on every PR
+### Integration Testing
 
-**Story 3.4: SenseVoice Pilot**
-- Unit: Mock FunASR, test `sensevoice_service.py`
-- Integration: 10 Mandarin samples, compare CER vs BELLE-2 (≤5% delta)
-- Performance: Benchmark latency (target <1× realtime)
-- Compatibility: Verify segment format matches WhisperX
+**Story 3.2b: WhisperX E2E**
+- Transcribe 10 diverse audio files (5-60 minutes, various speakers)
+- Apply WhisperX optimization
+- Validate CER/WER, segment length improvement, processing time
+- Compare with Story 3.1 baseline
 
-**Story 3.5: Monitoring & Logging**
-- Unit: Test log formatting, JSON schema compliance
-- Integration: Generate 100 logs, run aggregation script
-- Functional: Simulate alert conditions, verify triggers
+**Stories 3.3-3.5: Heuristic E2E**
+- Transcribe same 10 audio files
+- Apply HeuristicOptimizer pipeline
+- Validate CER/WER, segment length improvement, processing time
+- Compare with Story 3.1 baseline
 
-**Story 3.6: Documentation & Deployment**
-- Manual: Fresh VM setup following deployment guide
-- Validation: Follow migration guide on Epic 2 environment
-- Documentation: Verify all code examples execute
+**Story 3.6: Quality Validation E2E**
+- Run QualityValidator on both WhisperX and Heuristic outputs
+- Generate quality metrics reports
+- Validate Epic 3 success criteria achievement (95% constraint compliance, ≥20% length improvement)
 
-**Test Data Requirements:**
+### Performance Testing
 
-- Mandarin Corpus: 30 samples (15× 5-min, 15× 30-min) covering meetings, casual, technical
-- English Corpus: 30 samples matching Epic 1 (regression validation)
-- Reference Transcripts: Ground truth for 10 Mandarin samples
-- Case1 Corpus: Existing `reference/zh_quality_optimization/case1`
+**Benchmarking (Stories 3.2b, 3.5):**
+- 10 test files ranging 5-60 minutes duration
+- Measure transcription time, optimization time, total time
+- Validate optimization overhead <25% of transcription time
+- Measure GPU VRAM usage for WhisperX
 
-**Test Environments:**
+**Regression Testing (Story 3.6):**
+- Baseline comparison framework
+- CER/WER delta vs. Story 3.1
+- Segment length improvement percentage
+- Automated alerts if metrics degrade
 
-- Development: Local Windows 10 + RTX 3070 Ti, mocked GPU for CI
-- Integration: Docker + GPU passthrough, full model downloads
-- Staging: Production-like with GPU, 10 concurrent user load
+---
 
-**Continuous Integration:**
-
-- PR Tests: Unit tests only (mocked models, no GPU), GitHub Actions
-- Nightly Tests: Integration tests with real models, self-hosted GPU runner
-- Release Tests: Full regression + benchmarks before Epic 3 release
-
-**Success Metrics:**
-
-- Unit Test Coverage: ≥70% for new `ai_services/` modules
-- Integration Coverage: All critical paths covered
-- Performance: All benchmarks meet NFR-001 targets
-- Regression: Zero English quality loss, Mandarin CER ≤0.15 on `case1`
+**Document Status:** ✅ Updated for Sprint Change Proposal 2025-11-13
+**Next Review:** After Story 3.2b Phase Gate Decision

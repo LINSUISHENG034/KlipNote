@@ -20,9 +20,9 @@
 
 ### Background Context
 
-Finance industry professionals and office workers regularly record meetings but face a critical workflow bottleneck: converting recordings into text for LLM processing (meeting minutes, action items, analysis). Paid transcription services impose cost barriers ($120-360/year) and duration limits (10-30 min free tiers), while open-source tools like Whisper CLI require terminal expertise that non-technical users lack.
+Finance industry professionals and office workers (particularly in Chinese-speaking markets) regularly record meetings but face a critical workflow bottleneck: converting recordings into text for LLM processing (meeting minutes, action items, analysis). Paid transcription services impose cost barriers ($120-360/year) and duration limits (10-30 min free tiers), while open-source tools like Whisper CLI require terminal expertise that non-technical users lack.
 
-KlipNote solves this by combining WhisperX's state-of-the-art transcription accuracy with a zero-friction web interface accessible from any device. The integrated click-to-timestamp review interface transforms tedious verification into rapid workflow, while every human correction becomes training data for continuous model improvement - establishing a self-improving system that deepens its competitive advantage with usage.
+KlipNote solves this by combining state-of-the-art transcription accuracy with a zero-friction web interface accessible from any device. The integrated click-to-timestamp review interface transforms tedious verification into rapid workflow, while every human correction becomes training data for continuous model improvement - establishing a self-improving system that deepens its competitive advantage with usage. Chinese/Mandarin meeting transcription represents the primary use case, requiring specialized optimization for accurate subtitle-length segmentation.
 
 ---
 
@@ -34,7 +34,8 @@ KlipNote solves this by combining WhisperX's state-of-the-art transcription accu
 
 - **FR001:** System shall accept audio and video file uploads via web interface
 - **FR002:** System shall support common media formats including MP3, MP4, WAV, M4A, and other formats supported by FFmpeg
-- **FR003:** System shall process uploaded media files using WhisperX transcription engine with word-level timestamps, automatically detecting and preserving the original audio language
+- **FR003:** System shall process uploaded media files using multi-model transcription architecture (BELLE-2 for Chinese/Mandarin, WhisperX for other languages) with word-level timestamps, automatically detecting and preserving the original audio language
+- **FR003b:** System shall optimize Chinese/Mandarin transcription quality as primary use case with segment lengths suitable for subtitle editing workflows (typically 1-7 seconds per segment, maximum ~200 characters)
 - **FR004:** System shall queue multiple transcription jobs and process them sequentially using available GPU resources
 
 **Transcription Display & Management**
@@ -74,6 +75,8 @@ KlipNote solves this by combining WhisperX's state-of-the-art transcription accu
 - **NFR003: Reliability** - System shall achieve 90%+ transcription completion rate (successful upload → export). Browser-based state shall prevent data loss during normal operation including page refresh and accidental navigation, with clear warnings for potentially destructive actions like leaving during upload.
 
 - **NFR004: Compatibility** - Web interface shall function on desktop, tablet, and mobile browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. System shall handle media files up to 2 hours duration (primary constraint for GPU processing). File size limit of 2GB serves as practical upload boundary, though actual constraint is processing duration.
+
+- **NFR005: Transcription Quality** - Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows. Segments should typically span 1-7 seconds with maximum ~200 characters to ensure usability in review and editing interfaces. Chinese/Mandarin transcription quality is prioritized as the primary use case.
 
 ---
 

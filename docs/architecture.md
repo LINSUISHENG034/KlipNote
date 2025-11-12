@@ -649,13 +649,14 @@ logger.error(f"WhisperX failed for job {job_id}: {error}", exc_info=True)
 
 ### AI Service Abstraction Strategy
 
-**Decision:** Create `ai_services` module with abstract interface for transcription services
+**Decision:** Create `ai_services` module with abstract interface for transcription services, supporting multi-model architecture and pluggable optimization pipeline
 
 **Rationale:**
-1. **WhisperX as git submodule:** Track upstream updates, easier to pull latest features/fixes
-2. **Service abstraction:** Easy to swap WhisperX for alternatives (Whisper, Deepgram, AssemblyAI)
-3. **Future extensibility:** Add other AI services (translation, summarization, speaker diarization)
-4. **Testing:** Mock AI service for unit tests without GPU dependency
+1. **Multi-model support:** BELLE-2 for Chinese/Mandarin, faster-whisper for other languages
+2. **Pluggable optimization:** Interface-based optimizer design supporting multiple implementations (WhisperX wav2vec2 alignment, self-developed heuristics)
+3. **Architectural flexibility:** Configuration-driven optimizer selection prevents technology lock-in, enables easy replacement when better solutions emerge
+4. **Service abstraction:** Easy to add future models or optimization techniques
+5. **Testing:** Mock AI service for unit tests without GPU dependency
 
 **Architecture:**
 ```python
@@ -669,7 +670,7 @@ class TranscriptionService(ABC):
         """Returns list of segments: [{"start": 0.5, "end": 3.2, "text": "..."}]"""
         pass
 
-# app/ai_services/whisperx_service.py
+# app/ai_services/whisperx_service.py - Epic 1 foundation
 from .base import TranscriptionService
 import whisperx  # Git submodule
 
@@ -681,13 +682,68 @@ class WhisperXService(TranscriptionService):
         result = self.model.transcribe(audio_path)
         return result["segments"]
 
+# app/ai_services/belle2_service.py - Epic 3 Chinese optimization
+from .base import TranscriptionService
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+
+class Belle2Service(TranscriptionService):
+    """BELLE-2 whisper-large-v3-zh for Chinese/Mandarin transcription"""
+    def __init__(self, model_name: str = "BELLE-2/Belle-whisper-large-v3-zh", device: str = "cuda"):
+        self.model = AutoModelForSpeechSeq2Seq.from_pretrained(model_name).to(device)
+        self.processor = AutoProcessor.from_pretrained(model_name)
+
+    async def transcribe(self, audio_path: str, language: str = "zh"):
+        # Chinese-optimized decoder settings
+        result = self.model.transcribe(
+            audio_path,
+            language="zh",
+            beam_size=5,
+            temperature=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        )
+        return result["segments"]
+
+# app/ai_services/optimization/ - Epic 3 pluggable optimization pipeline
+# ├── base.py                  # TimestampOptimizer abstract interface (Story 3.2a)
+# ├── factory.py               # OptimizerFactory with auto-selection (Story 3.2a)
+# ├── whisperx_optimizer.py    # WhisperX wav2vec2 forced alignment (Story 3.2b)
+# ├── heuristic_optimizer.py   # Self-developed VAD+refinement+splitting (Stories 3.3-3.5)
+# └── quality_validator.py     # CER/WER calculation, length statistics (Story 3.6)
+
 # app/ai_services/__init__.py
 from .whisperx_service import WhisperXService
+from .belle2_service import Belle2Service
 
-# Factory pattern - easy to swap implementations
-def get_transcription_service() -> TranscriptionService:
-    # Could read from config to choose different service
+# Factory pattern - configuration-driven model selection
+def get_transcription_service(language: str = "auto") -> TranscriptionService:
+    # Epic 3: Route based on language (simplified - full routing in Story 3.2)
+    if language in ["zh", "zh-CN", "zh-TW"]:
+        return Belle2Service()
     return WhisperXService()
+```
+
+**Optimization Pipeline Flow (Epic 3 - Pluggable Architecture):**
+```
+Audio Input → BELLE-2/faster-whisper Transcription →
+┌─────────────────────────────────────────────────────┐
+│ TimestampOptimizer Interface (Story 3.2a)          │
+├─────────────────────────────────────────────────────┤
+│ OptimizerFactory.create(engine="auto")             │
+│                                                      │
+│ IF WhisperXOptimizer.is_available():                │
+│   └→ WhisperX wav2vec2 forced alignment (Story 3.2b)│
+│ ELSE:                                                │
+│   └→ HeuristicOptimizer (Stories 3.3-3.5):          │
+│      - VAD Preprocessing (Story 3.3)                 │
+│      - Token Timestamp + Energy Refinement (3.4)     │
+│      - Intelligent Segment Splitting (Story 3.5)     │
+└─────────────────────────────────────────────────────┘
+→ Quality Validation (Story 3.6) → Optimized Output
+```
+
+**Configuration (Story 3.2a):**
+```python
+# .env
+OPTIMIZER_ENGINE=auto  # "whisperx" | "heuristic" | "auto"
 ```
 
 **Git Submodule Setup:**
@@ -698,23 +754,25 @@ git submodule update --init --recursive
 ```
 
 **Future Alternative Services:**
-- `deepgram_service.py` - Cloud API alternative
-- `faster_whisper_service.py` - Faster local alternative
-- `whisper_service.py` - Original OpenAI Whisper fallback
+- `sensevoice_service.py` - Low-latency FunASR alternative (deferred to Epic 4)
+- `deepgram_service.py` - Cloud API alternative (post-MVP)
+- `faster_whisper_service.py` - Faster local alternative (post-MVP)
 
-**Affects:** Epic 1.3 (transcription task implementation)
+**Affects:** Epic 1.3 (transcription task), Epic 3 (multi-model + optimization pipeline)
 
 ### GPU Environment Requirements
 
-**Decision:** WhisperX requires GPU acceleration for NFR001 performance targets (1-2x real-time transcription)
+**Decision:** WhisperX and BELLE-2 require GPU acceleration for NFR001 performance targets (1-2x real-time transcription)
+
+**Note:** Docker GPU setup described below is for **production deployment only**. For Epic 3 optimization development, use local `.venv` environment with direct GPU access (see "Development vs. Production Environment Strategy" section).
 
 **Hardware Requirements:**
 - **GPU:** NVIDIA GPU with CUDA support
-- **Minimum VRAM:** 8GB (recommended 12GB+ for large-v2 model)
+- **Minimum VRAM:** 8GB (recommended 12GB+ for large-v2/BELLE-2 models)
 - **CUDA Version:** 11.8 or 12.1+
 - **Driver:** NVIDIA driver 520+ (for CUDA 11.8) or 530+ (for CUDA 12.1)
 
-**Docker GPU Setup:**
+**Docker GPU Setup (Production Deployment):**
 
 ```bash
 # Install nvidia-docker runtime (Ubuntu/Debian)
@@ -801,6 +859,84 @@ WHISPER_COMPUTE_TYPE=float16  # GPU: float16, CPU: int8 for speed
 5. Set up model cache volume for persistence
 
 **Affects:** Story 1.1 (environment setup), Story 1.3 (WhisperX integration), NFR001 (performance)
+
+### Development vs. Production Environment Strategy
+
+**Decision:** Separate development and production environments to enable rapid optimization experimentation while maintaining production stability
+
+**Context:** Epic 3 requires extensive parameter tuning for optimization pipeline (VAD aggressiveness, timestamp refinement ranges, segment splitting thresholds). Docker container rebuilds create critical iteration bottleneck during experimentation phase.
+
+**Strategy:**
+
+**Development Environment (Optimization & Experimentation):**
+- **Runtime:** Local Python `.venv` with direct GPU access
+- **Purpose:** Rapid parameter tuning, optimization experiments, algorithm development
+- **Setup:**
+  ```bash
+  # Create virtual environment with CUDA support
+  python -m venv .venv
+  .venv\Scripts\activate  # Windows
+  # or: source .venv/bin/activate  # Linux/Mac
+
+  # Install dependencies with CUDA
+  pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+  pip install -r requirements.txt
+  ```
+- **Configuration:** Local `.env` file for rapid parameter changes
+- **Advantages:**
+  - Instant parameter changes (no container rebuild)
+  - Full GPU visibility for profiling and debugging
+  - Faster iteration cycles during Story 3.2-3.5 implementation
+  - IDE debugging support with breakpoints
+
+**Production Environment (Deployment):**
+- **Runtime:** Docker Compose with validated configurations
+- **Purpose:** Stable deployment with tested parameter sets
+- **Setup:** `docker-compose.yaml` with environment variables
+- **Configuration:** Environment variables in docker-compose.yaml or .env
+- **Advantages:**
+  - Reproducible deployment across servers
+  - Isolated dependencies
+  - Production-grade GPU resource management
+  - Easy rollback to stable configurations
+
+**Configuration Promotion Workflow:**
+
+1. **Prototype** - Experiment with parameters in local `.env`:
+   ```bash
+   # Development .env
+   ENABLE_VAD=true
+   VAD_AGGRESSIVENESS=3
+   SEGMENT_MAX_DURATION=7.0
+   SEGMENT_MAX_CHARS=200
+   ```
+
+2. **Validate** - Run quality validation framework (Story 3.5):
+   - Measure segment length statistics
+   - Calculate CER/WER improvements
+   - Verify click-to-timestamp alignment
+
+3. **Promote** - Copy validated parameters to `docker-compose.yaml`:
+   ```yaml
+   # docker-compose.yaml
+   services:
+     worker:
+       environment:
+         - ENABLE_VAD=true
+         - VAD_AGGRESSIVENESS=3
+         - SEGMENT_MAX_DURATION=7.0
+         - SEGMENT_MAX_CHARS=200
+   ```
+
+4. **Deploy** - Build and deploy Docker containers with validated config
+
+**Best Practices:**
+- **Document rationale:** Add comments in docker-compose.yaml explaining parameter choices
+- **Version control:** Track configuration changes in git
+- **Rollback plan:** Keep previous working configurations commented in docker-compose.yaml
+- **Logging:** Epic 3 structured logging enables production parameter monitoring
+
+**Affects:** Epic 3 (Stories 3.2-3.5 optimization implementation), deployment workflows
 
 ### Testing Strategy
 

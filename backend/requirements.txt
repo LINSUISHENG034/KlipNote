@@ -50,6 +50,12 @@ librosa>=0.10.0
 # Used for Traditional→Simplified Chinese conversion in transcription post-processing
 zhconv>=1.4.3
 
+# Epic 3 - Optimization Pipeline
+webrtcvad==2.0.10          # VAD preprocessing (Story 3.2)
+pydub==0.25.1              # Audio format conversion (Story 3.2)
+scipy==1.11.4              # Signal processing (Story 3.3)
+jiwer==3.0.3               # CER/WER calculation (Story 3.5)
+
 # Note: torch, torchvision, and torchaudio are installed in Dockerfile
 # with CUDA 12.1-specific index URL: --index-url https://download.pytorch.org/whl/cu121
 # CUDA 12.1 wheels are forward-compatible with CUDA 12.3 runtime

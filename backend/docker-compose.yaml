@@ -1,3 +1,8 @@
+# PRODUCTION DEPLOYMENT ONLY
+# This Docker Compose setup is intended for PRODUCTION DEPLOYMENT with validated configurations.
+# For AI model optimization, parameter tuning, and rapid experimentation, use local .venv development environment.
+# See docs/architecture.md "Development vs. Production Environment Strategy" section for details.
+
 services:
   # Redis message broker and result backend
   redis:
