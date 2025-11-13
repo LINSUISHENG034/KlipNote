@@ -1,0 +1,337 @@
+<story-context id="{bmad_folder}/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>2b</storyId>
+    <title>WhisperX Integration Validation Experiment</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-13</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/3-2b-whisperx-integration-validation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a developer</asA>
+    <iWant>to validate WhisperX wav2vec2 forced alignment integration feasibility</iWant>
+    <soThat>we can make an informed Phase Gate decision on using mature solutions vs. self-developed optimizers</soThat>
+    <tasks>
+      - Task 1: Create isolated test environment (.venv-test) with dependency resolution attempts
+        - Create .venv-test virtual environment separate from main .venv
+        - Install torch with CUDA support using NJU mirror for faster downloads: uv pip install torch==2.1.0+cu118 torchaudio==2.1.0 --index-url https://mirrors.nju.edu.cn/pytorch/whl/cu118/
+        - Attempt WhisperX installation: uv pip install whisperx>=3.1.1
+        - Attempt pyannote.audio installation: uv pip install pyannote.audio==3.1.1
+        - Validate torch CUDA compatibility: Test torch==2.0.1+cu118 and torch==2.1.0+cu118
+        - Check for dependency conflicts with existing BELLE-2 setup
+        - Document successful installation command sequence OR document failure reasons
+        - Test GPU availability: torch.cuda.is_available() returns True
+
+      - Task 2: Implement WhisperXOptimizer with full functionality
+        - Update backend/app/ai_services/optimization/whisperx_optimizer.py
+        - Implement is_available() to check for whisperx and pyannote.audio imports
+        - Implement __init__() with lazy model loading pattern
+        - Implement optimize() method using whisperx.load_align_model() and whisperx.align()
+        - Add proper error handling for missing dependencies with helpful messages
+        - Return OptimizationResult with aligned segments, metrics, optimizer_name="whisperx"
+        - Add docstrings explaining WhisperX forced alignment approach
+
+      - Task 3: Create test suite for WhisperXOptimizer
+        - Create backend/tests/test_whisperx_optimizer.py
+        - Test is_available() returns True when dependencies installed
+        - Test is_available() returns False when dependencies missing (mock import failure)
+        - Test optimize() with mocked whisperx.align() for unit testing
+        - Test error handling when dependencies unavailable
+        - Achieve 70%+ coverage for whisperx_optimizer.py
+
+      - Task 4: Create performance benchmarking script
+        - Create backend/scripts/benchmark_optimizer.py CLI tool
+        - Load 10 diverse test audio files (5-60 minutes, various speakers)
+        - For each file: Transcribe with BELLE-2, measure transcription time
+        - For each file: Apply WhisperXOptimizer, measure optimization time
+        - Calculate overhead percentage: (optimization_time / transcription_time) * 100
+        - Validate overhead &lt;25% threshold met
+        - Generate JSON report with timing statistics
+
+      - Task 5: Create quality A/B testing script
+        - Create backend/scripts/quality_ab_test.py CLI tool
+        - For each test file: Transcribe with BELLE-2 (baseline)
+        - For each test file: Transcribe + optimize with WhisperXOptimizer
+        - Calculate segment length statistics: mean, median, P95
+        - Calculate segment length improvement percentage
+        - Calculate CER/WER if reference transcripts available
+        - Validate: CER/WER ≤ baseline, segment length improvement ≥10%
+        - Generate JSON report with quality metrics
+
+      - Task 6: Generate Phase Gate Decision Report
+        - Create docs/phase-gate-story-3-2b.md report
+        - Document dependency installation results (success/failure, conflicts)
+        - Include performance benchmarking results (overhead %, meets threshold?)
+        - Include quality A/B testing results (CER/WER delta, length improvement %)
+        - Include BELLE-2 compatibility validation (any regressions?)
+        - Provide GO/NO-GO recommendation with rationale
+        - If GO: List integration steps for production pipeline
+        - If NO-GO: List failure reasons, recommend Story 3.3 activation
+
+      - Task 7: Integration into production pipeline (CONDITIONAL ON GO)
+        - Update backend/requirements.txt with WhisperX dependencies
+        - Update backend/app/tasks/transcription.py to call OptimizerFactory
+        - Add optimization step after BELLE-2 transcription
+        - Update Redis progress messages: "Applying timestamp optimization..."
+        - Store baseline segments for A/B comparison
+        - Save optimization metadata to job folder
+        - Verify OPTIMIZER_ENGINE=auto selects WhisperX successfully
+        - Run integration test: Full transcription workflow with optimization
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">Isolated test environment (.venv-test) created with dependency resolution attempts</criterion>
+    <criterion id="AC2">Dependency installation validated: pyannote.audio==3.1.1 + torch==2.0.1/2.1.0 + BELLE-2 compatibility</criterion>
+    <criterion id="AC3">app/ai_services/optimization/whisperx_optimizer.py implements TimestampOptimizer interface</criterion>
+    <criterion id="AC4">WhisperXOptimizer.is_available() returns True only if dependencies successfully installed</criterion>
+    <criterion id="AC5">Performance benchmarking: 10 test files, optimization overhead &lt;25% of transcription time</criterion>
+    <criterion id="AC6">Quality A/B testing: CER/WER ≤ baseline, segment length improvement ≥10%</criterion>
+    <criterion id="AC7">BELLE-2 compatibility validated: No regressions in transcription accuracy</criterion>
+    <criterion id="AC8">Phase Gate Decision Report generated with GO/NO-GO recommendation</criterion>
+    <criterion id="AC9">IF GO: Integrate WhisperXOptimizer into production pipeline</criterion>
+    <criterion id="AC10">IF NO-GO: Document failure reasons, proceed with Story 3.3 (HeuristicOptimizer)</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/tech-spec-epic-3.md" title="Epic 3 Technical Specification">
+        <section name="Overview">
+          Epic 3 implements pluggable optimizer architecture for timestamp optimization. Two-phase approach: Phase 1 validates WhisperX wav2vec2 forced alignment (Stories 3.2a-3.2b), Phase 2 implements self-developed HeuristicOptimizer fallback (Stories 3.3-3.5, conditional on Phase Gate NO-GO).
+        </section>
+        <section name="WhisperXOptimizer Implementation">
+          Details WhisperX implementation approach using wav2vec2 forced alignment. Includes lazy model loading pattern, dependency requirements (whisperx>=3.1.1, pyannote.audio==3.1.1, torch compatibility), and optimize() method structure with word-level timestamp alignment.
+        </section>
+        <section name="Phase Gate Decision Criteria">
+          Objective success criteria for GO/NO-GO decision: Dependency installation SUCCESS, GPU acceleration available, Quality metrics (CER/WER ≤ baseline, segment length improvement ≥10%), Performance (overhead &lt;25%), Reliability (100% success rate on 10 test runs).
+        </section>
+        <section name="ADR-002: Two-Phase Implementation">
+          Rationale for prioritizing mature solution (WhisperX) validation before self-developed fallback: minimize development effort if proven solution works, de-risk through early validation.
+        </section>
+      </doc>
+      <doc path="docs/architecture.md" title="Architecture Documentation">
+        <section name="AI Service Abstraction Strategy">
+          Defines multi-model support strategy with pluggable optimization pipeline. Configuration-driven optimizer selection prevents technology lock-in and enables easy replacement when better solutions emerge.
+        </section>
+      </doc>
+      <doc path="docs/epics.md" title="Epic Overview">
+        <section name="Epic 3: Chinese Transcription Quality">
+          Context for Epic 3 goals and story sequencing. Story 3.2b is validation experiment determining implementation path: GO → WhisperX integration, NO-GO → Stories 3.3-3.5 HeuristicOptimizer.
+        </section>
+      </doc>
+      <doc path=".bmad-ephemeral/stories/3-2a-pluggable-optimizer-architecture.md" title="Story 3.2a: Pluggable Optimizer Architecture">
+        <section name="Completed Foundation">
+          Story 3.2a delivered: TimestampOptimizer interface, OptimizerFactory with auto/fallback logic, WhisperXOptimizer stub (is_available()=False, optimize() raises NotImplementedError), HeuristicOptimizer stub, configuration settings (OPTIMIZER_ENGINE, ENABLE_OPTIMIZATION), factory pattern unit tests.
+        </section>
+        <section name="Testing Pattern">
+          Established testing approach: Unit tests with mocked dependencies (no GPU required), pytest framework with fixtures, 70%+ coverage target, one test file per module.
+        </section>
+        <section name="Environment Isolation">
+          Main .venv has working BELLE-2 setup. Story 3.2b creates separate .venv-test for risk isolation: validate WhisperX dependency resolution from scratch, easy rollback if conflicts found, no impact on main environment.
+        </section>
+      </doc>
+    </docs>
+    <code>
+      <artifact path="backend/app/ai_services/optimization/base.py" kind="interface" symbol="TimestampOptimizer" lines="70-141">
+        Abstract interface for timestamp optimization strategies. Defines optimize() method signature (segments, audio_path, language) returning OptimizationResult, and is_available() static method for dependency checking. All optimizer implementations must inherit from this class.
+      </artifact>
+      <artifact path="backend/app/ai_services/optimization/base.py" kind="dataclass" symbol="OptimizationResult" lines="47-67">
+        Standardized result format from timestamp optimization. Contains segments (List[TimestampSegment]), metrics (Dict[str, float]), and optimizer_name (str). Ensures consistent output across all optimizer implementations.
+      </artifact>
+      <artifact path="backend/app/ai_services/optimization/whisperx_optimizer.py" kind="class" symbol="WhisperXOptimizer" lines="15-71">
+        Stub implementation from Story 3.2a. is_available() returns False. optimize() raises NotImplementedError with message "WhisperXOptimizer implementation deferred to Story 3.2b". This file must be updated with full implementation in current story.
+      </artifact>
+      <artifact path="backend/app/ai_services/optimization/factory.py" kind="class" symbol="OptimizerFactory">
+        Factory class for creating optimizer instances. Supports engine modes: "whisperx", "heuristic", "auto" (default, prefers WhisperX with fallback to Heuristic). Uses is_available() checks for auto-selection logic.
+      </artifact>
+      <artifact path="backend/app/ai_services/belle2_service.py" kind="service" symbol="Belle2Service">
+        BELLE-2 transcription service producing raw segments. WhisperXOptimizer receives these segments as input for timestamp refinement. Integration point for optimization pipeline.
+      </artifact>
+      <artifact path="backend/tests/test_optimization_factory.py" kind="test">
+        Unit tests for OptimizerFactory from Story 3.2a. Demonstrates testing pattern: mocking imports, testing auto-selection logic, verifying fallback behavior. Template for Story 3.2b test approach.
+      </artifact>
+    </code>
+    <dependencies>
+      <python>
+        <existing>
+          <package name="fastapi" version="0.120.0" />
+          <package name="uvicorn" version="0.32.1" />
+          <package name="celery" version="5.5.3" />
+          <package name="redis" version="5.2.1" />
+          <package name="pydantic" version="2.10.3" />
+          <package name="pytest" version="7.4.4" />
+          <package name="pytest-mock" version="3.12.0" />
+          <package name="pytest-cov" version="4.1.0" />
+          <package name="httpx" version="0.28.1" />
+          <package name="ctranslate2" version=">=4.5.0" />
+          <package name="faster-whisper" version=">=1.1.1" />
+          <package name="transformers" version=">=4.48.0" />
+          <package name="librosa" version=">=0.10.0" />
+          <package name="zhconv" version=">=1.4.3" />
+          <package name="webrtcvad" version="2.0.10" comment="VAD preprocessing" />
+          <package name="pydub" version="0.25.1" comment="Audio format conversion" />
+          <package name="scipy" version="1.11.4" comment="Signal processing" />
+          <package name="jiwer" version="3.0.3" comment="CER/WER calculation" />
+        </existing>
+        <conditional_story_3_2b>
+          <package name="whisperx" version=">=3.1.1" condition="IF Phase Gate = GO" />
+          <package name="pyannote.audio" version="3.1.1" condition="IF Phase Gate = GO" />
+          <package name="torch" version="2.0.1+cu118 OR 2.1.0+cu118" condition="IF Phase Gate = GO" mirror="https://mirrors.nju.edu.cn/pytorch/whl/cu118/" note="Use NJU mirror for faster downloads in China" />
+          <package name="torchaudio" version="2.0.2 OR 2.1.0" condition="IF Phase Gate = GO" mirror="https://mirrors.nju.edu.cn/pytorch/whl/cu118/" note="Use NJU mirror for faster downloads in China" />
+          <package name="lightning" version="2.3.0" condition="IF Phase Gate = GO" />
+        </conditional_story_3_2b>
+      </python>
+      <system>
+        <cuda version="12.3" required="true" comment="GPU acceleration for WhisperX" />
+        <ffmpeg required="true" comment="Audio processing" />
+      </system>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <architectural>
+      - MUST implement TimestampOptimizer abstract interface from base.py
+      - MUST return OptimizationResult dataclass with segments, metrics, optimizer_name fields
+      - MUST use lazy model loading pattern (load alignment model on first optimize() call, not in __init__)
+      - MUST NOT modify Story 3.2a files: base.py, factory.py, heuristic_optimizer.py unchanged
+      - MUST create isolated .venv-test environment separate from main .venv to avoid breaking BELLE-2 setup
+    </architectural>
+    <implementation>
+      - is_available() MUST check for whisperx and pyannote.audio imports AND torch.cuda.is_available()
+      - is_available() MUST return False if any dependency missing OR CUDA unavailable
+      - optimize() MUST raise RuntimeError with helpful installation message if dependencies missing
+      - optimize() MUST use whisperx.load_align_model() and whisperx.align() for wav2vec2 forced alignment
+      - optimize() MUST track processing_time_ms for benchmarking validation
+      - Error messages MUST guide user to installation commands (uv pip install whisperx pyannote.audio==3.1.1)
+    </implementation>
+    <dependency_installation>
+      - CRITICAL: Use Nanjing University (NJU) mirror for torch+CUDA wheel downloads to improve speed in China
+      - NJU mirror URL: https://mirrors.nju.edu.cn/pytorch/whl/cu118/
+      - Install command: uv pip install torch==2.1.0+cu118 torchaudio==2.1.0 --index-url https://mirrors.nju.edu.cn/pytorch/whl/cu118/
+      - Use --index-url (NOT --extra-index-url) to prioritize the mirror
+      - The NJU mirror provides official PyTorch wheels with significantly faster download speeds
+      - Alternative: Official PyTorch index https://download.pytorch.org/whl/cu118 (slower from China)
+    </dependency_installation>
+    <testing>
+      - Unit tests MUST use mocked whisperx.align() for GPU-free testing (follow Story 3.2a pattern)
+      - Unit tests MUST achieve 70%+ coverage for whisperx_optimizer.py
+      - Integration tests (benchmarking, quality A/B) MUST be CLI scripts, not pytest (require real GPU/audio)
+      - Test file naming: test_whisperx_optimizer.py (one test file per module convention)
+    </testing>
+    <validation>
+      - Phase Gate decision based on OBJECTIVE criteria: dependency installation, performance &lt;25%, quality ≥10%
+      - Performance benchmarking MUST test 10 diverse audio files (5-60 minutes, various speakers)
+      - Quality A/B testing MUST validate CER/WER ≤ baseline AND segment length improvement ≥10%
+      - BELLE-2 compatibility MUST be validated (no regressions in transcription accuracy)
+      - Phase Gate report MUST provide GO/NO-GO recommendation with rationale
+    </validation>
+    <conditional_integration>
+      - Task 7 (production integration) ONLY executes IF Phase Gate decision = GO
+      - IF GO: Update requirements.txt, integrate into transcription.py, verify OPTIMIZER_ENGINE=auto works
+      - IF NO-GO: Document failure reasons, recommend Story 3.3 activation in Phase Gate report
+    </conditional_integration>
+  </constraints>
+
+  <interfaces>
+    <interface name="TimestampOptimizer" kind="abstract_class" path="backend/app/ai_services/optimization/base.py">
+      <signature>
+class TimestampOptimizer(ABC):
+    @abstractmethod
+    def optimize(
+        self,
+        segments: Sequence[TimestampSegment],
+        audio_path: str,
+        language: str = "zh"
+    ) -> OptimizationResult:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def is_available() -> bool:
+        pass
+      </signature>
+      <description>
+        Abstract interface for timestamp optimization strategies. WhisperXOptimizer inherits from this and implements both methods. optimize() takes raw BELLE-2 segments and returns OptimizationResult with word-aligned segments. is_available() checks dependency availability for factory auto-selection.
+      </description>
+    </interface>
+
+    <interface name="OptimizationResult" kind="dataclass" path="backend/app/ai_services/optimization/base.py">
+      <signature>
+@dataclass
+class OptimizationResult:
+    segments: List[TimestampSegment]
+    metrics: Dict[str, float]
+    optimizer_name: str
+      </signature>
+      <description>
+        Standardized output format from optimize() method. segments contains word-aligned transcription, metrics includes processing_time_ms and segments_optimized, optimizer_name is "whisperx" for WhisperXOptimizer.
+      </description>
+    </interface>
+
+    <interface name="Belle2Service.transcribe()" kind="method" path="backend/app/ai_services/belle2_service.py">
+      <signature>
+async def transcribe(self, audio_path: str, language: str = "zh") -> List[Dict]:
+    """Returns segments: [{"start": 0.5, "end": 3.2, "text": "..."}]"""
+      </signature>
+      <description>
+        BELLE-2 transcription service producing raw segments. WhisperXOptimizer receives these segments as input for timestamp refinement. Integration point: transcription.py will call Belle2Service.transcribe() then WhisperXOptimizer.optimize() in sequence.
+      </description>
+    </interface>
+
+    <interface name="OptimizerFactory.create()" kind="static_method" path="backend/app/ai_services/optimization/factory.py">
+      <signature>
+@staticmethod
+def create(engine: str = "auto") -> TimestampOptimizer:
+    """
+    Create optimizer instance based on engine setting.
+    engine: "whisperx" | "heuristic" | "auto"
+    auto mode: Prefer WhisperX, fallback to Heuristic if unavailable
+    """
+      </signature>
+      <description>
+        Factory for creating optimizer instances. Uses is_available() checks for auto-selection. Story 3.2b makes WhisperXOptimizer.is_available() return True (if deps installed), enabling factory to select WhisperX in auto mode.
+      </description>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>
+      KlipNote uses pytest framework with pytest-mock for mocking and pytest-cov for coverage reporting. Unit tests follow Story 3.2a pattern: mock external dependencies (no GPU required), use fixtures for test data, achieve 70%+ coverage target. Test organization: one test file per module (test_whisperx_optimizer.py for whisperx_optimizer.py). Integration tests (benchmarking, quality A/B) are standalone CLI scripts in backend/scripts/ with JSON report output. GPU tests marked with @pytest.mark.gpu and skipped if CUDA unavailable. Configuration in pytest.ini includes -v --tb=short --cov=app --cov-report=html markers for unit/integration/slow/gpu test categories.
+    </standards>
+    <locations>
+      backend/tests/ - Unit test files (test_whisperx_optimizer.py)
+      backend/scripts/ - Integration test CLI scripts (benchmark_optimizer.py, quality_ab_test.py)
+      pytest.ini - Test configuration with markers and coverage settings
+    </locations>
+    <ideas>
+      <test story="AC4" description="Test is_available() returns True when whisperx and pyannote.audio installed and CUDA available">
+        Mock successful imports for whisperx and pyannote.audio. Mock torch.cuda.is_available() to return True. Assert WhisperXOptimizer.is_available() returns True. Demonstrates dependency checking logic works correctly.
+      </test>
+      <test story="AC4" description="Test is_available() returns False when whisperx missing">
+        Mock import whisperx to raise ImportError. Assert WhisperXOptimizer.is_available() returns False. Verifies fallback logic when WhisperX not installed.
+      </test>
+      <test story="AC4" description="Test is_available() returns False when CUDA unavailable">
+        Mock successful imports but torch.cuda.is_available() returns False. Assert WhisperXOptimizer.is_available() returns False. Ensures GPU requirement is enforced.
+      </test>
+      <test story="AC3,AC4" description="Test optimize() with mocked whisperx.align()">
+        Mock whisperx.load_align_model() to return mock model. Mock whisperx.align() to return synthetic aligned segments with word timings. Call optimize() with test segments. Assert returns OptimizationResult with optimizer_name="whisperx", correct segment structure, metrics include processing_time_ms. Validates full optimization flow without GPU dependency.
+      </test>
+      <test story="AC4" description="Test __init__() raises RuntimeError when dependencies unavailable">
+        Mock is_available() to return False. Attempt to instantiate WhisperXOptimizer. Assert raises RuntimeError with installation instructions message. Ensures helpful error guidance for users.
+      </test>
+      <test story="AC5" description="Performance benchmarking script (backend/scripts/benchmark_optimizer.py)">
+        CLI tool loading 10 diverse test audio files. For each file: transcribe with Belle2Service (measure time), optimize with WhisperXOptimizer (measure time), calculate overhead percentage. Validate average overhead &lt;25% threshold. Generate JSON report with timing statistics. Requires GPU, real audio files. NOT a pytest test.
+      </test>
+      <test story="AC6,AC7" description="Quality A/B testing script (backend/scripts/quality_ab_test.py)">
+        CLI tool loading test audio files with optional reference transcripts. For each file: transcribe baseline (BELLE-2 only), transcribe optimized (BELLE-2 + WhisperX). Calculate segment length statistics, CER/WER if references available. Validate segment length improvement ≥10%, CER/WER ≤ baseline. Generate JSON report with quality metrics. Requires GPU, real audio files. NOT a pytest test.
+      </test>
+      <test story="AC1,AC2" description="Isolated environment dependency validation (manual test in .venv-test)">
+        Create .venv-test environment. Attempt WhisperX and pyannote.audio installation. Run pip check for conflicts. Test torch.cuda.is_available(). Validate BELLE-2 still imports successfully. Document results in Phase Gate report. Manual test, not automated.
+      </test>
+      <test story="AC9" description="Integration test - Full transcription workflow with optimization (conditional on GO)">
+        IF Phase Gate = GO: Upload audio file via API, monitor Redis progress including "Applying timestamp optimization..." message, verify optimization metadata saved, compare baseline vs optimized segments, validate OPTIMIZER_ENGINE=auto selected WhisperX. E2E integration test validating production pipeline. Requires backend + Redis + Celery + GPU.
+      </test>
+    </ideas>
+  </tests>
+</story-context>

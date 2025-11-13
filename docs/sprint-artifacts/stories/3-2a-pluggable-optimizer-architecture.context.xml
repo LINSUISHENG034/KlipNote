@@ -1,0 +1,296 @@
+<story-context id="{bmad_folder}/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>2a</storyId>
+    <title>Pluggable Optimizer Architecture</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-13</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/3-2a-pluggable-optimizer-architecture.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a system architect</asA>
+    <iWant>a pluggable timestamp optimization interface</iWant>
+    <soThat>multiple optimizer implementations can coexist and be selected via configuration without code changes</soThat>
+    <tasks>
+      <task id="1" ac="#1,#2">
+        <description>Create optimization package structure</description>
+        <subtasks>
+          <subtask>Create backend/app/ai_services/optimization/__init__.py</subtask>
+          <subtask>Create backend/app/ai_services/optimization/base.py</subtask>
+          <subtask>Define TimestampOptimizer abstract class with optimize() and is_available() methods</subtask>
+          <subtask>Define OptimizationResult dataclass with fields: segments, metrics, optimizer_name</subtask>
+          <subtask>Add docstrings explaining interface contract and return formats</subtask>
+          <subtask>Export base classes in __init__.py</subtask>
+        </subtasks>
+      </task>
+      <task id="2" ac="#3,#5">
+        <description>Implement OptimizerFactory with mode selection</description>
+        <subtasks>
+          <subtask>Create backend/app/ai_services/optimization/factory.py</subtask>
+          <subtask>Implement OptimizerFactory.create(engine: str = None) static method</subtask>
+          <subtask>Support three modes: whisperx, heuristic, auto</subtask>
+          <subtask>Auto mode logic: Check WhisperXOptimizer.is_available(), prefer WhisperX, fallback to Heuristic with logging</subtask>
+          <subtask>Raise ValueError for unknown engine strings</subtask>
+          <subtask>Add comprehensive docstrings with usage examples</subtask>
+        </subtasks>
+      </task>
+      <task id="3" ac="#4">
+        <description>Add configuration settings</description>
+        <subtasks>
+          <subtask>Add OPTIMIZER_ENGINE: str = "auto" to backend/app/config.py Settings class</subtask>
+          <subtask>Add ENABLE_OPTIMIZATION: bool = True feature flag to backend/app/config.py</subtask>
+          <subtask>Add example values to backend/.env.example: OPTIMIZER_ENGINE=auto, ENABLE_OPTIMIZATION=true</subtask>
+          <subtask>Add config docstrings explaining valid values and behavior</subtask>
+        </subtasks>
+      </task>
+      <task id="4" ac="#8">
+        <description>Create stub optimizer implementations</description>
+        <subtasks>
+          <subtask>Create backend/app/ai_services/optimization/whisperx_optimizer.py with stub class</subtask>
+          <subtask>WhisperXOptimizer: Implement is_available() returning False (dependencies not installed yet)</subtask>
+          <subtask>WhisperXOptimizer: Implement optimize() with raise NotImplementedError("Story 3.2b")</subtask>
+          <subtask>Create backend/app/ai_services/optimization/heuristic_optimizer.py with stub class</subtask>
+          <subtask>HeuristicOptimizer: Implement is_available() returning True (no dependencies)</subtask>
+          <subtask>HeuristicOptimizer: Implement optimize() returning pass-through segments (no optimization yet)</subtask>
+          <subtask>Export optimizers in optimization/__init__.py</subtask>
+        </subtasks>
+      </task>
+      <task id="5" ac="#6">
+        <description>Write unit tests for factory pattern</description>
+        <subtasks>
+          <subtask>Create backend/tests/test_optimization_factory.py</subtask>
+          <subtask>Test create(engine="whisperx") returns WhisperXOptimizer when available</subtask>
+          <subtask>Test create(engine="heuristic") returns HeuristicOptimizer</subtask>
+          <subtask>Test create(engine="auto") prefers WhisperX, falls back to Heuristic</subtask>
+          <subtask>Test create(engine="invalid") raises ValueError with clear message</subtask>
+          <subtask>Mock WhisperXOptimizer.is_available() for predictable test behavior</subtask>
+          <subtask>Verify logging messages for fallback scenarios</subtask>
+          <subtask>Achieve 90%+ coverage for factory.py</subtask>
+        </subtasks>
+      </task>
+      <task id="6" ac="#7">
+        <description>Update architecture documentation</description>
+        <subtasks>
+          <subtask>Read docs/architecture.md lines 704-708 (AI Service Abstraction Strategy section)</subtask>
+          <subtask>Add new subsection: "Timestamp Optimization Architecture"</subtask>
+          <subtask>Document TimestampOptimizer interface pattern</subtask>
+          <subtask>Document OptimizerFactory mode selection logic</subtask>
+          <subtask>Explain pluggable design benefits (future-proof, configuration-driven)</subtask>
+          <subtask>Add code examples showing optimizer selection flow</subtask>
+        </subtasks>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">app/ai_services/optimization/base.py defines TimestampOptimizer abstract interface with optimize() and is_available() methods</criterion>
+    <criterion id="2">OptimizationResult dataclass standardizes optimizer output (segments, metrics, optimizer_name)</criterion>
+    <criterion id="3">app/ai_services/optimization/factory.py implements OptimizerFactory.create(engine) with three modes: whisperx, heuristic, auto</criterion>
+    <criterion id="4">OPTIMIZER_ENGINE configuration added to app/config.py with default "auto"</criterion>
+    <criterion id="5">Auto mode: Prefers WhisperXOptimizer if available, falls back to HeuristicOptimizer with logging</criterion>
+    <criterion id="6">Factory pattern unit tests verify mode selection and fallback logic</criterion>
+    <criterion id="7">Documentation updated: architecture.md §704-708 reflects pluggable design</criterion>
+    <criterion id="8">Zero disruption to Story 3.1 BELLE-2 integration (optimization layer is post-transcription)</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: Chinese Transcription Quality Optimization</title>
+        <section>Overview (lines 9-42)</section>
+        <snippet>Epic 3 implements pluggable optimizer architecture supporting multiple timestamp optimization implementations. Two-phase strategy: Phase 1 validates WhisperX (Stories 3.2a-3.2b), Phase 2 provides self-developed Heuristic fallback (Stories 3.3-3.5). ADR-001 establishes pluggable TimestampOptimizer interface to prevent technology lock-in.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: Chinese Transcription Quality Optimization</title>
+        <section>Pluggable Optimizer Architecture (lines 74-86)</section>
+        <snippet>Component structure defines app/ai_services/optimization/ package with base.py (interface), factory.py (auto-selection), whisperx_optimizer.py (Story 3.2b), heuristic_optimizer.py (Stories 3.3-3.5), quality_validator.py (Story 3.6).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: Chinese Transcription Quality Optimization</title>
+        <section>Core Interfaces (lines 88-131)</section>
+        <snippet>Defines TimestampOptimizer abstract interface with optimize() method accepting segments, audio_path, language parameters. OptimizationResult dataclass standardizes output with segments, metrics, optimizer_name fields. is_available() static method checks optimizer dependencies.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>AI Service Abstraction Strategy (lines 705-748)</section>
+        <snippet>Epic 3 pluggable optimization pipeline uses TimestampOptimizer interface with OptimizerFactory.create(engine="auto"). Auto-selection logic: IF WhisperXOptimizer.is_available() THEN WhisperX wav2vec2 forced alignment ELSE HeuristicOptimizer (VAD preprocessing, timestamp refinement, segment splitting). Configuration via OPTIMIZER_ENGINE environment variable.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 3.2a: Pluggable Optimizer Architecture Design (lines 387-403)</section>
+        <snippet>User story defines pluggable timestamp optimization interface enabling multiple optimizer implementations coexisting via configuration-driven selection. Prerequisites: Story 3.1 (BELLE-2 foundation). Zero disruption requirement: optimization layer is post-transcription.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>backend/app/ai_services/base.py</path>
+        <kind>interface</kind>
+        <symbol>TranscriptionService</symbol>
+        <lines>9-72</lines>
+        <reason>Abstract interface pattern to follow for TimestampOptimizer design. Demonstrates ABC pattern with abstractmethod decorators, comprehensive docstrings, and return type standardization.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/config.py</path>
+        <kind>configuration</kind>
+        <symbol>Settings</symbol>
+        <lines>10-58</lines>
+        <reason>Settings class where OPTIMIZER_ENGINE and ENABLE_OPTIMIZATION configuration will be added (lines 26-27 already contain these settings). Follows Pydantic BaseSettings pattern.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/optimization/base.py</path>
+        <kind>interface</kind>
+        <symbol>TimestampOptimizer</symbol>
+        <lines>all</lines>
+        <reason>Core abstract interface for pluggable optimizer architecture. Defines optimize() and is_available() methods. OptimizationResult dataclass standardizes output format.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/optimization/factory.py</path>
+        <kind>factory</kind>
+        <symbol>OptimizerFactory</symbol>
+        <lines>all</lines>
+        <reason>Factory pattern implementation with create(engine) method. Supports three modes: whisperx, heuristic, auto. Auto-selection logic with fallback to HeuristicOptimizer.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/optimization/whisperx_optimizer.py</path>
+        <kind>optimizer-implementation</kind>
+        <symbol>WhisperXOptimizer</symbol>
+        <lines>all</lines>
+        <reason>WhisperX implementation stub. is_available() checks dependencies (whisperx, pyannote.audio). optimize() raises NotImplementedError pending Story 3.2b completion.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/optimization/heuristic_optimizer.py</path>
+        <kind>optimizer-implementation</kind>
+        <symbol>HeuristicOptimizer</symbol>
+        <lines>all</lines>
+        <reason>Heuristic optimizer stub. is_available() always returns True (no dependencies). optimize() implements pass-through (returns segments unchanged) pending Stories 3.3-3.5.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/test_optimization_factory.py</path>
+        <kind>test</kind>
+        <symbol>TestOptimizerFactory</symbol>
+        <lines>all</lines>
+        <reason>Unit tests for factory pattern. Tests mode selection (whisperx, heuristic, auto), fallback logic, error handling, and logging verification using pytest and unittest.mock.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <python>
+        <package name="fastapi" version="0.120.0" />
+        <package name="uvicorn" version="0.32.1" />
+        <package name="celery" version="5.5.3" />
+        <package name="redis" version="5.2.1" />
+        <package name="pydantic" version="2.10.3" />
+        <package name="pydantic-settings" version="2.7.0" />
+        <package name="pytest" version="7.4.4" />
+        <package name="pytest-mock" version="3.12.0" />
+        <package name="pytest-cov" version="4.1.0" />
+        <note>Story 3.2a adds NO new dependencies - pure Python architecture only</note>
+      </python>
+      <nodejs>
+        <package name="vue" version="^3.5.22" />
+        <package name="vue-router" version="^4.6.3" />
+        <package name="pinia" version="^3.0.3" />
+        <package name="@tailwindcss/vite" version="^4.1.17" />
+        <note>Frontend not modified in Story 3.2a - backend-only story</note>
+      </nodejs>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Architecture-first approach: No pipeline integration in Story 3.2a - integration deferred to Story 3.6</constraint>
+    <constraint>Zero disruption to Story 3.1 BELLE-2 integration: Optimization layer is post-transcription, not replacing transcription</constraint>
+    <constraint>Follow TranscriptionService interface pattern from backend/app/ai_services/base.py (ABC with abstractmethod)</constraint>
+    <constraint>Use Pydantic BaseSettings pattern for configuration (Settings class in backend/app/config.py)</constraint>
+    <constraint>No new dependencies in Story 3.2a: Pure Python architecture only, no external packages</constraint>
+    <constraint>Testing strategy: Unit tests only (no integration tests) - all tests must pass with mocked dependencies</constraint>
+    <constraint>Coverage target: 90%+ for factory.py, 100% for base.py and stub optimizers</constraint>
+    <constraint>Logging requirements: Use Python logging module, info level for mode selection, warning level for fallbacks</constraint>
+    <constraint>uv virtual environment workflow: All commands must run in activated .venv environment</constraint>
+    <constraint>Files NOT to modify: belle2_service.py, whisperx_service.py, model_manager.py, base.py (TranscriptionService), transcription.py</constraint>
+  </constraints>
+  <interfaces>
+    <interface>
+      <name>TimestampOptimizer</name>
+      <kind>Abstract Base Class</kind>
+      <signature>class TimestampOptimizer(ABC): def optimize(segments: List[Dict], audio_path: str, language: str) -> OptimizationResult; @staticmethod def is_available() -> bool</signature>
+      <path>backend/app/ai_services/optimization/base.py</path>
+    </interface>
+    <interface>
+      <name>OptimizationResult</name>
+      <kind>Dataclass</kind>
+      <signature>@dataclass class OptimizationResult: segments: List[Dict[str, Any]], metrics: Dict[str, float], optimizer_name: str</signature>
+      <path>backend/app/ai_services/optimization/base.py</path>
+    </interface>
+    <interface>
+      <name>OptimizerFactory.create</name>
+      <kind>Static Factory Method</kind>
+      <signature>@staticmethod def create(engine: str = None) -> TimestampOptimizer</signature>
+      <path>backend/app/ai_services/optimization/factory.py</path>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>
+Testing framework: pytest (v7.4.4) with pytest-mock for mocking and pytest-cov for coverage reporting.
+Test organization: One test file per module in backend/tests/ directory.
+Test class pattern: TestClassName grouping related test methods.
+Naming convention: test_{method}_{scenario} (e.g., test_create_whisperx_available).
+Mocking strategy: Use unittest.mock.patch to mock external dependencies and method calls for isolated unit testing.
+Assertion style: pytest assert statements with isinstance() for type checking.
+Coverage targets: 90%+ for factory.py (all branches), 100% for base.py and stub implementations.
+No integration tests: Story 3.2a is architecture-only with no GPU/external dependencies - all tests are unit tests.
+Logging verification: Use caplog fixture to verify log messages at correct levels (info, warning).
+</standards>
+    <locations>
+      <location>backend/tests/</location>
+      <pattern>test_*.py</pattern>
+      <specific>backend/tests/test_optimization_factory.py (Story 3.2a primary test file)</specific>
+    </locations>
+    <ideas>
+      <test ac="#3,#5,#6">
+        <description>Test OptimizerFactory.create() mode selection for all three modes (whisperx, heuristic, auto)</description>
+        <cases>
+          - test_create_whisperx_available: Mock is_available()=True, verify WhisperXOptimizer returned
+          - test_create_whisperx_unavailable_fallback: Mock is_available()=False, verify HeuristicOptimizer returned with warning log
+          - test_create_heuristic: Verify HeuristicOptimizer always returned regardless of WhisperX availability
+          - test_create_auto_prefers_whisperx: Mock is_available()=True, verify WhisperXOptimizer selected with info log
+          - test_create_auto_fallback: Mock is_available()=False, verify HeuristicOptimizer selected with info log
+        </cases>
+      </test>
+      <test ac="#3,#6">
+        <description>Test OptimizerFactory error handling for invalid engine strings</description>
+        <cases>
+          - test_create_invalid_engine_raises_error: Pass engine="invalid", verify ValueError raised with descriptive message
+          - test_error_message_includes_valid_options: Verify error message lists valid options (whisperx, heuristic, auto)
+        </cases>
+      </test>
+      <test ac="#4,#6">
+        <description>Test OptimizerFactory default engine from settings</description>
+        <cases>
+          - test_create_uses_settings_default: Mock settings.OPTIMIZER_ENGINE="auto", call create() without engine param, verify auto mode behavior
+        </cases>
+      </test>
+      <test ac="#1,#2">
+        <description>Test TimestampOptimizer interface and OptimizationResult dataclass</description>
+        <cases>
+          - test_optimization_result_dataclass: Create instance, verify fields (segments, metrics, optimizer_name)
+          - test_timestamp_optimizer_is_abstract: Verify cannot instantiate TimestampOptimizer directly
+        </cases>
+      </test>
+      <test ac="#8">
+        <description>Test stub optimizer implementations</description>
+        <cases>
+          - test_whisperx_optimizer_is_available_false: Verify is_available() returns False when dependencies not installed
+          - test_whisperx_optimizer_optimize_not_implemented: Verify optimize() raises NotImplementedError with Story 3.2b reference
+          - test_heuristic_optimizer_is_available_true: Verify is_available() always returns True
+          - test_heuristic_optimizer_optimize_passthrough: Verify optimize() returns segments unchanged with metrics
+        </cases>
+      </test>
+    </ideas>
+  </tests>
+</story-context>

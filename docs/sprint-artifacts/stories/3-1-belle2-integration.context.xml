@@ -1,0 +1,254 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>1</storyId>
+    <title>BELLE-2 Integration</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>.bmad-ephemeral/stories/3-1-belle2-integration.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user transcribing Mandarin Chinese audio</asA>
+    <iWant>the system to automatically use the BELLE-2 model optimized for Chinese language</iWant>
+    <soThat>I receive significantly more accurate transcriptions with fewer repetitive errors and gibberish loops</soThat>
+    <tasks>
+- Task 1: Implement Belle2Service class (AC: #1, #3)
+  - Create `backend/app/ai_services/belle2_service.py`
+  - Implement `TranscriptionService` abstract interface
+  - Configure Chinese-specific decoder settings (forced language ID, temperature fallback, beam search)
+  - Load BELLE-2/Belle-whisper-large-v3-zh from HuggingFace Transformers
+  - Return segments in WhisperX format: `[{"start": float, "end": float, "text": str}]`
+  - Add `get_model_info()` method returning model metadata
+
+- Task 2: Implement ModelManager for lazy loading (AC: #2, #7)
+  - Create `backend/app/ai_services/model_manager.py`
+  - Implement lazy model loading (download on first transcription, not on startup)
+  - Cache loaded models in memory with LRU eviction policy (max 2 concurrent models)
+  - Track VRAM usage and enforce ~6GB footprint for BELLE-2
+  - Store models in `/root/.cache/huggingface/hub/` (HuggingFace default)
+  - Implement <5 second cache load time for subsequent uses
+
+- Task 3: Add fallback mechanism (AC: #8)
+  - Implement try/catch in Belle2Service initialization
+  - On BELLE-2 load failure: log error, return WhisperXService instance
+  - Update Redis status with fallback message: "BELLE-2 unavailable, using WhisperX fallback"
+  - Store fallback reason in model_metadata.json
+
+- Task 4: Update Celery transcription task
+  - Modify `backend/app/tasks/transcription.py` to support Belle2Service
+  - Add Redis stage: "Loading BELLE-2 model for Mandarin..." (progress: 20)
+  - Store model_metadata.json with selected engine and load time
+  - Handle model download progress updates (first-run scenario)
+
+- Task 5: Configure Docker for model caching (AC: #2)
+  - Update `docker-compose.yaml` with model cache volume
+  - Mount `/root/.cache/huggingface/` to persist BELLE-2 downloads
+  - Add environment variable `BELLE2_MODEL_NAME=BELLE-2/Belle-whisper-large-v3-zh`
+  - Document first-run model download (~3.1 GB, ~5-10 minutes)
+
+- Task 6: Write unit tests (AC: #5)
+  - Create `backend/tests/test_services_belle2.py`
+  - Mock HuggingFace Transformers to avoid GPU dependency
+  - Test `transcribe()` returns correct segment format
+  - Test Chinese decoder settings applied correctly
+  - Test `get_model_info()` returns expected metadata
+  - Test fallback mechanism with mocked load failure
+  - Achieve 70%+ coverage for belle2_service.py
+
+- Task 7: Write integration test (AC: #4, #6)
+  - Create `backend/tests/test_belle2_integration.py`
+  - Prepare 5-minute Mandarin audio test file (MP3 format)
+  - Test BELLE-2 transcription completes successfully
+  - Compare timestamps against WhisperX baseline (drift <200ms per segment)
+  - Calculate CER and verify improvement vs current pipeline
+  - Skip test if GPU not available (mark with `@pytest.mark.gpu`)
+
+- Task 8: Validate memory footprint (AC: #7)
+  - Add VRAM monitoring to integration test
+  - Use `nvidia-smi` or `torch.cuda.memory_allocated()` to measure usage
+  - Assert VRAM usage ≤6.5GB (allowing 0.5GB buffer)
+  - Document measurement in test output
+</tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. `belle2_service.py` implements `TranscriptionService` interface with Chinese-optimized decoder settings
+2. BELLE-2 model downloads from HuggingFace on first use, subsequent loads from cache in <5 seconds
+3. Transcription output format matches existing WhisperX format (segments with start, end, text)
+4. Timestamp alignment stability verified via click-to-timestamp navigation tests
+5. Unit tests mock BELLE-2 model to avoid GPU dependency during CI
+6. Integration test transcribes 5-minute Mandarin audio and verifies CER improvement
+7. Memory footprint validated: ~6GB VRAM usage
+8. Fallback mechanism tested: BELLE-2 load failure defaults to WhisperX with warning
+</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec-epic-3.md</path>
+        <title>Technical Specification - Epic 3: Multi-Model Transcription</title>
+        <section>Story 3.1: BELLE-2 Integration</section>
+        <snippet>Implements TranscriptionService interface with Chinese-optimized decoder settings. BELLE-2 model downloads from HuggingFace on first use, subsequent loads from cache in &lt;5 seconds. Memory footprint ~6GB VRAM. Fallback mechanism defaults to WhisperX with warning on load failure.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-3.md</path>
+        <title>Technical Specification - Epic 3: Multi-Model Transcription</title>
+        <section>Services and Modules</section>
+        <snippet>belle2_service.py: BELLE-2 Whisper-L3-zh transcription for Mandarin audio using HuggingFace Transformers with Chinese-specific decoder settings (forced language ID, temperature fallback, beam search). model_manager.py: Lazy-loads models to conserve GPU memory, implements LRU cache for frequently-used models, monitors VRAM usage.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-3.md</path>
+        <title>Technical Specification - Epic 3: Multi-Model Transcription</title>
+        <section>Performance Requirements</section>
+        <snippet>BELLE-2 targets same 1-2× realtime throughput as current Whisper large-v3. Model Loading Time: First load ≤30 seconds (model download), subsequent loads &lt;5 seconds (from cache). Memory Footprint: BELLE-2 maintains ~6GB VRAM (same as Whisper large-v3). Fallback to WhisperX on BELLE-2 load failure.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-3.md</path>
+        <title>Technical Specification - Epic 3: Multi-Model Transcription</title>
+        <section>Python Dependencies</section>
+        <snippet>New dependencies: transformers==4.36.0 (BELLE-2 model loading via HuggingFace). Use uv pip install for all backend dependencies. Pin exact versions for reproducibility. Run uv pip freeze > requirements.txt after adding packages.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture Document</title>
+        <section>AI Service Abstraction Strategy</section>
+        <snippet>Abstract TranscriptionService interface (lines 666-706) allows easy swapping of AI services. WhisperXService implements this interface. Belle2Service must implement same interface: transcribe(audio_path, language) returns List[Dict] with start/end/text, get_supported_languages() returns language codes, validate_audio_file(path) validates file accessibility.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epics Overview</title>
+        <section>Epic 3: Multi-Model Transcription Foundation</section>
+        <snippet>Dramatically improve Mandarin Chinese transcription quality by establishing pluggable multi-model ASR architecture. Integrate BELLE-2 whisper-large-v3-zh achieving 24-65% relative CER reduction. Story 3.1 is foundation story introducing BELLE-2 as first alternative to WhisperX, establishing multi-model architecture pattern for subsequent stories.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>backend/app/ai_services/base.py</path>
+        <kind>interface</kind>
+        <symbol>TranscriptionService</symbol>
+        <lines>10-74</lines>
+        <reason>Abstract base class that Belle2Service must implement. Defines transcribe(), get_supported_languages(), and validate_audio_file() methods.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/whisperx_service.py</path>
+        <kind>service</kind>
+        <symbol>WhisperXService</symbol>
+        <lines>all</lines>
+        <reason>Existing TranscriptionService implementation. Belle2Service should follow same implementation pattern: model loading, caching, error handling, segment format.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/tasks/transcription.py</path>
+        <kind>task</kind>
+        <symbol>transcribe_audio</symbol>
+        <lines>48+</lines>
+        <reason>Celery transcription task that needs modification to support Belle2Service. Must add model selection logic, fallback mechanism, and model metadata storage.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/docker-compose.yaml</path>
+        <kind>config</kind>
+        <symbol>worker.volumes</symbol>
+        <lines>59-63</lines>
+        <reason>Docker volume configuration for model caching. Currently has whisperx-models volume. Need to add model-cache volume for /root/.cache to persist BELLE-2 downloads across container restarts.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/conftest.py</path>
+        <kind>test-fixture</kind>
+        <symbol>mock_whisperx</symbol>
+        <lines>50-77</lines>
+        <reason>Test fixture pattern for mocking AI services. Belle2Service unit tests should follow same pattern: Mock HuggingFace Transformers components to avoid GPU dependency.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <python>
+        <package name="transformers" version="4.36.0">BELLE-2 model loading from HuggingFace</package>
+        <package name="torch" version="2.1.0+cu118">PyTorch with CUDA support (existing)</package>
+        <package name="fastapi" version="0.120.0">Web API framework (existing)</package>
+        <package name="celery" version="5.5.3">Task queue for async transcription (existing)</package>
+        <package name="redis" version="5.2.1">Message broker and status tracking (existing)</package>
+        <package name="pytest" version="7.4.4">Testing framework (existing)</package>
+        <package name="pytest-mock" version="3.12.0">Mocking utilities for tests (existing)</package>
+      </python>
+      <system>
+        <tool name="ffmpeg">Audio file processing (existing)</tool>
+        <tool name="nvidia-docker2">GPU access for model inference (existing)</tool>
+      </system>
+      <models>
+        <model name="BELLE-2/Belle-whisper-large-v3-zh" source="HuggingFace" size="~3.1 GB" cache="/root/.cache/huggingface/hub/">Chinese-optimized Whisper large-v3 full fine-tune</model>
+        <model name="whisperx/large-v2" source="OpenAI" size="~2.9 GB" cache="/root/.cache/whisperx/">Existing WhisperX model for fallback (existing)</model>
+      </models>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="interface">Must implement TranscriptionService abstract interface with transcribe(), get_supported_languages(), validate_audio_file() methods</constraint>
+    <constraint type="format">Transcription output must match WhisperX segment format: List[Dict] with 'start' (float seconds), 'end' (float seconds), 'text' (str)</constraint>
+    <constraint type="performance">Memory footprint must stay within ~6GB VRAM to fit on RTX 3070 Ti 16GB GPU (same as existing Whisper large-v3)</constraint>
+    <constraint type="performance">First model load ≤30 seconds (download), subsequent loads &lt;5 seconds (from cache)</constraint>
+    <constraint type="performance">Transcription speed must maintain 1-2× realtime throughput (same as current WhisperX)</constraint>
+    <constraint type="reliability">Fallback mechanism required: BELLE-2 load failure must default to WhisperX with warning log, not hard failure</constraint>
+    <constraint type="compatibility">Timestamp alignment stability: click-to-timestamp navigation must remain functional (drift &lt;200ms per segment vs WhisperX baseline)</constraint>
+    <constraint type="environment">Must use uv virtual environment: Activate with 'source .venv/Scripts/activate' before all Python commands</constraint>
+    <constraint type="environment">Install dependencies with 'uv pip install', not global pip</constraint>
+    <constraint type="testing">Unit tests must mock HuggingFace Transformers to avoid GPU dependency during CI</constraint>
+    <constraint type="testing">Integration tests must use @pytest.mark.gpu marker, skip if GPU unavailable</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>TranscriptionService.transcribe</name>
+      <kind>abstract method</kind>
+      <signature>def transcribe(self, audio_path: str, language: str = "en", **kwargs) -> List[Dict[str, Any]]</signature>
+      <path>backend/app/ai_services/base.py:20-50</path>
+      <description>BELLE-2 must implement this method. Returns segments with 'start' (float seconds), 'end' (float seconds), 'text' (str). Raises FileNotFoundError, ValueError, or RuntimeError on failure.</description>
+    </interface>
+    <interface>
+      <name>TranscriptionService.get_supported_languages</name>
+      <kind>abstract method</kind>
+      <signature>def get_supported_languages(self) -> List[str]</signature>
+      <path>backend/app/ai_services/base.py:52-60</path>
+      <description>Returns list of ISO 639-1 language codes. BELLE-2 should return ['zh', 'zh-CN', 'zh-TW'] for Chinese variants.</description>
+    </interface>
+    <interface>
+      <name>TranscriptionService.validate_audio_file</name>
+      <kind>abstract method</kind>
+      <signature>def validate_audio_file(self, audio_path: str) -> bool</signature>
+      <path>backend/app/ai_services/base.py:62-73</path>
+      <description>Validates audio file format and accessibility. Returns True if valid, False otherwise.</description>
+    </interface>
+    <interface>
+      <name>Belle2Service.get_model_info</name>
+      <kind>new method (story-specific)</kind>
+      <signature>def get_model_info(self) -> Dict</signature>
+      <path>(to be implemented in belle2_service.py)</path>
+      <description>Returns model metadata for logging: {'engine': 'belle2', 'model_version': str, 'device': str, 'vram_usage_gb': float}. Used for debugging and performance monitoring.</description>
+    </interface>
+    <interface>
+      <name>Redis Status Format (enhanced)</name>
+      <kind>external API</kind>
+      <signature>status messages include model info</signature>
+      <path>backend/app/services/redis_service.py</path>
+      <description>Status messages should include model selection info: "Loading BELLE-2 model for Mandarin..." (progress: 20). Backward compatible - frontend ignores new fields.</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Testing framework: pytest with pytest-mock for mocking. Coverage target: 70%+ for new modules (belle2_service.py, model_manager.py). Unit tests: Mock GPU-dependent components (HuggingFace Transformers) using unittest.mock (Mock, MagicMock, patch) to avoid hardware dependency. Integration tests: Mark with @pytest.mark.gpu, skip if GPU unavailable. Test fixtures: Define in conftest.py following existing mock_whisperx pattern. Environment isolation: All tests run in uv virtual environment (.venv). CI/CD: Unit tests run in GitHub Actions (no GPU), integration tests run on self-hosted GPU runner (nightly).</standards>
+    <locations>
+      <location>backend/tests/test_services_belle2.py</location>
+      <location>backend/tests/test_belle2_integration.py</location>
+      <location>backend/tests/conftest.py (add mock_belle2 fixture)</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Unit test: Mock HuggingFace WhisperProcessor and WhisperForConditionalGeneration. Call transcribe(), assert returns List[Dict] with start/end/text keys. Verify Chinese decoder settings applied (language='zh', num_beams=5, temperature fallback).</idea>
+      <idea ac="2">Unit test: Mock model loading. First call should trigger download simulation, assert load_time &gt; 5s. Second call should hit cache, assert load_time &lt; 5s.</idea>
+      <idea ac="3">Unit test: Mock transcribe() return value. Assert segment structure matches {'start': float, 'end': float, 'text': str}. Verify start &lt; end for all segments.</idea>
+      <idea ac="4">Integration test (@pytest.mark.gpu): Transcribe 5-min Mandarin audio with BELLE-2 and WhisperX. Compare timestamps, assert drift &lt;200ms per segment. Ensures click-to-timestamp compatibility.</idea>
+      <idea ac="5">Unit test: Patch transformers imports to raise ImportError. Verify Belle2Service construction handles gracefully or raises clear error (no GPU available).</idea>
+      <idea ac="6">Integration test (@pytest.mark.gpu): Transcribe 5-min Mandarin test audio. Calculate CER against reference transcript. Assert CER &lt; baseline (improvement demonstrated).</idea>
+      <idea ac="7">Integration test (@pytest.mark.gpu): Load BELLE-2 model, measure torch.cuda.memory_allocated(). Assert VRAM usage ≤6.5GB (6GB target + 0.5GB buffer).</idea>
+      <idea ac="8">Unit test: Mock HuggingFace download to raise connection error. Verify Belle2Service falls back to WhisperXService. Assert warning logged with reason. Verify Redis status updated with fallback message.</idea>
+    </ideas>
+  </tests>
+</story-context>
