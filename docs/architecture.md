@@ -746,6 +746,43 @@ Audio Input → BELLE-2/faster-whisper Transcription →
 OPTIMIZER_ENGINE=auto  # "whisperx" | "heuristic" | "auto"
 ```
 
+#### Timestamp Optimization Architecture
+
+**Components**
+
+- `TimestampOptimizer` abstract base and `TimestampSegment` typed dict ( `app/ai_services/optimization/base.py` ) define the contract shared by every optimizer.
+- `OptimizationResult` dataclass standardizes return payload (`segments`, `metrics`, `optimizer_name`) to decouple downstream services from implementation details.
+- `OptimizerFactory` ( `app/ai_services/optimization/factory.py` ) is the single entry point for creating optimizers and encapsulates `"whisperx"`, `"heuristic"`, and `"auto"` selection with logging.
+- Stub implementations:
+  - `WhisperXOptimizer` advertises availability only when forced-alignment dependencies are installed (Story 3.2b will activate the real logic).
+  - `HeuristicOptimizer` is always available and currently returns pass-through segments while recording metrics (future stories add VAD/refinement/splitting).
+
+**Configuration Surface**
+
+- `OPTIMIZER_ENGINE` (Pydantic `Literal["whisperx","heuristic","auto"]`) defaults to `auto`, which prefers WhisperX when available and logs a fallback to heuristics otherwise.
+- `ENABLE_OPTIMIZATION` feature flag (default `True`) lets us disable optimization globally without removing code paths—critical for rapid rollback during Epic 3.
+
+**Usage Example**
+
+```python
+from app.ai_services.optimization import OptimizerFactory
+from app.config import settings
+
+def optimize_segments(segments, audio_path: str):
+    if not settings.ENABLE_OPTIMIZATION:
+        return segments
+
+    optimizer = OptimizerFactory.create()  # honors settings.OPTIMIZER_ENGINE
+    result = optimizer.optimize(segments, audio_path=audio_path, language="zh")
+    return result.segments
+```
+
+**Benefits**
+
+1. New optimizers (Stories 3.3–3.5) simply implement `TimestampOptimizer`—no caller changes.
+2. Centralized logging/fallback decisions aid observability and troubleshooting.
+3. Typed segment/result structures keep contracts self-documenting and enable static analysis.
+
 **Git Submodule Setup:**
 ```bash
 # In backend/ directory

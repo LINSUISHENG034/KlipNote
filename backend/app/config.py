@@ -3,8 +3,9 @@ Configuration management using Pydantic Settings
 Loads environment variables from .env file or environment
 """
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional
+from typing import List, Literal, Optional
 import json
 
 
@@ -22,6 +23,22 @@ class Settings(BaseSettings):
 
     # BELLE-2 model settings
     BELLE2_MODEL_NAME: Optional[str] = None
+
+    # Epic 3: Timestamp Optimization Settings
+    OPTIMIZER_ENGINE: Literal["whisperx", "heuristic", "auto"] = Field(
+        default="auto",
+        description=(
+            "Timestamp optimizer strategy. 'auto' prefers WhisperX if available, "
+            "falling back to the heuristic implementation."
+        ),
+    )
+    ENABLE_OPTIMIZATION: bool = Field(
+        default=True,
+        description=(
+            "Feature flag for Epic 3 pipeline. Disable to bypass optimization and "
+            "return raw BELLE-2 segments."
+        ),
+    )
 
     # File Storage Configuration
     UPLOAD_DIR: str = "/uploads"
