@@ -34,7 +34,7 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 
 - **FR001:** System shall accept audio and video file uploads via web interface
 - **FR002:** System shall support common media formats including MP3, MP4, WAV, M4A, and other formats supported by FFmpeg
-- **FR003:** System shall process uploaded media files using multi-model transcription architecture (BELLE-2 for Chinese/Mandarin, WhisperX for other languages) with word-level timestamps, automatically detecting and preserving the original audio language
+- **FR003:** System shall process uploaded media files using empirically validated transcription model (selected through A/B comparison in Epic 3: BELLE-2 vs WhisperX for Chinese/Mandarin) with word-level timestamps, automatically detecting and preserving the original audio language
 - **FR003b:** System shall optimize Chinese/Mandarin transcription quality as primary use case with segment lengths suitable for subtitle editing workflows (typically 1-7 seconds per segment, maximum ~200 characters)
 - **FR004:** System shall queue multiple transcription jobs and process them sequentially using available GPU resources
 
@@ -76,7 +76,7 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 
 - **NFR004: Compatibility** - Web interface shall function on desktop, tablet, and mobile browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. System shall handle media files up to 2 hours duration (primary constraint for GPU processing). File size limit of 2GB serves as practical upload boundary, though actual constraint is processing duration.
 
-- **NFR005: Transcription Quality** - Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows. Segments should typically span 1-7 seconds with maximum ~200 characters to ensure usability in review and editing interfaces. Chinese/Mandarin transcription quality is prioritized as the primary use case.
+- **NFR005: Transcription Quality** - Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows. Segments should typically span 1-7 seconds with maximum ~200 characters to ensure usability in review and editing interfaces. Chinese/Mandarin transcription quality is prioritized as the primary use case. Model selection (BELLE-2 vs WhisperX) determined through empirical A/B testing in Epic 3 across comprehensive metrics: CER/WER accuracy, segment length compliance (1-7s / ≤200 chars), gibberish elimination, processing speed, and GPU memory efficiency.
 
 ---
 

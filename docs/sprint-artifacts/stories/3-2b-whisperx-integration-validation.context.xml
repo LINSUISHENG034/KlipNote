@@ -3,7 +3,7 @@
     <epicId>3</epicId>
     <storyId>2b</storyId>
     <title>WhisperX Integration Validation Experiment</title>
-    <status>drafted</status>
+    <status>done</status>
     <generatedAt>2025-11-13</generatedAt>
     <generator>BMAD Story Context Workflow</generator>
     <sourceStoryPath>.bmad-ephemeral/stories/3-2b-whisperx-integration-validation.md</sourceStoryPath>

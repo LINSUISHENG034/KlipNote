@@ -652,11 +652,13 @@ logger.error(f"WhisperX failed for job {job_id}: {error}", exc_info=True)
 **Decision:** Create `ai_services` module with abstract interface for transcription services, supporting multi-model architecture and pluggable optimization pipeline
 
 **Rationale:**
-1. **Multi-model support:** BELLE-2 for Chinese/Mandarin, faster-whisper for other languages
+1. **Multi-model support:** Chinese/Mandarin model selected through Epic 3 A/B testing (BELLE-2 vs WhisperX), faster-whisper for other languages
 2. **Pluggable optimization:** Interface-based optimizer design supporting multiple implementations (WhisperX wav2vec2 alignment, self-developed heuristics)
-3. **Architectural flexibility:** Configuration-driven optimizer selection prevents technology lock-in, enables easy replacement when better solutions emerge
+3. **Architectural flexibility:** Configuration-driven model and optimizer selection prevents technology lock-in, enables easy replacement when better solutions emerge
 4. **Service abstraction:** Easy to add future models or optimization techniques
 5. **Testing:** Mock AI service for unit tests without GPU dependency
+
+**Epic 3 Model Selection Status:** A/B comparison in progress - final selection pending comprehensive benchmark results (CER/WER, segment quality, gibberish elimination, speed, GPU memory).
 
 **Architecture:**
 ```python
@@ -683,11 +685,16 @@ class WhisperXService(TranscriptionService):
         return result["segments"]
 
 # app/ai_services/belle2_service.py - Epic 3 Chinese optimization
+# STATUS: Conditional - pending Epic 3 A/B test results (BELLE-2 vs WhisperX)
 from .base import TranscriptionService
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 class Belle2Service(TranscriptionService):
-    """BELLE-2 whisper-large-v3-zh for Chinese/Mandarin transcription"""
+    """BELLE-2 whisper-large-v3-zh for Chinese/Mandarin transcription
+
+    Note: This implementation validated in Story 3.1 (eliminated gibberish loops).
+    Final production usage pending Epic 3.2c A/B comparison vs WhisperX.
+    """
     def __init__(self, model_name: str = "BELLE-2/Belle-whisper-large-v3-zh", device: str = "cuda"):
         self.model = AutoModelForSpeechSeq2Seq.from_pretrained(model_name).to(device)
         self.processor = AutoProcessor.from_pretrained(model_name)
@@ -723,7 +730,7 @@ def get_transcription_service(language: str = "auto") -> TranscriptionService:
 
 **Optimization Pipeline Flow (Epic 3 - Pluggable Architecture):**
 ```
-Audio Input → BELLE-2/faster-whisper Transcription →
+Audio Input → [Selected Model: BELLE-2 or WhisperX]* Transcription →
 ┌─────────────────────────────────────────────────────┐
 │ TimestampOptimizer Interface (Story 3.2a)          │
 ├─────────────────────────────────────────────────────┤
@@ -738,6 +745,10 @@ Audio Input → BELLE-2/faster-whisper Transcription →
 │      - Intelligent Segment Splitting (Story 3.5)     │
 └─────────────────────────────────────────────────────┘
 → Quality Validation (Story 3.6) → Optimized Output
+
+* Model selection pending Epic 3.2c A/B comparison results
+  - BELLE-2: Validated in Story 3.1 (gibberish elimination)
+  - WhisperX: Full pipeline evaluation in Story 3.2c
 ```
 
 **Configuration (Story 3.2a):**
@@ -805,9 +816,13 @@ git submodule update --init --recursive
 
 **Hardware Requirements:**
 - **GPU:** NVIDIA GPU with CUDA support
-- **Minimum VRAM:** 8GB (recommended 12GB+ for large-v2/BELLE-2 models)
-- **CUDA Version:** 11.8 or 12.1+
-- **Driver:** NVIDIA driver 520+ (for CUDA 11.8) or 530+ (for CUDA 12.1)
+- **Minimum VRAM:** 8GB (recommended 12GB+ for large models)
+- **CUDA Version:** Depends on Epic 3.2c model selection
+  - BELLE-2: CUDA 11.8 (PyTorch <2.6, validated in Story 3.1)
+  - WhisperX: CUDA 12.x (PyTorch ≥2.6, required for CVE-2025-32434 security)
+- **Driver:** NVIDIA driver 520+ (for CUDA 11.8) or 530+ (for CUDA 12.1+)
+
+**Note:** Final CUDA version and PyTorch dependency determined by Epic 3.2c A/B test winner. Both models cannot coexist in single environment due to PyTorch version conflict.
 
 **Docker GPU Setup (Production Deployment):**
 

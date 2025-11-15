@@ -1,0 +1,73 @@
+{
+  "model": "belle2",
+  "test_dir": "..\\tests\\fixtures",
+  "timestamp": "2025-11-15 07:06:56",
+  "gpu_info": {
+    "available": true,
+    "device_name": "NVIDIA GeForce RTX 3070 Ti",
+    "device_count": 1,
+    "cuda_version": "12.1",
+    "pytorch_version": "2.5.1+cu121"
+  },
+  "test_files_count": 3,
+  "summary": {
+    "total_audio_duration_s": 368.12140589569157,
+    "total_processing_time_s": 141.6054117679596,
+    "total_segments": 14,
+    "avg_rtf": 0.3846704090011108,
+    "avg_throughput_x_realtime": 2.599628088359436,
+    "faster_than_realtime": true,
+    "rtf_by_file_size": {
+      "small_files_under_1min": 0.16011022312457512,
+      "medium_files_1_10min": 0.40045648098729275,
+      "large_files_over_10min": null
+    }
+  },
+  "results": [
+    {
+      "file": "en_jfk.wav",
+      "audio_duration_s": 11.0,
+      "transcription": {
+        "segment_count": 1,
+        "model": "belle2"
+      },
+      "performance": {
+        "processing_time_s": 1.8183820247650146,
+        "rtf": 0.16530745679681952,
+        "throughput_x_realtime": 6.049333885942644,
+        "segments_per_second": 0.549939444176604,
+        "faster_than_realtime": true
+      }
+    },
+    {
+      "file": "mandarin-test.mp3",
+      "audio_duration_s": 343.9429931972789,
+      "transcription": {
+        "segment_count": 12,
+        "model": "belle2"
+      },
+      "performance": {
+        "processing_time_s": 137.73420071601868,
+        "rtf": 0.40045648098729275,
+        "throughput_x_realtime": 2.4971502459757464,
+        "segments_per_second": 0.0871243303233137,
+        "faster_than_realtime": true
+      }
+    },
+    {
+      "file": "test_audio.mp3",
+      "audio_duration_s": 13.178412698412698,
+      "transcription": {
+        "segment_count": 1,
+        "model": "belle2"
+      },
+      "performance": {
+        "processing_time_s": 2.0528290271759033,
+        "rtf": 0.15577210049152282,
+        "throughput_x_realtime": 6.419634818074629,
+        "segments_per_second": 0.48713262856367034,
+        "faster_than_realtime": true
+      }
+    }
+  ]
+}

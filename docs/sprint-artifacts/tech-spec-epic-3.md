@@ -9,25 +9,32 @@ Status: In Progress - Architectural Adjustment Approved
 
 ## Overview
 
-Epic 3 dramatically improves Mandarin Chinese transcription segmentation quality through a **pluggable optimizer architecture** that supports multiple timestamp optimization implementations. Story 3.1 successfully integrated BELLE-2 to eliminate repetitive "gibberish loops," but production testing revealed that BELLE-2 produces overly long subtitle segments that violate standard subtitle timestamp conventions.
+Epic 3 selects the optimal Chinese transcription model through empirical A/B testing, then implements appropriate timestamp optimization to meet subtitle quality standards. Story 3.1 successfully integrated BELLE-2 to eliminate repetitive "gibberish loops," and Story 3.2b's phase gate validation revealed that WhisperX cannot coexist with BELLE-2 due to PyTorch security requirements (CVE-2025-32434). Rather than assume BELLE-2 superiority, Epic 3 now conducts comprehensive model comparison to make evidence-based architectural decision.
 
 ### Architectural Approach
 
-Following user requirements for **architectural flexibility over technology lock-in**, Epic 3 adopts a two-phase implementation strategy:
+Following user requirements for **evidence-based decisions over assumptions**, Epic 3 adopts a three-phase validation and implementation strategy:
 
-1. **Phase 1 (Stories 3.2a-3.2b): Pluggable Architecture + WhisperX Validation**
-   - Implement `TimestampOptimizer` abstract interface enabling multiple optimizer implementations
-   - Validate WhisperX wav2vec2 forced alignment as mature solution for timestamp optimization
-   - Phase Gate decision: GO/NO-GO for WhisperX based on objective success criteria
+1. **Phase 1 (Stories 3.2a-3.2b): Pluggable Architecture + Dependency Validation** ✅ COMPLETE
+   - ✅ Implemented `TimestampOptimizer` abstract interface enabling multiple optimizer implementations
+   - ✅ Validated WhisperX dependency constraints - discovered PyTorch conflict (CVE-2025-32434)
+   - ✅ Phase Gate decision: NO-GO for WhisperX optimizer integration with BELLE-2
+   - **Key finding:** BELLE-2 and WhisperX mutually exclusive due to PyTorch version requirements
 
-2. **Phase 2 (Stories 3.3-3.5): Heuristic Optimizer Implementation** *(Conditional)*
-   - Self-developed optimizer using VAD preprocessing, energy refinement, intelligent splitting
-   - Activates ONLY if Phase Gate decision is NO-GO for WhisperX
-   - Fallback ensures Epic 3 objectives achieved regardless of dependency conflicts
+2. **Phase 2 (Story 3.2c): BELLE-2 vs WhisperX Model Comparison** ⏳ NEW - IN PROGRESS
+   - Comprehensive A/B testing across all quality dimensions
+   - Isolated environment (`.venv-whisperx` with PyTorch 2.6+/CUDA 12.x) for WhisperX evaluation
+   - Comparison metrics: CER/WER accuracy, segment length compliance, gibberish elimination, speed, GPU memory
+   - Phase Gate decision: Select winner for production deployment
 
-3. **Phase 3 (Story 3.6): Quality Validation Framework** *(Required)*
+3. **Phase 3 (Stories 3.3-3.5): Optimization Implementation** *(Conditional on Phase 2 winner)*
+   - **If BELLE-2 wins:** Self-developed HeuristicOptimizer (VAD, refinement, splitting)
+   - **If WhisperX wins:** Leverage WhisperX built-in optimization pipeline
+   - Ensures optimal quality regardless of model selection
+
+4. **Phase 4 (Story 3.6): Quality Validation Framework** *(Required)*
    - Automated CER/WER calculation and segment length statistics
-   - Works with BOTH WhisperXOptimizer and HeuristicOptimizer implementations
+   - Works with winning model and its optimization approach
 
 ### Key Architectural Decisions
 
@@ -35,22 +42,33 @@ Following user requirements for **architectural flexibility over technology lock
 - **Decision:** Abstract interface with multiple implementations (WhisperX, Heuristic)
 - **Rationale:** Prevents technology lock-in, enables future optimizer upgrades, provides fallback strategy
 - **Trade-offs:** +3-5 days implementation time vs. long-term architectural flexibility
+- **Status:** ✅ Implemented in Story 3.2a
 
-**ADR-002: Two-Phase Implementation with Phase Gate**
-- **Decision:** Prioritize mature solution (WhisperX) validation before self-developed fallback
-- **Rationale:** Minimize development effort if proven solution works, de-risk through early validation
-- **Trade-offs:** Sequential execution (no parallel work) vs. early risk discovery
+**ADR-002: Three-Phase Implementation with Phase Gates**
+- **Decision:** Validate WhisperX dependencies (3.2b) → A/B test models (3.2c) → Implement winner's optimization
+- **Rationale:** Story 3.2b revealed PyTorch conflict making BELLE-2+WhisperX coexistence impossible. Rather than assume BELLE-2 superiority, conduct empirical comparison to select best model for production.
+- **Trade-offs:** +3-5 days for A/B testing vs. evidence-based architectural decision
+- **Status:** Phase 1 ✅ Complete (3.2a-3.2b), Phase 2 ⏳ In Progress (3.2c)
+
+**ADR-003: Evidence-Based Model Selection Over Assumptions**
+- **Decision:** Comprehensive A/B comparison (BELLE-2 vs WhisperX) across all quality dimensions
+- **Rationale:** User requirement for "哪个组件效果更好就使用哪个组件" - select objectively superior model rather than defaulting to BELLE-2. WhisperX offers "更加齐全的配套功能" that may eliminate need for Stories 3.3-3.5.
+- **Comparison Metrics:** CER/WER accuracy, segment length (1-7s/≤200 chars), gibberish elimination, processing speed, GPU memory efficiency
+- **Trade-offs:** Additional validation effort vs. confidence in long-term architecture
+- **Status:** ⏳ Story 3.2c in progress
+- **Date:** 2025-11-14
 
 ## Objectives and Scope
 
 **In Scope:**
 
-- **Pluggable Optimizer Architecture (Story 3.2a):** `TimestampOptimizer` abstract interface, `OptimizerFactory` with auto-selection logic, `OPTIMIZER_ENGINE` configuration setting
-- **WhisperX Integration Validation (Story 3.2b):** Isolated dependency testing, WhisperXOptimizer implementation, performance benchmarking, quality A/B testing, Phase Gate decision report
-- **Heuristic Optimizer - VAD Preprocessing (Story 3.3 - CONDITIONAL):** Voice Activity Detection filtering, silence removal, parameter optimization
-- **Heuristic Optimizer - Timestamp Refinement (Story 3.4 - CONDITIONAL):** Token-level timestamp extraction, energy-based boundary refinement
-- **Heuristic Optimizer - Segment Splitting (Story 3.5 - CONDITIONAL):** Intelligent splitting to meet 1-7 second conventions, Chinese text length estimation
-- **Quality Validation Framework (Story 3.6 - REQUIRED):** Automated CER/WER calculation, segment length statistics, regression testing
+- **Pluggable Optimizer Architecture (Story 3.2a):** ✅ COMPLETE - `TimestampOptimizer` abstract interface, `OptimizerFactory` with auto-selection logic, `OPTIMIZER_ENGINE` configuration setting
+- **WhisperX Integration Validation (Story 3.2b):** ✅ COMPLETE - Isolated dependency testing, WhisperXOptimizer implementation, Phase Gate decision report (NO-GO: PyTorch conflict)
+- **BELLE-2 vs WhisperX Model Comparison (Story 3.2c - NEW):** ⏳ IN PROGRESS - Comprehensive A/B testing across CER/WER accuracy, segment length compliance, gibberish elimination, processing speed, GPU memory efficiency. Isolated `.venv-whisperx` environment with PyTorch 2.6+/CUDA 12.x for WhisperX evaluation. Phase Gate decision: Select winner for production.
+- **Heuristic Optimizer - VAD Preprocessing (Story 3.3 - CONDITIONAL):** Voice Activity Detection filtering, silence removal, parameter optimization. *Activates only if BELLE-2 wins Story 3.2c comparison.*
+- **Heuristic Optimizer - Timestamp Refinement (Story 3.4 - CONDITIONAL):** Token-level timestamp extraction, energy-based boundary refinement. *Activates only if BELLE-2 wins Story 3.2c comparison.*
+- **Heuristic Optimizer - Segment Splitting (Story 3.5 - CONDITIONAL):** Intelligent splitting to meet 1-7 second conventions, Chinese text length estimation. *Activates only if BELLE-2 wins Story 3.2c comparison.*
+- **Quality Validation Framework (Story 3.6 - REQUIRED):** Automated CER/WER calculation, segment length statistics, regression testing. Works with winning model from Story 3.2c.
 
 **Out of Scope:**
 

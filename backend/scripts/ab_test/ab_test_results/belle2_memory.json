@@ -1,0 +1,88 @@
+{
+  "model": "belle2",
+  "test_dir": "..\\tests\\fixtures",
+  "timestamp": "2025-11-15 07:09:49",
+  "baseline_memory": {
+    "allocated_gb": 0.0,
+    "reserved_gb": 0.0
+  },
+  "test_files_count": 3,
+  "summary": {
+    "max_allocated_gb": 4.4244279861450195,
+    "max_reserved_gb": 5.078125,
+    "avg_peak_allocated_gb": 4.2074910799662275,
+    "avg_peak_reserved_gb": 4.903645833333333,
+    "files_with_gpu_monitoring": 3
+  },
+  "results": [
+    {
+      "file": "en_jfk.wav",
+      "transcription": {
+        "segment_count": 1,
+        "transcription_time_s": 18.78799796104431
+      },
+      "memory": {
+        "gpu_available": true,
+        "samples_count": 178,
+        "allocated": {
+          "min_gb": 0.0,
+          "max_gb": 4.0953216552734375,
+          "mean_gb": 0.9434206619691313,
+          "final_gb": 4.07681131362915
+        },
+        "reserved": {
+          "min_gb": 0.0,
+          "max_gb": 4.5546875,
+          "mean_gb": 1.036012113764045,
+          "final_gb": 4.5546875
+        }
+      }
+    },
+    {
+      "file": "mandarin-test.mp3",
+      "transcription": {
+        "segment_count": 12,
+        "transcription_time_s": 135.33379530906677
+      },
+      "memory": {
+        "gpu_available": true,
+        "samples_count": 1344,
+        "allocated": {
+          "min_gb": 2.883758544921875,
+          "max_gb": 4.4244279861450195,
+          "mean_gb": 4.196330777945972,
+          "final_gb": 4.133886337280273
+        },
+        "reserved": {
+          "min_gb": 4.5546875,
+          "max_gb": 5.078125,
+          "mean_gb": 4.997907366071429,
+          "final_gb": 5.078125
+        }
+      }
+    },
+    {
+      "file": "test_audio.mp3",
+      "transcription": {
+        "segment_count": 1,
+        "transcription_time_s": 1.9467201232910156
+      },
+      "memory": {
+        "gpu_available": true,
+        "samples_count": 20,
+        "allocated": {
+          "min_gb": 2.883758544921875,
+          "max_gb": 4.102723598480225,
+          "mean_gb": 3.9604673624038695,
+          "final_gb": 4.085458755493164
+        },
+        "reserved": {
+          "min_gb": 5.078125,
+          "max_gb": 5.078125,
+          "mean_gb": 5.078125,
+          "final_gb": 5.078125
+        }
+      }
+    }
+  ]
+}

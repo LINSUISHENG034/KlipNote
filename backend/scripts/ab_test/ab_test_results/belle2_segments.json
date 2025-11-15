@@ -1,0 +1,160 @@
+{
+  "model": "belle2",
+  "test_dir": "..\\tests\\fixtures",
+  "timestamp": "2025-11-15 07:01:05",
+  "test_files_count": 3,
+  "summary": {
+    "total_segments": 14,
+    "avg_compliance_both_pct": 0.0,
+    "avg_mean_duration_s": 17.53334027777778,
+    "avg_median_duration_s": 18.003,
+    "threshold_95_pct": 95.0,
+    "meets_threshold": false
+  },
+  "results": [
+    {
+      "file": "en_jfk.wav",
+      "transcription": {
+        "segment_count": 1,
+        "transcription_time_s": 23.85926842689514
+      },
+      "segment_stats": {
+        "count": 1,
+        "duration": {
+          "mean_s": 11.0,
+          "median_s": 11.0,
+          "min_s": 11.0,
+          "max_s": 11.0,
+          "std_s": 0.0,
+          "p25_s": 11.0,
+          "p75_s": 11.0,
+          "p95_s": 11.0
+        },
+        "char_count": {
+          "mean": 26.0,
+          "median": 26.0,
+          "min": 26,
+          "max": 26,
+          "std": 0.0,
+          "p95": 26.0
+        },
+        "compliance": {
+          "meets_1_7_seconds": 0,
+          "meets_1_7_seconds_pct": 0.0,
+          "meets_under_200_chars": 1,
+          "meets_under_200_chars_pct": 100.0,
+          "meets_both_constraints": 0,
+          "meets_both_constraints_pct": 0.0,
+          "too_short_under_1s": 0,
+          "too_short_under_1s_pct": 0.0,
+          "too_long_over_7s": 1,
+          "too_long_over_7s_pct": 100.0,
+          "too_many_chars_over_200": 0,
+          "too_many_chars_over_200_pct": 0.0
+        }
+      },
+      "quality_analysis": {
+        "empty_segments": 0,
+        "very_long_segments_over_15s": 0,
+        "very_short_segments_under_0.5s": 0,
+        "fragmentation_score": 0.0
+      }
+    },
+    {
+      "file": "mandarin-test.mp3",
+      "transcription": {
+        "segment_count": 12,
+        "transcription_time_s": 131.26958894729614
+      },
+      "segment_stats": {
+        "count": 12,
+        "duration": {
+          "mean_s": 28.59102083333333,
+          "median_s": 30.0,
+          "min_s": 13.092249999999979,
+          "max_s": 30.0,
+          "std_s": 4.673055233260966,
+          "p25_s": 30.0,
+          "p75_s": 30.0,
+          "p95_s": 30.0
+        },
+        "char_count": {
+          "mean": 182.16666666666666,
+          "median": 193.5,
+          "min": 68,
+          "max": 207,
+          "std": 36.20735038941986,
+          "p95": 205.35
+        },
+        "compliance": {
+          "meets_1_7_seconds": 0,
+          "meets_1_7_seconds_pct": 0.0,
+          "meets_under_200_chars": 7,
+          "meets_under_200_chars_pct": 58.333333333333336,
+          "meets_both_constraints": 0,
+          "meets_both_constraints_pct": 0.0,
+          "too_short_under_1s": 0,
+          "too_short_under_1s_pct": 0.0,
+          "too_long_over_7s": 12,
+          "too_long_over_7s_pct": 100.0,
+          "too_many_chars_over_200": 5,
+          "too_many_chars_over_200_pct": 41.66666666666667
+        }
+      },
+      "quality_analysis": {
+        "empty_segments": 0,
+        "very_long_segments_over_15s": 11,
+        "very_short_segments_under_0.5s": 0,
+        "fragmentation_score": 0.0
+      }
+    },
+    {
+      "file": "test_audio.mp3",
+      "transcription": {
+        "segment_count": 1,
+        "transcription_time_s": 2.3934288024902344
+      },
+      "segment_stats": {
+        "count": 1,
+        "duration": {
+          "mean_s": 13.009,
+          "median_s": 13.009,
+          "min_s": 13.009,
+          "max_s": 13.009,
+          "std_s": 0.0,
+          "p25_s": 13.009,
+          "p75_s": 13.009,
+          "p95_s": 13.009
+        },
+        "char_count": {
+          "mean": 28.0,
+          "median": 28.0,
+          "min": 28,
+          "max": 28,
+          "std": 0.0,
+          "p95": 28.0
+        },
+        "compliance": {
+          "meets_1_7_seconds": 0,
+          "meets_1_7_seconds_pct": 0.0,
+          "meets_under_200_chars": 1,
+          "meets_under_200_chars_pct": 100.0,
+          "meets_both_constraints": 0,
+          "meets_both_constraints_pct": 0.0,
+          "too_short_under_1s": 0,
+          "too_short_under_1s_pct": 0.0,
+          "too_long_over_7s": 1,
+          "too_long_over_7s_pct": 100.0,
+          "too_many_chars_over_200": 0,
+          "too_many_chars_over_200_pct": 0.0
+        }
+      },
+      "quality_analysis": {
+        "empty_segments": 0,
+        "very_long_segments_over_15s": 0,
+        "very_short_segments_under_0.5s": 0,
+        "fragmentation_score": 0.0
+      }
+    }
+  ]
+}

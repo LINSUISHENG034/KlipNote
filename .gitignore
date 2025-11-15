@@ -11,6 +11,7 @@ acli.exe
 _backend_old/
 .vscode/
 .cache/
+temp_whisperx/
 
 # Python Virtual Environments (Backend)
 # uv-managed environment
@@ -20,6 +21,8 @@ backend/.venv/
 .venv-linux/
 env/
 venv/
+.venv-test/
+.venv-whisperx/
 test-results/
 fixtures/
 reference/

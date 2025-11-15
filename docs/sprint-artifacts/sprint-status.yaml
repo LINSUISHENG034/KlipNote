@@ -60,9 +60,11 @@ development_status:
   epic-3: contexted
   3-1-belle2-integration: done
   3-2a-pluggable-optimizer-architecture: done
-  3-2b-whisperx-integration-validation: ready-for-dev
+  3-2b-whisperx-integration-validation: done
+  3-2c-belle2-vs-whisperx-model-comparison: done
   3-3-heuristic-vad-preprocessing: backlog
   3-4-heuristic-timestamp-refinement: backlog
   3-5-heuristic-segment-splitting: backlog
   3-6-quality-validation-framework: backlog
   epic-3-retrospective: optional
+

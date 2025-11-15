@@ -1,0 +1,417 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>3.2c</storyId>
+    <title>BELLE-2 vs WhisperX Model Comparison</title>
+    <status>done</status>
+    <generatedAt>2025-11-15</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/3-2c-belle2-vs-whisperx-model-comparison.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>product team</asA>
+    <iWant>comprehensive empirical comparison between BELLE-2 and WhisperX for Chinese transcription</iWant>
+    <soThat>we can make evidence-based decision on which model to use in production</soThat>
+    <tasks>
+      <!-- AC #1: Isolated WhisperX Environment Created -->
+      <task id="AC1">Create isolated WhisperX environment (.venv-whisperx) with PyTorch 2.6+ and CUDA 12.x, validate GPU acceleration without interfering with main .venv environment</task>
+
+      <!--  AC #2: Test Audio Corpus Prepared -->
+      <task id="AC2">Prepare test audio corpus (30-60 min total) covering 5 categories: clean speech, multiple speakers, background noise, long form, gibberish test cases, with ground truth transcriptions</task>
+
+      <!-- AC #3: A/B Testing Scripts Implemented -->
+      <task id="AC3-accuracy">Implement ab_test_accuracy.py - Calculate CER/WER for both models</task>
+      <task id="AC3-segments">Implement ab_test_segments.py - Analyze segment length compliance (1-7s, ≤200 chars)</task>
+      <task id="AC3-gibberish">Implement ab_test_gibberish.py - Detect repetition patterns and gibberish artifacts</task>
+      <task id="AC3-performance">Implement ab_test_performance.py - Measure GPU processing time and RTF</task>
+      <task id="AC3-memory">Implement ab_test_memory.py - Monitor peak VRAM usage via nvidia-smi</task>
+
+      <!-- AC #4: Comprehensive Benchmark Executed -->
+      <task id="AC4-belle2">Execute all 5 test scripts with BELLE-2 in main .venv</task>
+      <task id="AC4-whisperx">Execute all 5 test scripts with WhisperX in .venv-whisperx</task>
+      <task id="AC4-consolidate">Run consolidate_ab_results.py to generate summary JSON and markdown report</task>
+
+      <!-- AC #5: Phase Gate Decision Report Completed -->
+      <task id="AC5-comparison">Create side-by-side comparison table with weighted scoring (CER 30%, Segment 25%, Gibberish 25%, Speed 10%, Memory 10%)</task>
+      <task id="AC5-decision">Determine winner or apply tiebreaker rationale, provide GO/NO-GO recommendation</task>
+      <task id="AC5-adr">Finalize ADR-003 with selected model and confidence level</task>
+      <task id="AC5-lessons">Document lessons learned and risk assessment</task>
+
+      <!-- AC #6: Epic 3 Path Forward Defined -->
+      <task id="AC6-winner-path">If BELLE-2 wins: Confirm Stories 3.3-3.5 ready. If WhisperX wins: Define Stories 3.3-alt through 3.5-alt</task>
+      <task id="AC6-story36">Update Story 3.6 acceptance criteria for winning model</task>
+      <task id="AC6-dependencies">Document environment requirements and migration plan if WhisperX wins</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <!-- AC #1: Isolated WhisperX Environment Created -->
+    <criterion id="AC1" priority="critical">
+      <description>.venv-whisperx environment created separately from main .venv</description>
+      <validation>
+        - Run: cd backend && python -m venv .venv-whisperx
+        - Activate and verify: .venv-whisperx/Scripts/python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
+        - Expected: PyTorch version ≥2.6.0, CUDA available = True
+        - Verify main .venv unchanged: .venv/Scripts/python -c "import torch; print(torch.__version__)"
+      </validation>
+    </criterion>
+
+    <criterion id="AC2" priority="critical">
+      <description>Test audio corpus prepared with 30-60 min total, covering 5 categories, with ground truth available for ≥80%</description>
+      <validation>
+        - Verify backend/test_audio_corpus/ directory exists
+        - Check 5 categories present: clean_speech/, multiple_speakers/, background_noise/, long_form/, gibberish_test/
+        - Total duration check: sum all audio files ≥30 minutes
+        - Ground truth check: reference transcriptions exist for each category
+      </validation>
+    </criterion>
+
+    <criterion id="AC3" priority="critical">
+      <description>All 5 A/B testing scripts implemented and executable in both environments</description>
+      <validation>
+        - Files exist: backend/scripts/ab_test_accuracy.py, ab_test_segments.py, ab_test_gibberish.py, ab_test_performance.py, ab_test_memory.py
+        - Each script supports --model belle2|whisperx argument
+        - JSON output format consistent across scripts
+        - Execution time: <4 hours total for full test suite
+      </validation>
+    </criterion>
+
+    <criterion id="AC4" priority="critical">
+      <description>Comprehensive benchmark executed for both models with results captured</description>
+      <validation>
+        - Output directories exist: backend/ab_test_results/belle2/, backend/ab_test_results/whisperx/
+        - Each directory contains: accuracy.json, segments.json, gibberish.json, performance.json, memory.json
+        - ab_test_summary.json exists with consolidated comparison
+        - ab_test_report.md exists with human-readable summary
+      </validation>
+    </criterion>
+
+    <criterion id="AC5" priority="critical">
+      <description>Phase Gate decision report completed with clear winner identified</description>
+      <validation>
+        - File exists: docs/phase-gate-story-3-2c.md
+        - Report contains: executive summary, weighted comparison table, tiebreaker rationale (if needed), GO/NO-GO recommendation
+        - Decision confidence level documented: High/Medium/Low
+        - ADR-003 finalized in docs/sprint-artifacts/tech-spec-epic-3.md
+      </validation>
+    </criterion>
+
+    <criterion id="AC6" priority="critical">
+      <description>Epic 3 path forward clearly defined based on winning model</description>
+      <validation>
+        - Path documented within 24 hours of decision
+        - Next story (3.3 or 3.3-alt) ready for immediate start
+        - Story 3.6 acceptance criteria updated for winning model
+        - No blockers to Epic 3 continuation
+      </validation>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <!-- PRD Context -->
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Requirements - FR003b</section>
+        <snippet>System shall optimize Chinese/Mandarin transcription quality as primary use case with segment lengths suitable for subtitle editing workflows (typically 1-7 seconds per segment, maximum ~200 characters). Model selection (BELLE-2 vs WhisperX) determined through empirical A/B testing in Epic 3.</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>NFR005 - Transcription Quality</section>
+        <snippet>Model selection (BELLE-2 vs WhisperX) determined through empirical A/B testing in Epic 3 across comprehensive metrics: CER/WER accuracy, segment length compliance (1-7s / ≤200 chars), gibberish elimination, processing speed, and GPU memory efficiency.</snippet>
+      </doc>
+
+      <!-- Architecture Context -->
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>AI Service Abstraction Strategy</section>
+        <snippet>Multi-model support: Chinese/Mandarin model selected through Epic 3 A/B testing (BELLE-2 vs WhisperX), faster-whisper for other languages. Epic 3 Model Selection Status: A/B comparison in progress - final selection pending comprehensive benchmark results (CER/WER, segment quality, gibberish elimination, speed, GPU memory).</snippet>
+      </doc>
+
+      <!-- Tech Spec Epic 3 Context -->
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: Chinese Transcription Quality Optimization</title>
+        <section>ADR-002: Three-Phase Implementation with Phase Gates</section>
+        <snippet>Story 3.2b revealed PyTorch conflict making BELLE-2+WhisperX coexistence impossible. Rather than assume BELLE-2 superiority, conduct empirical comparison to select best model for production. Phase 2 (Story 3.2c): BELLE-2 vs WhisperX Model Comparison - IN PROGRESS.</snippet>
+      </doc>
+
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-3.md</path>
+        <title>Epic Technical Specification: Chinese Transcription Quality Optimization</title>
+        <section>ADR-003: Evidence-Based Model Selection Over Assumptions</section>
+        <snippet>User requirement for "哪个组件效果更好就使用哪个组件" - select objectively superior model rather than defaulting to BELLE-2. WhisperX offers "更加齐全的配套功能" that may eliminate need for Stories 3.3-3.5. Comparison Metrics: CER/WER accuracy, segment length (1-7s/≤200 chars), gibberish elimination, processing speed, GPU memory efficiency.</snippet>
+      </doc>
+
+      <!-- Phase Gate Report 3.2b -->
+      <doc>
+        <path>docs/phase-gate-story-3-2b.md</path>
+        <title>Phase Gate Decision Report: Story 3.2b WhisperX Integration Validation</title>
+        <section>Decision: NO-GO for WhisperX Optimizer Integration with BELLE-2</section>
+        <snippet>PyTorch dependency conflict discovered: CVE-2025-32434 requires PyTorch ≥2.6 for security, but BELLE-2 validated with CUDA 11.8 / PyTorch &lt;2.6 in Story 3.1. Cannot satisfy both in single environment. Recommendation: Proceed with Story 3.2c for comprehensive BELLE-2 vs WhisperX comparison.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <!-- Optimizer Architecture Files -->
+      <file>
+        <path>backend/app/ai_services/optimization/base.py</path>
+        <kind>interface</kind>
+        <symbol>TimestampOptimizer</symbol>
+        <lines>71-143</lines>
+        <reason>Abstract interface defining optimize() method that both BELLE-2 and WhisperX implementations must use for A/B testing consistency</reason>
+      </file>
+
+      <file>
+        <path>backend/app/ai_services/optimization/factory.py</path>
+        <kind>factory</kind>
+        <symbol>OptimizerFactory</symbol>
+        <lines>19-112</lines>
+        <reason>Factory pattern for creating optimizer instances - will be used to switch between BELLE-2 and WhisperX environments during A/B testing</reason>
+      </file>
+
+      <!-- Model Service Files -->
+      <file>
+        <path>backend/app/ai_services/belle2_service.py</path>
+        <kind>service</kind>
+        <symbol>Belle2Service</symbol>
+        <lines>25-377</lines>
+        <reason>BELLE-2 transcription service - baseline model for comparison, implements TranscriptionService interface</reason>
+      </file>
+
+      <file>
+        <path>backend/app/ai_services/whisperx_service.py</path>
+        <kind>service</kind>
+        <symbol>WhisperXService</symbol>
+        <lines>1-end</lines>
+        <reason>WhisperX transcription service - comparison model, must be tested in isolated .venv-whisperx environment</reason>
+      </file>
+
+      <!-- Optimizer Implementations -->
+      <file>
+        <path>backend/app/ai_services/optimization/whisperx_optimizer.py</path>
+        <kind>optimizer</kind>
+        <symbol>WhisperXOptimizer</symbol>
+        <lines>1-end</lines>
+        <reason>WhisperX optimizer implementation - uses wav2vec2 forced alignment, will be tested if WhisperX wins model comparison</reason>
+      </file>
+
+      <file>
+        <path>backend/app/ai_services/optimization/heuristic_optimizer.py</path>
+        <kind>optimizer</kind>
+        <symbol>HeuristicOptimizer</symbol>
+        <lines>1-end</lines>
+        <reason>Heuristic optimizer implementation - fallback for BELLE-2, provides VAD/refinement/splitting pipeline</reason>
+      </file>
+
+      <!-- Configuration -->
+      <file>
+        <path>backend/app/config.py</path>
+        <kind>config</kind>
+        <symbol>Settings</symbol>
+        <lines>28-41</lines>
+        <reason>Optimizer configuration settings - OPTIMIZER_ENGINE and ENABLE_OPTIMIZATION flags used for testing both models</reason>
+      </file>
+
+      <!-- Existing Test Scripts -->
+      <file>
+        <path>backend/scripts/benchmark_optimizer.py</path>
+        <kind>script</kind>
+        <symbol>N/A</symbol>
+        <lines>1-end</lines>
+        <reason>Existing benchmarking script - reference for implementing ab_test_performance.py</reason>
+      </file>
+
+      <file>
+        <path>backend/scripts/quality_ab_test.py</path>
+        <kind>script</kind>
+        <symbol>N/A</symbol>
+        <lines>1-end</lines>
+        <reason>Existing quality testing script - reference for implementing ab_test_accuracy.py and ab_test_segments.py</reason>
+      </file>
+    </code>
+
+    <dependencies>
+      <python version="3.12">
+        <!-- Core Dependencies -->
+        <package name="torch" version="≥2.6.0 (WhisperX env) / &lt;2.6 (BELLE-2 env)" purpose="PyTorch - CRITICAL: Version conflict drives environment isolation strategy" />
+        <package name="torchaudio" version="compatible with torch" purpose="Audio processing for PyTorch" />
+        <package name="transformers" version="≥4.48.0" purpose="HuggingFace transformers for BELLE-2 model loading" />
+        <package name="faster-whisper" version="≥1.1.1" purpose="Whisper implementation for transcription" />
+        <package name="librosa" version="≥0.10.0" purpose="Audio loading and preprocessing" />
+
+        <!-- A/B Testing Dependencies -->
+        <package name="jiwer" version="3.0.3" purpose="CER/WER calculation for accuracy metrics" />
+        <package name="numpy" version="&lt;2.1.0" purpose="Numerical operations for metrics calculation" />
+        <package name="pandas" version="≥2.2.3,&lt;2.3.0" purpose="Data analysis for benchmark results" />
+
+        <!-- Testing Infrastructure -->
+        <package name="pytest" version="7.4.4" purpose="Unit and integration testing framework" />
+        <package name="pytest-mock" version="3.12.0" purpose="Mocking for isolated tests" />
+        <package name="pytest-cov" version="4.1.0" purpose="Code coverage measurement" />
+      </python>
+
+      <system>
+        <tool name="nvidia-smi" purpose="Monitor GPU memory usage during benchmarking" />
+        <tool name="CUDA" version="11.8 (BELLE-2) / 12.x (WhisperX)" purpose="GPU acceleration - version determines model compatibility" />
+      </system>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="technical" priority="critical">
+      <description>PyTorch Version Conflict</description>
+      <detail>BELLE-2 requires PyTorch &lt;2.6 (CUDA 11.8 validated in Story 3.1), WhisperX requires PyTorch ≥2.6 (CVE-2025-32434 security). Cannot coexist in single environment. MUST use isolated .venv-whisperx for WhisperX testing.</detail>
+    </constraint>
+
+    <constraint type="technical" priority="critical">
+      <description>Environment Isolation Required</description>
+      <detail>All WhisperX testing must occur in .venv-whisperx environment. All BELLE-2 testing must occur in main .venv environment. Test scripts must support --model argument to switch between environments during execution.</detail>
+    </constraint>
+
+    <constraint type="quality" priority="high">
+      <description>Statistical Significance</description>
+      <detail>Minimum 30 minutes total audio across diverse scenarios required for statistically valid comparison. Each category (clean speech, multiple speakers, etc.) must be represented to ensure generalizability.</detail>
+    </constraint>
+
+    <constraint type="performance" priority="high">
+      <description>GPU Memory Budget</description>
+      <detail>Target ≤8GB VRAM for both models to ensure deployment on standard GPUs. Peak memory usage must be measured during benchmark execution.</detail>
+    </constraint>
+
+    <constraint type="quality" priority="high">
+      <description>Segment Length Compliance</description>
+      <detail>Success requires 95% of segments meeting 1-7 second duration AND &lt;200 character constraints. This is Epic 3's core objective and primary evaluation criterion.</detail>
+    </constraint>
+
+    <constraint type="architectural" priority="high">
+      <description>Decision Transparency</description>
+      <detail>Phase Gate decision must be evidence-based with documented weighted scoring. Tiebreaker criteria (Gibberish > Segment Compliance > CER) must be applied if scores within 5%. User (PM Link) has final approval on model selection.</detail>
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <!-- Transcription Service Interface -->
+    <interface>
+      <name>TranscriptionService</name>
+      <kind>Python Abstract Base Class</kind>
+      <signature>
+        class TranscriptionService(ABC):
+            def transcribe(audio_path: str, language: str = "zh") -> List[Dict[str, Any]]
+            def validate_audio_file(audio_path: str) -> bool
+            def get_model_info() -> Dict[str, Any]
+      </signature>
+      <path>backend/app/ai_services/base.py</path>
+      <reason>Both BELLE-2Service and WhisperXService implement this interface - ensures consistent API for A/B testing</reason>
+    </interface>
+
+    <!-- Optimizer Interface -->
+    <interface>
+      <name>TimestampOptimizer</name>
+      <kind>Python Abstract Base Class</kind>
+      <signature>
+        class TimestampOptimizer(ABC):
+            def optimize(segments: Sequence[TimestampSegment], audio_path: str, language: str = "zh") -> OptimizationResult
+            @staticmethod
+            def is_available() -> bool
+      </signature>
+      <path>backend/app/ai_services/optimization/base.py</path>
+      <reason>Defines optimization pipeline interface - used for comparing optimization strategies if WhisperX wins</reason>
+    </interface>
+
+    <!-- A/B Test Script Interface (Convention) -->
+    <interface>
+      <name>A/B Test Script Convention</name>
+      <kind>Command Line Interface</kind>
+      <signature>
+        python backend/scripts/ab_test_*.py --model [belle2|whisperx] --output [path]
+
+        Output Format (JSON):
+        {
+          "model": "belle2" | "whisperx",
+          "metrics": {...},
+          "timestamp": "ISO 8601",
+          "environment": {...}
+        }
+      </signature>
+      <path>backend/scripts/</path>
+      <reason>All 5 A/B test scripts must follow this convention for consistent execution and result consolidation</reason>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing follows pytest framework with pytest-mock for mocking and pytest-cov for coverage measurement. Unit tests use fakeredis for Redis mocking and httpx for FastAPI endpoint testing. Integration tests validate end-to-end workflows. Coverage target: 70%+ for business logic, 80%+ for critical paths. All tests must run in isolation without GPU dependencies using mocked AI services.
+    </standards>
+
+    <locations>
+      <location>backend/tests/</location>
+      <location>backend/tests/test_*_optimizer.py - Optimizer unit tests</location>
+      <location>backend/tests/test_*_service.py - Service unit tests</location>
+      <location>backend/scripts/ab_test_*.py - A/B testing scripts (integration)</location>
+    </locations>
+
+    <ideas>
+      <!-- AC #1 Tests -->
+      <test ac="AC1" type="integration">
+        <description>Test .venv-whisperx environment creation and isolation</description>
+        <approach>Script creates .venv-whisperx, activates it, verifies PyTorch ≥2.6, CUDA available, WhisperX imports successfully. Verify main .venv unchanged (PyTorch &lt;2.6 still present).</approach>
+      </test>
+
+      <!-- AC #2 Tests -->
+      <test ac="AC2" type="validation">
+        <description>Validate test audio corpus completeness</description>
+        <approach>Script scans backend/test_audio_corpus/, verifies 5 categories exist, calculates total duration ≥30 min, checks ground truth file presence for each category.</approach>
+      </test>
+
+      <!-- AC #3 Tests -->
+      <test ac="AC3" type="unit">
+        <description>Test ab_test_accuracy.py CER/WER calculation</description>
+        <approach>Mock transcription results and reference texts, verify CER/WER formulas using jiwer library, validate JSON output format.</approach>
+      </test>
+
+      <test ac="AC3" type="unit">
+        <description>Test ab_test_segments.py compliance calculation</description>
+        <approach>Synthetic segments with known durations/lengths, verify 1-7s compliance rate, ≤200 char compliance rate, both constraints compliance calculation.</approach>
+      </test>
+
+      <test ac="AC3" type="unit">
+        <description>Test ab_test_gibberish.py repetition detection</description>
+        <approach>Create test cases with known repetition patterns (n-gram analysis), verify detection accuracy, test scoring system (None/Minor/Major).</approach>
+      </test>
+
+      <test ac="AC3" type="integration">
+        <description>Test ab_test_performance.py GPU timing</description>
+        <approach>Run on small test audio, measure processing time, calculate RTF (Real-Time Factor), verify RTF ≤0.5 threshold checking.</approach>
+      </test>
+
+      <test ac="AC3" type="integration">
+        <description>Test ab_test_memory.py VRAM monitoring</description>
+        <approach>Execute nvidia-smi parsing during transcription, capture peak VRAM usage, verify ≤8GB threshold checking, handle nvidia-smi unavailable gracefully.</approach>
+      </test>
+
+      <!-- AC #4 Tests -->
+      <test ac="AC4" type="end-to-end">
+        <description>Full benchmark execution for both models</description>
+        <approach>Run all 5 scripts sequentially for both BELLE-2 and WhisperX, verify results saved to correct directories, check JSON format consistency, validate consolidate_ab_results.py merging logic.</approach>
+      </test>
+
+      <!-- AC #5 Tests -->
+      <test ac="AC5" type="validation">
+        <description>Weighted scoring calculation verification</description>
+        <approach>Test weighted average formula (CER 30% + Segment 25% + Gibberish 25% + Speed 10% + Memory 10% = 100%), verify tiebreaker logic triggers when scores within 5%, validate decision confidence assignment.</approach>
+      </test>
+
+      <!-- AC #6 Tests -->
+      <test ac="AC6" type="validation">
+        <description>Validate path forward documentation completeness</description>
+        <approach>Check appropriate stories defined (3.3-3.5 if BELLE-2, 3.3-alt to 3.5-alt if WhisperX), verify Story 3.6 AC updated, environment migration plan documented if WhisperX wins.</approach>
+      </test>
+    </ideas>
+  </tests>
+</story-context>
