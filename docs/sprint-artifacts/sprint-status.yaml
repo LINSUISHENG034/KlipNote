@@ -1,4 +1,4 @@
-# generated: 2025-11-07
+# generated: 2025-11-15
 # project: KlipNote
 # project_key: KlipNote
 # tracking_system: file-system
@@ -9,6 +9,7 @@
 # Epic Status:
 #   - backlog: Epic exists in epic file but not contexted
 #   - contexted: Epic tech context created (required before drafting stories)
+#   - done: Epic completed with all stories resolved
 #
 # Story Status:
 #   - backlog: Story only exists in epic file
@@ -17,6 +18,8 @@
 #   - in-progress: Developer actively working on implementation
 #   - review: Under SM review (via code-review workflow)
 #   - done: Story completed
+#   - cancelled: Story cancelled (e.g., superseded by different approach)
+#   - moved-to-epic-X: Story moved to different epic
 #
 # Retrospective Status:
 #   - optional: Can be completed but not required
@@ -29,14 +32,14 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
 
-generated: 2025-11-07
+generated: 2025-11-15
 project: KlipNote
 project_key: KlipNote
 tracking_system: file-system
 story_location: "{project-root}/docs/stories"
 
 development_status:
-  epic-1: contexted
+  epic-1: done
   1-1-project-scaffolding-and-development-environment: done
   1-2-backend-api-upload-endpoint: done
   1-3-celery-task-queue-and-whisperx-integration: done
@@ -45,9 +48,9 @@ development_status:
   1-6-frontend-progress-monitoring: done
   1-7-frontend-transcription-display: done
   1-8-ui-refactoring-with-stitch-design-system: done
-  epic-1-retrospective: done
+  epic-1-retrospective: completed
 
-  epic-2: contexted
+  epic-2: done
   2-1-media-playback-api-endpoint: done
   2-2-frontend-media-player-integration: done
   2-3-click-to-timestamp-navigation: done
@@ -55,16 +58,26 @@ development_status:
   2-5-export-api-endpoint-with-data-flywheel: done
   2-6-frontend-export-functionality: done
   2-7-mvp-release-checklist-and-final-validation: done
-  epic-2-retrospective: done
+  epic-2-retrospective: completed
 
-  epic-3: contexted
+  epic-3: done
   3-1-belle2-integration: done
   3-2a-pluggable-optimizer-architecture: done
   3-2b-whisperx-integration-validation: done
   3-2c-belle2-vs-whisperx-model-comparison: done
-  3-3-heuristic-vad-preprocessing: backlog
-  3-4-heuristic-timestamp-refinement: backlog
-  3-5-heuristic-segment-splitting: backlog
-  3-6-quality-validation-framework: backlog
-  epic-3-retrospective: optional
+  3-3-heuristic-vad-preprocessing: cancelled
+  3-4-heuristic-timestamp-refinement: cancelled
+  3-5-heuristic-segment-splitting: cancelled
+  3-6-quality-validation-framework: moved-to-epic-4
+  epic-3-retrospective: completed
+
+  epic-4: backlog
+  4-1-multi-model-production-architecture: backlog
+  4-2-model-agnostic-vad-preprocessing: backlog
+  4-3-model-agnostic-timestamp-refinement: backlog
+  4-4-model-agnostic-segment-splitting: backlog
+  4-5-enhancement-pipeline-composition: backlog
+  4-6-multi-model-quality-validation: backlog
+  4-7-mvp-model-selection-and-handoff: backlog
+  epic-4-retrospective: optional
 

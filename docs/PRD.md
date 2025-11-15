@@ -34,7 +34,7 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 
 - **FR001:** System shall accept audio and video file uploads via web interface
 - **FR002:** System shall support common media formats including MP3, MP4, WAV, M4A, and other formats supported by FFmpeg
-- **FR003:** System shall process uploaded media files using empirically validated transcription model (selected through A/B comparison in Epic 3: BELLE-2 vs WhisperX for Chinese/Mandarin) with word-level timestamps, automatically detecting and preserving the original audio language
+- **FR003:** System shall process uploaded media files using empirically validated transcription model (BELLE-2 or WhisperX selected for MVP based on Epic 3 A/B comparison; both models validated, multi-model support planned for post-MVP Epic 4) with word-level timestamps, automatically detecting and preserving the original audio language
 - **FR003b:** System shall optimize Chinese/Mandarin transcription quality as primary use case with segment lengths suitable for subtitle editing workflows (typically 1-7 seconds per segment, maximum ~200 characters)
 - **FR004:** System shall queue multiple transcription jobs and process them sequentially using available GPU resources
 
@@ -76,7 +76,7 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 
 - **NFR004: Compatibility** - Web interface shall function on desktop, tablet, and mobile browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. System shall handle media files up to 2 hours duration (primary constraint for GPU processing). File size limit of 2GB serves as practical upload boundary, though actual constraint is processing duration.
 
-- **NFR005: Transcription Quality** - Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows. Segments should typically span 1-7 seconds with maximum ~200 characters to ensure usability in review and editing interfaces. Chinese/Mandarin transcription quality is prioritized as the primary use case. Model selection (BELLE-2 vs WhisperX) determined through empirical A/B testing in Epic 3 across comprehensive metrics: CER/WER accuracy, segment length compliance (1-7s / ≤200 chars), gibberish elimination, processing speed, and GPU memory efficiency.
+- **NFR005: Transcription Quality** - Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows. Segments should typically span 1-7 seconds with maximum ~200 characters to ensure usability in review and editing interfaces. Chinese/Mandarin transcription quality is prioritized as the primary use case. Model selection determined through empirical A/B testing in Epic 3 (Stories 3.2b-3.2c) validating both BELLE-2 and WhisperX across comprehensive metrics: CER/WER accuracy, segment length compliance (1-7s / ≤200 chars), gibberish elimination, processing speed, and GPU memory efficiency. MVP ships with [selected model TBD], multi-model framework deferred to post-MVP Epic 4.
 
 ---
 
@@ -186,17 +186,28 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 
 ## Epic List
 
-**Epic 1: Foundation & Core Transcription Workflow**
+**Epic 1: Foundation & Core Transcription Workflow** ✅ COMPLETE
 - Establish project infrastructure, API backend, and basic web frontend with end-to-end upload → transcription → display capability
-- **Estimated Stories:** 6-8 stories
-- **Deliverable:** Users can upload media files and receive AI transcription results
+- **Stories:** 8 stories (1.1-1.8)
+- **Deliverable:** ✅ Users can upload media files and receive AI transcription results
 
-**Epic 2: Integrated Review & Export Experience**
+**Epic 2: Integrated Review & Export Experience** ✅ COMPLETE
 - Build the differentiated review interface with click-to-timestamp navigation, inline editing, and export capabilities including data flywheel foundation
-- **Estimated Stories:** 5-7 stories
-- **Deliverable:** Complete MVP - users can review, edit, and export transcriptions with data persistence
+- **Stories:** 7 stories (2.1-2.7)
+- **Deliverable:** ✅ Complete MVP - users can review, edit, and export transcriptions with data persistence
 
-**Total Estimated Stories:** 11-15 stories (within Level 2 guidance of 10-15 stories)
+**Epic 3: Chinese Transcription Model Selection & Pluggable Architecture Foundation** ✅ COMPLETE
+- Conduct evidence-based comparison between BELLE-2 and WhisperX, establish pluggable optimizer architecture
+- **Stories:** 4 stories (3.1, 3.2a, 3.2b, 3.2c); 3 stories cancelled (3.3-3.5)
+- **Deliverable:** ✅ Both models validated, pluggable architecture proven, foundation for multi-model framework
+
+**Epic 4: Multi-Model Transcription Framework & Composable Enhancements** 📋 POST-MVP
+- Production multi-model architecture with model-agnostic enhancement components (VAD, timestamp refinement, segment splitting)
+- **Estimated Stories:** 7 stories (4.1-4.7)
+- **Deliverable:** Multi-model framework supporting 2+ transcription engines with composable enhancement pipeline
+
+**MVP Scope:** Epics 1-3 + Single Model Selection (Story 4.7 decision)
+**Post-MVP:** Epic 4 (Multi-Model Framework)
 
 > **Note:** Detailed epic breakdown with full story specifications is available in [epics.md](./epics.md)
 

@@ -354,17 +354,25 @@ So that we can confidently release a reliable, production-ready application.
 
 ---
 
-## Epic 3: Chinese Transcription Quality Optimization
+## Epic 3: Chinese Transcription Model Selection & Pluggable Architecture Foundation ✅ COMPLETE
+
+**Status:** COMPLETE (2025-11-15)
 
 **Expanded Goal:**
 
-Dramatically improve Mandarin Chinese transcription segmentation quality by implementing a comprehensive optimization pipeline inspired by WhisperDesktop's production-validated techniques. Story 3.1 successfully integrated BELLE-2 to eliminate repetitive "gibberish loops," but production testing revealed that segments are too long for practical subtitle editing workflows (often 10-30+ seconds instead of 1-7 second industry standard). This epic implements VAD preprocessing, token-level timestamp optimization, energy-based refinement, and intelligent segment splitting to achieve 30-40% segmentation quality improvement. Upon completion, 95% of subtitle segments meet industry-standard length conventions (1-7 seconds, <200 characters), enabling the core review→edit→export workflow for Chinese content—KlipNote's primary use case.
+Conduct evidence-based comparison between BELLE-2 and WhisperX transcription models for Chinese/Mandarin audio, establish pluggable architecture supporting multiple models and optimizers, and validate both models in production-ready isolated environments.
 
-**Deliverable:** Optimized Chinese transcription with 95% of segments meeting subtitle-length standards (1-7s, <200 chars)
+**Deliverable:** ✅ Both BELLE-2 and WhisperX validated, pluggable optimizer architecture established, A/B comparison data collected, foundation ready for multi-model framework (Epic 4)
+
+**Key Findings:**
+- BELLE-2 successfully eliminates gibberish loops (Story 3.1)
+- WhisperX functional in isolated environment despite PyTorch conflicts (Story 3.2b)
+- Both models demonstrate value in different scenarios (Story 3.2c)
+- Pluggable architecture (OptimizerFactory, TranscriptionService) proven effective
 
 ---
 
-**Story 3.1: BELLE-2 Integration**
+**Story 3.1: BELLE-2 Integration** ✅ COMPLETE
 
 As a user transcribing Mandarin Chinese audio,
 I want the system to automatically use the BELLE-2 model optimized for Chinese language,
@@ -384,7 +392,7 @@ So that I receive significantly more accurate transcriptions with fewer repetiti
 
 ---
 
-**Story 3.2a: Pluggable Optimizer Architecture Design**
+**Story 3.2a: Pluggable Optimizer Architecture Design** ✅ COMPLETE
 
 As a system architect,
 I want a pluggable timestamp optimization interface,
@@ -404,7 +412,7 @@ So that multiple optimizer implementations can coexist and be selected via confi
 
 ---
 
-**Story 3.2b: WhisperX Integration Validation Experiment**
+**Story 3.2b: WhisperX Integration Validation Experiment** ✅ COMPLETE
 
 As a developer,
 I want to validate WhisperX wav2vec2 forced alignment integration feasibility,
@@ -428,7 +436,27 @@ So that we can make an informed Phase Gate decision on using mature solutions vs
 
 ---
 
-**Story 3.3: Heuristic Optimizer - VAD Preprocessing**
+**Story 3.2c: BELLE-2 vs WhisperX Model Comparison** ✅ COMPLETE
+
+As a product team,
+I want comprehensive empirical comparison between BELLE-2 and WhisperX for Chinese transcription,
+So that we can make evidence-based decision on which model to use in production.
+
+**Acceptance Criteria:**
+1. Isolated WhisperX environment created (`.venv-whisperx`) with PyTorch 2.6+/CUDA 12.x
+2. Test audio corpus prepared (30-60 min Chinese audio across diverse scenarios)
+3. A/B testing scripts implemented for 5 comparison metrics (accuracy, segments, gibberish, performance, memory)
+4. Comprehensive benchmark executed on both BELLE-2 and WhisperX
+5. Phase Gate Decision Report completed with side-by-side metric comparison
+6. Epic 3 path forward defined based on A/B test results
+
+**Prerequisites:** Story 3.2b (WhisperX dependency validation complete)
+
+**Status:** COMPLETE - Both models validated, multi-model framework approach selected (Epic 4)
+
+---
+
+**~~Story 3.3: Heuristic Optimizer - VAD Preprocessing~~** ❌ CANCELLED
 
 As a user transcribing audio with background noise or silence,
 I want the system to filter out non-speech segments and optimize decoder parameters,
@@ -448,9 +476,15 @@ So that transcription segments are more focused and accurately timed.
 
 **Note:** This story activates only if Story 3.2b Phase Gate decides against WhisperX. Part of HeuristicOptimizer implementation.
 
+**Cancellation Rationale:**
+Superseded by Epic 4 multi-model framework approach. Original Story 3.3-3.5 designed for single-model (BELLE-2) optimization. Epic 3 A/B testing (Story 3.2c) revealed both models have production value, leading to architectural evolution toward model-agnostic enhancement components rather than BELLE-2-specific optimization.
+
+**Status:** Cancelled (2025-11-15)
+**Moved to:** Epic 4.2 (model-agnostic VAD component)
+
 ---
 
-**Story 3.4: Heuristic Optimizer - Token-Level Timestamps & Energy-Based Refinement**
+**~~Story 3.4: Heuristic Optimizer - Token-Level Timestamps & Energy-Based Refinement~~** ❌ CANCELLED
 
 As a user navigating transcriptions via click-to-timestamp,
 I want segment boundaries refined at natural speech breaks,
@@ -470,9 +504,14 @@ So that playback jumps feel smooth and aligned with actual speech patterns.
 
 **Note:** This story activates only if Story 3.2b Phase Gate decides against WhisperX. Part of HeuristicOptimizer implementation.
 
+**Cancellation Rationale:** Same as Story 3.3
+
+**Status:** Cancelled (2025-11-15)
+**Moved to:** Epic 4.3 (model-agnostic timestamp refinement component)
+
 ---
 
-**Story 3.5: Heuristic Optimizer - Intelligent Segment Splitting for Subtitle Standards**
+**~~Story 3.5: Heuristic Optimizer - Intelligent Segment Splitting for Subtitle Standards~~** ❌ CANCELLED
 
 As a user editing Chinese subtitles,
 I want long segments automatically split into subtitle-standard lengths,
@@ -493,9 +532,14 @@ So that each subtitle is readable and conforms to industry conventions.
 
 **Note:** This story activates only if Story 3.2b Phase Gate decides against WhisperX. Part of HeuristicOptimizer implementation.
 
+**Cancellation Rationale:** Same as Story 3.3
+
+**Status:** Cancelled (2025-11-15)
+**Moved to:** Epic 4.4 (model-agnostic segment splitting component)
+
 ---
 
-**Story 3.6: Quality Validation Framework & Optimization Measurement**
+**~~Story 3.6: Quality Validation Framework & Optimization Measurement~~** → MOVED TO EPIC 4
 
 As a system maintainer,
 I want automated quality validation measuring segment length statistics and transcription accuracy,
@@ -515,11 +559,186 @@ So that I can objectively measure optimization improvements and prevent quality 
 
 **Note:** This story is required regardless of Phase Gate decision. Works with both WhisperXOptimizer and HeuristicOptimizer.
 
+**Status:** Moved to Epic 4.6
+**Rationale:** Quality validation framework needed for multi-model comparison in Epic 4, not single-model optimization
+
 ---
 
-**Deferred to Epic 4:**
+**Epic 3 Retrospective:**
 
-The original Epic 3 stories focused on multi-model architecture sophistication (language detection & model routing, SenseVoice pilot, performance monitoring, documentation & deployment) have been deferred to **Epic 4: Advanced Multi-Model Architecture**. The deferred stories remain valuable and will be implemented after the optimization pipeline is proven effective on BELLE-2. This prioritization ensures quality optimization precedes model sophistication—addressing the root cause (segmentation quality) before adding system complexity (model selection).
+Epic 3 delivered exceptional value by discovering that **both** models warrant production support rather than forcing a single-model choice. This insight directly informed the architectural evolution toward a general-purpose multi-model framework (Epic 4). The pluggable architecture foundation (Stories 3.2a) enables Epic 4 implementation without rework.
+
+**Next Epic:** Epic 4 - Multi-Model Transcription Framework & Composable Enhancements
+
+---
+
+## Epic 4: Multi-Model Transcription Framework & Composable Enhancements
+
+**Status:** 📋 PLANNED (Post-MVP)
+
+**Expanded Goal:**
+
+Build production multi-model architecture where multiple transcription engines (BELLE-2, WhisperX, and future models) can coexist with model-agnostic enhancement components (VAD preprocessing, timestamp refinement, segment splitting, speaker identification). Enable runtime model selection and component composition, allowing users to mix-and-match transcription engines and enhancements based on specific content needs.
+
+**Deliverable:** Production-ready multi-model framework with composable enhancement pipeline supporting 2+ transcription models and 3+ enhancement components
+
+**Key Capabilities:**
+- Runtime transcription model selection (BELLE-2, WhisperX, configurable default)
+- Model-agnostic enhancement components (work with any transcription model)
+- Environment management strategy for PyTorch dependency conflicts
+- Component composition framework (mix-and-match VAD, refinement, splitting)
+- Multi-model quality validation and regression testing
+
+**Strategic Context:**
+
+Epic 3 validated that both BELLE-2 and WhisperX offer distinct value:
+- **BELLE-2:** Eliminates gibberish loops, optimized for Mandarin Chinese
+- **WhisperX:** Rich feature set, built-in forced alignment, broader language support
+
+Rather than forcing a single-model choice for production, Epic 4 operationalizes the pluggable architecture foundation (Story 3.2a) to support both models with shared enhancement components.
+
+---
+
+**Story 4.1: Multi-Model Production Architecture Design** 📋 PLANNED
+
+As a system architect,
+I want a production deployment strategy supporting multiple transcription models with isolated environments,
+So that BELLE-2 and WhisperX can coexist without PyTorch dependency conflicts.
+
+**Acceptance Criteria:**
+1. Architecture decision record (ADR) documents multi-environment production strategy
+2. Docker Compose configuration supports model-specific containers (belle2-worker, whisperx-worker)
+3. Celery task routing directs jobs to appropriate worker based on model selection
+4. Environment isolation prevents PyTorch version conflicts (CUDA 11.8 for BELLE-2, CUDA 12.x for WhisperX)
+5. Model selection configuration via environment variables or runtime API parameters
+6. Documentation updated: deployment guide, environment requirements, model selection logic
+
+**Prerequisites:** Epic 3 complete (both models validated)
+
+---
+
+**Story 4.2: Model-Agnostic VAD Preprocessing Component** 📋 PLANNED
+
+As a user transcribing audio with background noise or silence,
+I want the system to filter out non-speech segments regardless of which transcription model is used,
+So that transcription segments are more focused and accurately timed.
+
+**Acceptance Criteria:**
+1. `VoiceActivityDetector` component implemented as standalone preprocessing step
+2. Works with any transcription model output (BELLE-2, WhisperX, future models)
+3. WebRTC VAD integrated with configurable aggressiveness (0-3)
+4. VAD filtering removes silence segments >1s duration
+5. Processing completes in <5 minutes for 1-hour audio
+6. Unit tests with mocked audio, integration tests on noisy samples
+7. Component can be enabled/disabled via configuration
+
+**Prerequisites:** Story 4.1 (production architecture)
+
+---
+
+**Story 4.3: Model-Agnostic Timestamp Refinement Component** 📋 PLANNED
+
+As a user navigating transcriptions via click-to-timestamp,
+I want segment boundaries refined at natural speech breaks regardless of transcription model,
+So that playback jumps feel smooth and aligned with actual speech patterns.
+
+**Acceptance Criteria:**
+1. `TimestampRefiner` component works with any model's segment output
+2. Energy-based refinement analyzes audio waveform (librosa)
+3. Boundary refinement searches ±200ms for optimal split point (minimum energy)
+4. Timestamp alignment maintains <200ms accuracy vs. original outputs
+5. Processing completes in <5 minutes for 500 segments
+6. Works with both BELLE-2 and WhisperX segment formats
+7. Component can be enabled/disabled via configuration
+
+**Prerequisites:** Story 4.2 (VAD component pattern established)
+
+---
+
+**Story 4.4: Model-Agnostic Segment Splitting Component** 📋 PLANNED
+
+As a user editing Chinese subtitles,
+I want long segments automatically split into subtitle-standard lengths regardless of transcription model,
+So that each subtitle is readable and conforms to industry conventions.
+
+**Acceptance Criteria:**
+1. `SegmentSplitter` component works with any model's segment output
+2. Segments >7 seconds split at natural boundaries (punctuation, pauses)
+3. Chinese text length estimation implemented (character count × 0.4s)
+4. Short segments <1s merged when safe
+5. 95% of output segments meet 1-7s, <200 char constraints
+6. Processing completes in <3 minutes for 500 segments
+7. Works with both BELLE-2 and WhisperX segment formats
+8. Component can be enabled/disabled via configuration
+
+**Prerequisites:** Story 4.3 (refinement component pattern established)
+
+---
+
+**Story 4.5: Enhancement Pipeline Composition Framework** 📋 PLANNED
+
+As a system,
+I want a composable pipeline where enhancement components can be chained in configurable order,
+So that different combinations of VAD, refinement, and splitting can be applied based on content needs.
+
+**Acceptance Criteria:**
+1. `EnhancementPipeline` class supports dynamic component chaining
+2. Configuration-driven pipeline definition (YAML or environment variables)
+3. Pipeline examples: "VAD only", "VAD + Refine", "VAD + Refine + Split", "No enhancements"
+4. Component execution order configurable
+5. Pipeline metrics collected (processing time per component)
+6. Error handling: component failures don't crash entire pipeline
+7. Documentation: configuration guide, common pipeline recipes
+
+**Prerequisites:** Stories 4.2, 4.3, 4.4 (all components implemented)
+
+---
+
+**Story 4.6: Multi-Model Quality Validation Framework** 📋 PLANNED
+
+As a system maintainer,
+I want automated quality validation measuring metrics across multiple models and enhancement configurations,
+So that I can objectively compare model+enhancement combinations and prevent regressions.
+
+**Acceptance Criteria:**
+1. Quality validator calculates CER/WER using jiwer library
+2. Segment length statistics (mean, median, P95, % meeting constraints)
+3. Cross-model comparison reports (BELLE-2 vs WhisperX with same enhancements)
+4. Baseline regression testing against Story 3.2c A/B test results
+5. Quality metrics stored per model+enhancement configuration
+6. CLI tool for manual validation and baseline generation
+7. Unit tests verify metric calculations
+8. Integration test validates metrics across both models
+
+**Prerequisites:** Story 4.5 (pipeline framework complete)
+
+---
+
+**Story 4.7: MVP Model Selection & Epic 4 Handoff Preparation** 📋 PLANNED
+
+As a product team,
+I want to select one model for MVP deployment and document Epic 4 roadmap,
+So that MVP ships on schedule while preserving multi-model evolution path.
+
+**Acceptance Criteria:**
+1. MVP model selection decision documented (BELLE-2 or WhisperX based on Story 3.2c data)
+2. Selected model configured as production default
+3. Non-selected model documented for Epic 4 integration
+4. Epic 4 roadmap finalized with story priorities
+5. Technical debt documented: areas where single-model shortcuts were taken
+6. Handoff documentation: what Epic 4 implementers need to know
+7. MVP deployment guide updated with selected model
+
+**Prerequisites:** Story 4.6 (validation framework ready for Epic 4 execution)
+
+---
+
+**Epic 4 Estimated Timeline:** 10-15 days (post-MVP)
+
+**Epic 4 Dependencies:**
+- Epic 3 complete ✅
+- MVP shipped with single model
+- Production infrastructure available for multi-worker deployment
 
 ---
 

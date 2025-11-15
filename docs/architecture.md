@@ -658,7 +658,7 @@ logger.error(f"WhisperX failed for job {job_id}: {error}", exc_info=True)
 4. **Service abstraction:** Easy to add future models or optimization techniques
 5. **Testing:** Mock AI service for unit tests without GPU dependency
 
-**Epic 3 Model Selection Status:** A/B comparison in progress - final selection pending comprehensive benchmark results (CER/WER, segment quality, gibberish elimination, speed, GPU memory).
+**Epic 3 Update (2025-11-15):** Both BELLE-2 and WhisperX validated in Epic 3 (Stories 3.2b-3.2c). MVP ships with single model selected via Story 4.7. Multi-model production deployment (both models available) implemented in Epic 4 using Docker Compose multi-worker architecture.
 
 **Architecture:**
 ```python
@@ -751,10 +751,21 @@ Audio Input → [Selected Model: BELLE-2 or WhisperX]* Transcription →
   - WhisperX: Full pipeline evaluation in Story 3.2c
 ```
 
-**Configuration (Story 3.2a):**
+**Configuration (Story 3.2a - Epic 3 Complete):**
 ```python
 # .env
 OPTIMIZER_ENGINE=auto  # "whisperx" | "heuristic" | "auto"
+# MVP: Single optimizer based on selected model
+# Epic 4: Model-agnostic enhancement components (VAD, refine, split)
+```
+
+**Epic 4 Enhancement Pipeline (Post-MVP):**
+```python
+# .env
+ENHANCEMENT_PIPELINE=vad,refine,split  # Composable components
+VAD_ENABLED=true
+TIMESTAMP_REFINE_ENABLED=true
+SEGMENT_SPLIT_ENABLED=true
 ```
 
 #### Timestamp Optimization Architecture
@@ -823,6 +834,35 @@ git submodule update --init --recursive
 - **Driver:** NVIDIA driver 520+ (for CUDA 11.8) or 530+ (for CUDA 12.1+)
 
 **Note:** Final CUDA version and PyTorch dependency determined by Epic 3.2c A/B test winner. Both models cannot coexist in single environment due to PyTorch version conflict.
+
+**Epic 3 Outcome & Epic 4 Deployment Strategy:**
+
+Epic 3 (Story 3.2c) confirmed both models warrant production support:
+- **BELLE-2:** CUDA 11.8 / PyTorch <2.6 (validated in `.venv`)
+- **WhisperX:** CUDA 12.x / PyTorch ≥2.6 (validated in `.venv-whisperx`)
+
+**MVP Deployment (Single Model):**
+- Select one model via Story 4.7 based on A/B test results
+- Deploy single Docker worker container with chosen model's CUDA version
+- Other model archived for Epic 4 integration
+
+**Epic 4 Deployment (Multi-Model):**
+- Docker Compose multi-worker architecture:
+  ```yaml
+  services:
+    belle2-worker:
+      image: klipnote-worker-cuda118
+      environment:
+        - MODEL=belle2
+    whisperx-worker:
+      image: klipnote-worker-cuda12
+      environment:
+        - MODEL=whisperx
+    web:
+      # Routes jobs to appropriate worker based on model selection
+  ```
+- Celery task routing: `@app.task(queue='belle2')` or `@app.task(queue='whisperx')`
+- Zero environment conflicts: isolated containers per model
 
 **Docker GPU Setup (Production Deployment):**
 
@@ -923,6 +963,13 @@ WHISPER_COMPUTE_TYPE=float16  # GPU: float16, CPU: int8 for speed
 **Development Environment (Optimization & Experimentation):**
 - **Runtime:** Local Python `.venv` with direct GPU access
 - **Purpose:** Rapid parameter tuning, optimization experiments, algorithm development
+
+**Epic 3 Status (2025-11-15):**
+- ✅ `.venv`: BELLE-2 validated (CUDA 11.8)
+- ✅ `.venv-whisperx`: WhisperX validated (CUDA 12.x)
+- 📋 MVP: One environment selected for deployment
+- 📋 Epic 4: Both environments productionized with Docker multi-worker
+
 - **Setup:**
   ```bash
   # Create virtual environment with CUDA support
