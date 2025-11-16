@@ -617,6 +617,28 @@ So that BELLE-2 and WhisperX can coexist without PyTorch dependency conflicts.
 
 ---
 
+**Story 4.1b: Frontend Model Selection UI** 📋 PLANNED
+
+As a user,
+I want to select which transcription model to use before uploading my file,
+So that I can choose between BELLE-2 and WhisperX based on my specific needs.
+
+**Acceptance Criteria:**
+1. Upload view displays model selection control (radio buttons or dropdown)
+2. Model options: "BELLE-2 (Mandarin-optimized)" and "WhisperX (Multi-language)"
+3. Default selection: BELLE-2 (configurable via environment variable)
+4. Selected model stored in component state (Pinia store)
+5. Upload API call includes `model` parameter based on user selection
+6. Model selection persists in localStorage for user convenience
+7. Tooltip/help text explains key differences between models
+8. Responsive design: model selection works on mobile/tablet
+9. Backend validates model parameter and routes to appropriate worker
+10. Integration test: Upload with each model, verify correct worker processes job
+
+**Prerequisites:** Story 4.1 (multi-model backend architecture)
+
+---
+
 **Story 4.2: Model-Agnostic VAD Preprocessing Component** 📋 PLANNED
 
 As a user transcribing audio with background noise or silence,

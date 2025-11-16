@@ -413,9 +413,10 @@ npm list --depth=0
   // services/api.ts
   const API_BASE = 'http://localhost:8000'
 
-  export async function uploadFile(file: File) {
+  export async function uploadFile(file: File, model: 'belle2' | 'whisperx' = 'belle2') {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('model', model)
 
     const response = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
