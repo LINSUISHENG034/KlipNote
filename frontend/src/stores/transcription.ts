@@ -25,6 +25,9 @@ export const useTranscriptionStore = defineStore('transcription', {
 
     // Story 2.4: Inline editing with revert capability
     originalSegments: [] as Segment[],  // Pristine segments from API (for cancel/revert)
+
+    // Story 4.1b: Model selection (AC#4)
+    selectedModel: 'belle2' as 'belle2' | 'whisperx',  // Default: BELLE-2 (AC#3)
   }),
 
   getters: {
@@ -190,6 +193,40 @@ export const useTranscriptionStore = defineStore('transcription', {
         } catch (error) {
           console.error('Failed to parse localStorage edits:', error)
           // Fall back to API result (already loaded)
+          localStorage.removeItem(key)
+        }
+      }
+    },
+
+    // Story 4.1b: Model selection actions (AC#4)
+    setSelectedModel(model: 'belle2' | 'whisperx') {
+      this.selectedModel = model
+    },
+
+    saveModelToLocalStorage() {
+      const key = 'klipnote_selected_model'
+      try {
+        localStorage.setItem(key, this.selectedModel)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+          console.warn('localStorage quota exceeded for model selection.')
+        } else {
+          console.error('Failed to save model selection to localStorage:', error)
+        }
+      }
+    },
+
+    loadModelFromLocalStorage() {
+      const key = 'klipnote_selected_model'
+      const saved = localStorage.getItem(key)
+
+      if (saved && (saved === 'belle2' || saved === 'whisperx')) {
+        this.selectedModel = saved
+      } else {
+        // Invalid or missing value - fallback to default (AC#6)
+        this.selectedModel = 'belle2'
+        if (saved) {
+          // Clear invalid value
           localStorage.removeItem(key)
         }
       }

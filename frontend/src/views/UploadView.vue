@@ -2,9 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import FileUpload from '@/components/FileUpload.vue'
+import ModelSelector from '@/components/ModelSelector.vue'
 import { uploadFile } from '@/services/api'
+import { useTranscriptionStore } from '@/stores/transcription'
 
 const router = useRouter()
+const store = useTranscriptionStore()
 const selectedFile = ref<File | null>(null)
 const isUploading = ref(false)
 const errorMessage = ref<string | null>(null)
@@ -24,7 +27,8 @@ async function handleUpload() {
   errorMessage.value = null
 
   try {
-    const response = await uploadFile(selectedFile.value)
+    // Story 4.1b: Pass selected model from store to API (AC#5)
+    const response = await uploadFile(selectedFile.value, store.selectedModel)
     // Navigate to progress page with job_id
     router.push(`/progress/${response.job_id}`)
   } catch (error) {
@@ -41,10 +45,10 @@ async function onFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   if (target.files && target.files[0]) {
     // 1. 调用现有的函数来设置文件
-    handleFileSelected(target.files[0]) 
-    
+    handleFileSelected(target.files[0])
+
     // 2. 立即调用上传函数！
-    await handleUpload() 
+    await handleUpload()
   }
 }
 
@@ -70,6 +74,11 @@ defineExpose({
           <p class="text-sm text-slate-500">
             Supported formats: MP3, MP4, WAV, M4A
           </p>
+        </div>
+
+        <!-- Story 4.1b: Model selection UI (AC#1, AC#2) -->
+        <div class="mt-6">
+          <ModelSelector />
         </div>
 
         <!-- Upload button with Material Symbol icon -->

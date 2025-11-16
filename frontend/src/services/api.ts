@@ -5,12 +5,14 @@ const API_BASE_URL = 'http://localhost:8000'
 /**
  * Upload a media file to the backend for transcription processing
  * @param file - The audio or video file to upload
+ * @param model - The transcription model to use ('belle2' or 'whisperx')
  * @returns Promise resolving to UploadResponse with job_id
  * @throws Error if upload fails, with error.detail from API or generic message
  */
-export async function uploadFile(file: File): Promise<UploadResponse> {
+export async function uploadFile(file: File, model: 'belle2' | 'whisperx' = 'belle2'): Promise<UploadResponse> {
   const formData = new FormData()
   formData.append('file', file)
+  formData.append('model', model)  // Story 4.1b: Include model selection (AC#5)
 
   try {
     const response = await fetch(`${API_BASE_URL}/upload`, {

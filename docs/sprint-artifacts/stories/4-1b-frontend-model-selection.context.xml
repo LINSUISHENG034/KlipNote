@@ -1,0 +1,427 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4.1b</storyId>
+    <title>Frontend Model Selection UI</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-16</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-1b-frontend-model-selection.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user</asA>
+    <iWant>to select which transcription model to use before uploading my file</iWant>
+    <soThat>I can choose between BELLE-2 and WhisperX based on my specific needs</soThat>
+    <tasks>
+### Phase 1: Component Implementation (AC: #1, #2, #3)
+- [ ] Create ModelSelector.vue component in `frontend/src/components/`
+  - [ ] Radio button group for model selection (AC: #1)
+  - [ ] BELLE-2 and WhisperX options with labels (AC: #2)
+  - [ ] Default selection logic (AC: #3)
+- [ ] Add component to UploadView.vue
+  - [ ] Position above file upload button
+  - [ ] Integrate with existing upload form
+
+### Phase 2: State Management (AC: #4, #5, #6)
+- [ ] Update Pinia transcription store (AC: #4)
+  - [ ] Add `selectedModel` state field
+  - [ ] Add `setSelectedModel()` action
+  - [ ] Add `loadModelFromLocalStorage()` action
+- [ ] Update upload API call (AC: #5)
+  - [ ] Modify `src/services/api.ts` uploadFile() to accept model parameter
+  - [ ] Send model as FormData field
+- [ ] Implement localStorage persistence (AC: #6)
+  - [ ] Save on model change
+  - [ ] Load on app initialization
+  - [ ] Handle missing/invalid localStorage values
+
+### Phase 3: UX Enhancements (AC: #7, #8)
+- [ ] Add tooltip/help text for each model (AC: #7)
+  - [ ] BELLE-2 tooltip with Chinese optimization description
+  - [ ] WhisperX tooltip with multi-language description
+  - [ ] Implement using CSS or lightweight tooltip library
+- [ ] Responsive design implementation (AC: #8)
+  - [ ] Test on mobile viewport (320px, 375px, 414px)
+  - [ ] Test on tablet viewport (768px, 1024px)
+  - [ ] Test on desktop (1280px, 1920px)
+  - [ ] Ensure touch targets meet 44x44px minimum
+
+### Phase 4: Testing (AC: #10)
+- [ ] Write component unit tests (Vitest)
+  - [ ] Test default model selection (BELLE-2)
+  - [ ] Test model change updates store
+  - [ ] Test localStorage save/load
+- [ ] Write integration tests
+  - [ ] Test upload with BELLE-2 model parameter
+  - [ ] Test upload with WhisperX model parameter
+  - [ ] Test localStorage persistence across refresh
+- [ ] Manual testing checklist
+  - [ ] Upload file with BELLE-2 → verify transcription completes
+  - [ ] Upload file with WhisperX → verify transcription completes
+  - [ ] Refresh page → verify model selection retained
+  - [ ] Test on mobile device (or DevTools mobile emulation)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+### AC #1: Upload View Model Selection Control
+- Upload view displays model selection control (radio buttons or dropdown)
+- Control is visually prominent and clearly labeled
+- Model selection appears before file upload button
+- Accessible via keyboard navigation (tab order logical)
+
+### AC #2: Model Options Display
+- Model options: "BELLE-2 (Mandarin-optimized)" and "WhisperX (Multi-language)"
+- Labels clearly indicate model specialization
+- Both options selectable via click or keyboard
+
+### AC #3: Default Selection Configuration
+- Default selection: BELLE-2 (matches backend DEFAULT_TRANSCRIPTION_MODEL)
+- Can be configured via environment variable (VITE_DEFAULT_MODEL)
+- Frontend default syncs with backend default
+
+### AC #4: Component State Management
+- Selected model stored in Pinia transcription store
+- Model selection reactive (updates immediately on change)
+- Model persists during upload workflow (upload → progress → results)
+
+### AC #5: Upload API Integration
+- Upload API call includes `model` parameter based on user selection
+- Model value sent as form data: `belle2` or `whisperx`
+- Backend validation handled (already implemented in Story 4.1)
+
+### AC #6: localStorage Persistence
+- Selected model saved to localStorage on change
+- localStorage key: `klipnote_selected_model`
+- Model selection restored on page load/refresh
+- Fallback to default if localStorage empty
+
+### AC #7: Help Text and Tooltips
+- Tooltip/help text explains key differences between models:
+  - BELLE-2: "Optimized for Mandarin/Chinese transcription with superior accuracy for Chinese content"
+  - WhisperX: "Multi-language support with forced alignment for precise timestamps"
+- Tooltip accessible on hover (desktop) or tap (mobile)
+- Help text does not obscure upload interface
+
+### AC #8: Responsive Design
+- Model selection works on mobile (320px+), tablet (768px+), desktop
+- Touch-friendly targets on mobile (minimum 44x44px)
+- Radio buttons or dropdown adapts to screen size
+- No horizontal scrolling required
+
+### AC #9: Backend Model Validation (Already Complete from Story 4.1)
+- Backend validates model parameter ✅ (main.py:140-145)
+- Invalid models return HTTP 400 with error message ✅
+- Celery routing to correct worker queue ✅
+
+### AC #10: Integration Testing
+- Upload with BELLE-2 model: verify job routed to belle2 queue
+- Upload with WhisperX model: verify job routed to whisperx queue
+- localStorage persistence: refresh page, verify model selection retained
+- Default selection: first visit uses BELLE-2
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>User Interface Design Goals</section>
+        <snippet>Target Platforms: Web browser (desktop, tablet, mobile). Design Constraints: Minimal Dependencies using browser-native components, no complex branding. Mobile-First Accessibility with touch-optimized controls for tablets and mobile devices. Responsive layout adapts to screen sizes from 320px to desktop.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>UX Design Principles</section>
+        <snippet>Zero-Friction "Use and Go" - Single-purpose workflow: Upload → Review → Export → Done. Self-Service Clarity with visual feedback and status indicators. Mobile-First Accessibility with touch-optimized controls.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Multi-Model Worker Architecture</section>
+        <snippet>Upload endpoint accepts `model` parameter (Form field: `model` ∈ {belle2, whisperx, auto}). Backend routing function: get_transcription_queue() in model_router.py:450-530. Model validation: HTTP 400 returned for invalid model values. Default model: DEFAULT_TRANSCRIPTION_MODEL=belle2 in Docker Compose.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Extended Upload Endpoint (No API Changes - Config-Driven)</section>
+        <snippet>POST /upload - Request: multipart/form-data (file). Response: {"job_id": "uuid"}. Note: Model selection controlled via environment variable DEFAULT_TRANSCRIPTION_MODEL. Epic 4 maintains backward compatibility - frontend unchanged for MVP. Frontend Integration Points: Modify src/services/api.ts uploadFile() signature to accept optional model parameter.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Decision Document</title>
+        <section>Frontend API Client</section>
+        <snippet>Decision: Native fetch() API (no external HTTP library). Usage Pattern: services/api.ts with API_BASE constant. Example: uploadFile(file: File, model: 'belle2' | 'whisperx' = 'belle2') with FormData including model field.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Decision Document</title>
+        <section>Tailwind CSS Configuration (v4)</section>
+        <snippet>Version: 4.1.16+ (CSS-first, modern Vite integration). Integration: @tailwindcss/vite plugin (NOT @tailwindcss/postcss). Configuration approach: No postcss.config.js needed. CSS import: @import "tailwindcss"; (replaces v3's @tailwind directives).</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Decision Document</title>
+        <section>State Management Patterns (Pinia)</section>
+        <snippet>One store per domain: transcription.ts handles all transcription-related state. Actions for async: All API calls go in actions, not components. Getters for derived state: Don't compute in components, use getters. Direct state access in components: store.jobId, not store.state.jobId.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Architecture Decision Document</title>
+        <section>localStorage Persistence for Edit Recovery</section>
+        <snippet>Decision: Auto-save edited subtitles to browser localStorage to prevent data loss (FR-020, NFR-003). localStorage Key Pattern: klipnote_edits_{job_id}. Save Strategy: Throttled auto-save every 500ms after changes. On page load: Check localStorage for key matching current job_id. Restoration priority: localStorage edits override API results.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture-decisions/ADR-004-multi-model-architecture.md</path>
+        <title>Multi-Model Production Architecture ADR</title>
+        <section>Decision - Architecture Components</section>
+        <snippet>FastAPI Web Service reads DEFAULT_TRANSCRIPTION_MODEL env var and routes jobs to Celery queues based on model selection. belle2-worker (Queue: 'belle2', CUDA 11.8, PyTorch &lt; 2.6) and whisperx-worker (Queue: 'whisperx', CUDA 12.x, PyTorch &gt;= 2.6) process jobs in isolated Docker containers.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>frontend/src/services/api.ts</path>
+        <kind>service</kind>
+        <symbol>uploadFile</symbol>
+        <lines>11-42</lines>
+        <reason>Current upload function needs to be extended with model parameter (AC#5). Signature: uploadFile(file: File). Needs to change to: uploadFile(file: File, model: 'belle2' | 'whisperx' = 'belle2').</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/stores/transcription.ts</path>
+        <kind>store</kind>
+        <symbol>useTranscriptionStore</symbol>
+        <lines>1-199</lines>
+        <reason>Pinia store needs extension with selectedModel state, setSelectedModel action, loadModelFromLocalStorage/saveModelToLocalStorage actions (AC#4, AC#6). Pattern follows existing localStorage persistence for edits (lines 154-196).</reason>
+      </artifact>
+      <artifact>
+        <path>frontend/src/views/UploadView.vue</path>
+        <kind>view</kind>
+        <symbol>UploadView</symbol>
+        <lines>1-113</lines>
+        <reason>Upload view where ModelSelector component will be integrated (AC#1). Currently has FileUpload component and handleUpload function. ModelSelector will be added above file upload button (line 76-99). Uses Tailwind CSS classes for styling.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/main.py</path>
+        <kind>controller</kind>
+        <symbol>upload_file</symbol>
+        <lines>63-158</lines>
+        <reason>Backend upload endpoint already accepts optional model parameter (line 66). Validates model ∈ {belle2, whisperx, auto} (lines 140-145). Routes to correct Celery queue based on model selection (lines 148-158). Frontend integration point for AC#5 - backend validation already complete from Story 4.1.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <frontend>
+        <package>vue</package>
+        <version>3.x</version>
+        <usage>Composition API for ModelSelector component</usage>
+      </frontend>
+      <frontend>
+        <package>pinia</package>
+        <version>latest</version>
+        <usage>State management for selectedModel</usage>
+      </frontend>
+      <frontend>
+        <package>vue-router</package>
+        <version>4.x</version>
+        <usage>Navigation after upload</usage>
+      </frontend>
+      <frontend>
+        <package>typescript</package>
+        <version>5.x</version>
+        <usage>Type safety for model selection ('belle2' | 'whisperx')</usage>
+      </frontend>
+      <frontend>
+        <package>tailwindcss</package>
+        <version>4.1.16+</version>
+        <usage>Styling with Tailwind v4 CSS-first approach, responsive design (AC#8)</usage>
+      </frontend>
+      <frontend>
+        <package>@tailwindcss/vite</package>
+        <version>4.1.16+</version>
+        <usage>Vite integration for Tailwind v4 (NOT @tailwindcss/postcss)</usage>
+      </frontend>
+      <frontend>
+        <package>lodash-es</package>
+        <version>latest</version>
+        <usage>Already in project - available for throttle/debounce if needed for save</usage>
+      </frontend>
+      <backend>
+        <package>fastapi</package>
+        <version>0.120.x</version>
+        <usage>Upload endpoint with model parameter validation (already implemented)</usage>
+      </backend>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>
+      <category>Frontend Framework</category>
+      <rule>Use Vue 3 Composition API with &lt;script setup lang="ts"&gt; pattern - all components must follow this pattern (architecture.md §1826-1885)</rule>
+    </constraint>
+    <constraint>
+      <category>Styling</category>
+      <rule>Tailwind CSS v4 ONLY - Use @tailwindcss/vite plugin (NOT @tailwindcss/postcss). CSS import: @import "tailwindcss"; (NOT old @tailwind directives). See architecture.md §1670-1746 for critical Tailwind v4 configuration</rule>
+    </constraint>
+    <constraint>
+      <category>Responsive Design</category>
+      <rule>Support mobile (320px+), tablet (768px+), desktop. Touch targets minimum 44x44px on mobile (AC#8). Use Tailwind responsive classes: sm:, md:, lg:</rule>
+    </constraint>
+    <constraint>
+      <category>Accessibility</category>
+      <rule>Radio buttons must have associated labels with for attribute. Fieldset/legend for semantic grouping. ARIA labels for tooltips. Keyboard navigation with logical tab order (AC#1, Dev Notes)</rule>
+    </constraint>
+    <constraint>
+      <category>State Management</category>
+      <rule>All model selection state in Pinia transcription store. Actions for async operations. Getters for derived state. Direct state access in components: store.selectedModel (NOT store.state.selectedModel). Pattern from architecture.md §1998-2042</rule>
+    </constraint>
+    <constraint>
+      <category>API Integration</category>
+      <rule>Modify uploadFile() in src/services/api.ts to accept model parameter. Send as FormData field. Backend already validates {belle2, whisperx, auto} - frontend must send only these values (AC#5)</rule>
+    </constraint>
+    <constraint>
+      <category>localStorage Persistence</category>
+      <rule>Key: klipnote_selected_model. Save on model change. Load on app initialization. Handle QuotaExceededError. Pattern follows existing localStorage for edits (transcription.ts lines 154-196, AC#6)</rule>
+    </constraint>
+    <constraint>
+      <category>Component Placement</category>
+      <rule>ModelSelector component placed in UploadView ABOVE file upload button (AC#1). Create new component: frontend/src/components/ModelSelector.vue. Import and use in UploadView.vue</rule>
+    </constraint>
+    <constraint>
+      <category>Testing Standards</category>
+      <rule>Component tests: Vitest + Vue Testing Library. Coverage target: 70%+ for new components. Test default selection, model change, localStorage persistence (AC#10, architecture.md §1040-1305)</rule>
+    </constraint>
+    <constraint>
+      <category>Type Safety</category>
+      <rule>TypeScript types: 'belle2' | 'whisperx' for model selection. Match backend validation. Update types/api.ts if needed. All functions/components must have explicit types</rule>
+    </constraint>
+  </constraints>
+  <interfaces>
+    <interface>
+      <name>POST /upload</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /upload - FormData: file (File), model (string: "belle2" | "whisperx" | "auto"), language (string, optional)</signature>
+      <path>backend/app/main.py:63-158</path>
+      <notes>Backend endpoint already accepts model parameter (Story 4.1 complete). Frontend must send model as FormData field. Validation: model ∈ {belle2, whisperx, auto}, returns HTTP 400 if invalid. Response: {"job_id": "uuid"}. AC#9 confirmed backend validation complete.</notes>
+    </interface>
+    <interface>
+      <name>uploadFile API function</name>
+      <kind>Frontend API client function</kind>
+      <signature>Current: uploadFile(file: File). Target: uploadFile(file: File, model: 'belle2' | 'whisperx' = 'belle2')</signature>
+      <path>frontend/src/services/api.ts:11-42</path>
+      <notes>Must be modified to accept optional model parameter with default 'belle2'. Add model to FormData before sending. Maintains backward compatibility via default parameter. AC#5 integration point.</notes>
+    </interface>
+    <interface>
+      <name>Pinia Transcription Store</name>
+      <kind>State management interface</kind>
+      <signature>State: selectedModel ('belle2' | 'whisperx'). Actions: setSelectedModel(model), loadModelFromLocalStorage(), saveModelToLocalStorage()</signature>
+      <path>frontend/src/stores/transcription.ts</path>
+      <notes>Extends existing store with model selection state. Pattern follows existing localStorage actions (lines 154-196). Auto-save on change using watch() with throttle. Load on mount. AC#4 and AC#6 requirements.</notes>
+    </interface>
+    <interface>
+      <name>localStorage API</name>
+      <kind>Browser API</kind>
+      <signature>localStorage.setItem(key, value), localStorage.getItem(key)</signature>
+      <path>browser built-in</path>
+      <notes>Key: "klipnote_selected_model". Value: string ("belle2" or "whisperx"). Save on model change, load on page load. Handle QuotaExceededError. Fallback to default if missing/invalid. AC#6 persistence requirement.</notes>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>
+      <standard>
+        <framework>Vitest + Vue Testing Library</framework>
+        <coverage>70%+ for ModelSelector component and modified code</coverage>
+        <reference>architecture.md §1040-1305 Testing Strategy</reference>
+      </standard>
+      <standard>
+        <type>Component Tests</type>
+        <focus>Default selection, model change events, localStorage integration, accessibility (keyboard navigation)</focus>
+      </standard>
+      <standard>
+        <type>Integration Tests</type>
+        <focus>Upload with BELLE-2 parameter, upload with WhisperX parameter, localStorage persistence across page refresh</focus>
+      </standard>
+      <standard>
+        <type>Manual Testing</type>
+        <focus>Responsive design on mobile (320px, 375px, 414px), tablet (768px, 1024px), desktop (1280px, 1920px). Touch targets 44x44px minimum on mobile (AC#8)</focus>
+      </standard>
+    </standards>
+    <locations>
+      <location>
+        <path>frontend/src/components/ModelSelector.test.ts</path>
+        <purpose>Component unit tests for ModelSelector</purpose>
+        <tests>
+          - Test default model selection (BELLE-2)
+          - Test model change updates store (setSelectedModel action called)
+          - Test localStorage save on model change
+          - Test radio button accessibility (labels, keyboard navigation)
+          - Test tooltip display on hover/tap
+          - Test responsive layout (mobile/tablet/desktop)
+        </tests>
+      </location>
+      <location>
+        <path>frontend/src/stores/transcription.test.ts</path>
+        <purpose>Store tests for new model selection actions</purpose>
+        <tests>
+          - Test setSelectedModel action updates state
+          - Test saveModelToLocalStorage writes correct key/value
+          - Test loadModelFromLocalStorage reads and restores model
+          - Test localStorage fallback to default on missing/invalid data
+          - Test QuotaExceededError handling
+        </tests>
+      </location>
+      <location>
+        <path>frontend/src/services/api.test.ts</path>
+        <purpose>API client tests for modified uploadFile function</purpose>
+        <tests>
+          - Test uploadFile sends model parameter in FormData
+          - Test uploadFile defaults to 'belle2' when no model specified
+          - Test uploadFile sends explicit model when provided
+        </tests>
+      </location>
+      <location>
+        <path>e2e/tests/model-selection.spec.ts</path>
+        <purpose>End-to-end integration tests (AC#10)</purpose>
+        <tests>
+          - Test upload with BELLE-2 → verify transcription completes
+          - Test upload with WhisperX → verify transcription completes
+          - Test model selection persistence (refresh page → model retained)
+          - Test default selection on first visit (BELLE-2)
+        </tests>
+      </location>
+    </locations>
+    <ideas>
+      <idea>
+        <scenario>User switches model selection before upload</scenario>
+        <test>Mount ModelSelector, simulate radio button click (BELLE-2 → WhisperX), verify store.selectedModel updates, verify localStorage saved</test>
+      </idea>
+      <idea>
+        <scenario>User refreshes page, model selection restored</scenario>
+        <test>Set localStorage with model='whisperx', mount UploadView, verify ModelSelector shows WhisperX selected, verify no console errors</test>
+      </idea>
+      <idea>
+        <scenario>Keyboard navigation through radio buttons</scenario>
+        <test>Focus ModelSelector with Tab key, navigate with Arrow keys, verify selection changes, verify ARIA labels read correctly by screen reader simulation</test>
+      </idea>
+      <idea>
+        <scenario>Tooltip display on mobile (tap) vs desktop (hover)</scenario>
+        <test>Desktop: simulate mouseenter on radio label, verify tooltip visible. Mobile: simulate touchstart, verify tooltip visible and dismissible</test>
+      </idea>
+      <idea>
+        <scenario>localStorage quota exceeded</scenario>
+        <test>Mock localStorage.setItem to throw QuotaExceededError, verify no crash, verify console.warn called, verify model selection still functional (no auto-save)</test>
+      </idea>
+      <idea>
+        <scenario>Upload with selected model sends correct parameter</scenario>
+        <test>Select WhisperX, upload file, intercept fetch call, verify FormData includes model='whisperx', verify backend receives correct parameter (mock response)</test>
+      </idea>
+      <idea>
+        <scenario>Responsive design on mobile viewport</scenario>
+        <test>Set viewport to 320px width, verify ModelSelector visible, verify touch targets ≥44x44px, verify no horizontal scroll, verify radio buttons stack vertically (if needed)</test>
+      </idea>
+      <idea>
+        <scenario>Invalid model in localStorage handled gracefully</scenario>
+        <test>Set localStorage with model='invalid_model', mount component, verify fallback to default (belle2), verify localStorage cleared/corrected</test>
+      </idea>
+    </ideas>
+  </tests>
+</story-context>
