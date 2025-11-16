@@ -1,0 +1,253 @@
+# Docker Compose Multi-Model Configuration
+# KlipNote Multi-Worker Architecture (Epic 4)
+# Supports both BELLE-2 (CUDA 11.8) and WhisperX (CUDA 12.x) in isolated containers
+
+version: '3.8'
+
+services:
+  # ===== Web Service (FastAPI) =====
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: klipnote-web:latest
+    container_name: klipnote-web
+    ports:
+      - "8000:8000"
+    environment:
+      # Model Selection Configuration
+      - DEFAULT_TRANSCRIPTION_MODEL=belle2  # "belle2" | "whisperx" | "auto"
+
+      # Celery Configuration
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+      # Application Configuration
+      - UPLOAD_DIR=/uploads
+      - CORS_ORIGINS=http://localhost:5173
+    volumes:
+      - uploads_data:/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - klipnote-network
+    restart: unless-stopped
+
+  # ===== Redis (Broker + Result Backend) =====
+  redis:
+    image: redis:7-alpine
+    container_name: klipnote-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - redis_data:/data
+    networks:
+      - klipnote-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # ===== BELLE-2 Worker (CUDA 11.8 / PyTorch <2.6) =====
+  belle2-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.belle2
+    image: klipnote-worker-cuda118:latest
+    container_name: klipnote-belle2-worker
+    environment:
+      # Model Configuration
+      - MODEL=belle2
+      - BELLE2_MODEL_NAME=BELLE-2/Belle-whisper-large-v3-zh
+
+      # Celery Configuration
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_QUEUE=belle2
+
+      # GPU Configuration
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+
+      # Application Configuration
+      - UPLOAD_DIR=/uploads
+      - ENABLE_OPTIMIZATION=true
+      - OPTIMIZER_ENGINE=auto
+    volumes:
+      - uploads_data:/uploads  # Read-write for transcription results
+      - belle2_models:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - klipnote-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    command: >
+      celery -A app.celery_utils worker
+      --loglevel=info
+      --concurrency=1
+      --queues=belle2
+      --hostname=belle2@%h
+
+  # ===== WhisperX Worker (CUDA 12.x / PyTorch ≥2.6) =====
+  whisperx-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisperx
+    image: klipnote-worker-cuda12:latest
+    container_name: klipnote-whisperx-worker
+    environment:
+      # Model Configuration
+      - MODEL=whisperx
+      - WHISPER_MODEL=large-v2
+
+      # Celery Configuration
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_QUEUE=whisperx
+
+      # GPU Configuration
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+
+      # Application Configuration
+      - UPLOAD_DIR=/uploads
+      - ENABLE_OPTIMIZATION=true
+      - OPTIMIZER_ENGINE=auto
+    volumes:
+      - uploads_data:/uploads  # Read-write for transcription results
+      - whisperx_models:/root/.cache/whisperx
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - klipnote-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    command: >
+      celery -A app.celery_utils worker
+      --loglevel=info
+      --concurrency=1
+      --queues=whisperx
+      --hostname=whisperx@%h
+
+  # ===== Flower (Celery Monitoring) =====
+  flower:
+    image: mher/flower:2.0
+    container_name: klipnote-flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FLOWER_PORT=5555
+    depends_on:
+      - redis
+    networks:
+      - klipnote-network
+    restart: unless-stopped
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+
+# ===== Networks =====
+networks:
+  klipnote-network:
+    driver: bridge
+
+# ===== Volumes =====
+volumes:
+  uploads_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./uploads
+
+  redis_data:
+    driver: local
+
+  belle2_models:
+    driver: local
+    # Persists BELLE-2 HuggingFace model cache (~3GB)
+
+  whisperx_models:
+    driver: local
+    # Persists WhisperX model cache (~3GB)
+
+# ===== Usage Notes =====
+#
+# Start all services:
+#   docker-compose -f docker-compose.multi-model.yaml up -d
+#
+# Start specific workers only:
+#   docker-compose -f docker-compose.multi-model.yaml up -d web redis belle2-worker
+#
+# View logs:
+#   docker-compose -f docker-compose.multi-model.yaml logs -f belle2-worker
+#   docker-compose -f docker-compose.multi-model.yaml logs -f whisperx-worker
+#
+# Monitor workers via Flower:
+#   Open http://localhost:5555 in browser
+#
+# Validate configuration:
+#   docker-compose -f docker-compose.multi-model.yaml config
+#
+# GPU Resource Scheduling:
+#   - Both workers share single GPU (sequential processing)
+#   - Concurrency=1 per worker prevents VRAM contention
+#   - For parallel processing, deploy multiple worker containers:
+#     docker-compose -f docker-compose.multi-model.yaml up -d --scale belle2-worker=2 --scale whisperx-worker=2
+#
+# Environment Variables:
+#   - DEFAULT_TRANSCRIPTION_MODEL: Controls default model selection ("belle2", "whisperx", "auto")
+#   - CELERY_QUEUE: Assigns worker to specific queue (do not change)
+#   - ENABLE_OPTIMIZATION: Enables enhancement pipeline (VAD, refine, split)
+#   - OPTIMIZER_ENGINE: Optimization strategy ("auto", "whisperx", "heuristic")
+#
+# Volume Mounts:
+#   - uploads_data: Shared media storage (bind mount to ./uploads)
+#   - belle2_models: BELLE-2 HuggingFace cache (persists across restarts)
+#   - whisperx_models: WhisperX model cache (persists across restarts)
+#   - redis_data: Redis persistence (AOF enabled)
+#
+# Health Checks:
+#   - Redis: redis-cli ping (interval: 10s, retries: 3)
+#   - Workers: Monitor via Flower UI at http://localhost:5555
+#   - Web: HTTP GET http://localhost:8000/health (if endpoint implemented)
+#
+# Rollback to Single-Worker:
+#   1. Comment out either belle2-worker or whisperx-worker service
+#   2. Run: docker-compose -f docker-compose.multi-model.yaml up -d
+#   3. System continues with remaining worker (graceful degradation)
+#
+# Security Notes:
+#   - No authentication on Flower dashboard (localhost-only deployment)
+#   - Redis requires no authentication (internal network only)
+#   - For production: Add HTTP Basic Auth to Flower, Redis password
+#
+# GPU Requirements:
+#   - Host: NVIDIA driver >=530 (supports both CUDA 11.8 and 12.x)
+#   - GPU: Minimum 8GB VRAM (recommended 12GB+ for large models)
+#   - Verify: nvidia-smi shows compatible driver version
+#
+# Troubleshooting:
+#   - Worker fails to start: Check GPU access (docker run --rm --gpus all nvidia/cuda:11.8.0-base nvidia-smi)
+#   - Task stuck in queue: Verify worker active in Flower, check logs for errors
+#   - Model download timeout: First job may take 10-15 minutes (downloading ~3GB model), subsequent jobs use cached model

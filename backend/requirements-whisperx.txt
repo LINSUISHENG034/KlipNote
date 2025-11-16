@@ -1,0 +1,46 @@
+# requirements-whisperx.txt
+# WhisperX Worker Specific Dependencies
+# Epic 4 - Multi-Model Production Architecture
+# CUDA 12.x / PyTorch ≥2.6 Environment (CVE-2025-32434 compliant)
+
+# ===== Notes =====
+# - PyTorch (≥2.6) installed separately in Dockerfile.whisperx with CUDA 12.x index:
+#   pip install torch>=2.6.0 torchaudio>=2.6.0 --index-url https://download.pytorch.org/whl/cu121
+#
+# - All common dependencies in requirements-common.txt (transformers, librosa, etc.)
+#
+# - WhisperX submodule dependencies listed below (required but not auto-installed)
+
+# ===== WhisperX Core Dependencies =====
+# CTranslate2 for efficient Whisper inference
+ctranslate2>=4.5.0  # cuDNN 9 support with CUDA 12.x
+
+# Faster-Whisper backend
+faster-whisper>=1.1.1  # Latest Whisper model improvements
+
+# ===== WhisperX Additional Dependencies =====
+# Natural Language Toolkit (for text processing)
+nltk>=3.9.1
+
+# ONNX Runtime for forced alignment (wav2vec2)
+onnxruntime
+
+# Pandas for data processing
+pandas>=2.2.3,<2.3.0
+
+# PyAV for audio/video handling
+av<16.0.0
+
+# ===== Voice Activity Detection =====
+# Silero VAD used via torch.hub (no additional dependency)
+# Pyannote.audio REMOVED due to dependency conflicts
+
+# ===== Optimization Pipeline (Epic 3) =====
+webrtcvad==2.0.10  # VAD preprocessing
+pydub==0.25.1      # Audio format conversion
+scipy==1.11.4      # Signal processing
+
+# ===== Validation =====
+# Validate PyTorch version ≥2.6 in entrypoint.sh startup script
+# Validate CUDA 12.x in entrypoint.sh startup script
+# Validate CVE-2025-32434 patched (PyTorch ≥2.6 requirement)

@@ -1,0 +1,158 @@
+# Dockerfile.whisperx
+# WhisperX Worker Container (CUDA 12.x / PyTorch ≥2.0)
+# Epic 4 - Multi-Model Production Architecture
+
+FROM nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set Python version
+ENV PYTHON_VERSION=3.12
+
+# ===== System Dependencies =====
+RUN apt-get update && apt-get install -y \
+    # Python and build tools
+    software-properties-common \
+    build-essential \
+    wget \
+    curl \
+    git \
+    # FFmpeg for audio processing
+    ffmpeg \
+    # WebRTC VAD dependencies
+    libportaudio2 \
+    # Cleanup
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python${PYTHON_VERSION}-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symbolic links for python and pip
+RUN ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python \
+    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3
+
+# Install pip
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}
+
+# ===== CUDA Environment Validation =====
+# Validate CUDA 12.x is available
+RUN nvcc --version | grep -E "release 12\.[0-9]" || \
+    (echo "ERROR: CUDA 12.x not found! WhisperX worker requires CUDA 12.x" && exit 1)
+
+# Set CUDA environment variables
+ENV CUDA_HOME=/usr/local/cuda-12.3
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# ===== Application Setup =====
+WORKDIR /app
+
+# Copy requirements files
+COPY requirements-common.txt /app/
+COPY requirements-whisperx.txt /app/
+
+# Install Python dependencies
+# Common dependencies first (FastAPI, Celery, Redis)
+RUN pip install --no-cache-dir -r requirements-common.txt
+
+# PyTorch with CUDA 12.x support (latest stable version)
+# WhisperX requires PyTorch ≥2.0, using 2.5.1 as latest stable with CUDA 12.1
+RUN pip install --no-cache-dir \
+    torch==2.5.1 \
+    torchaudio==2.5.1 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# WhisperX specific dependencies
+RUN pip install --no-cache-dir -r requirements-whisperx.txt
+
+# Copy application code
+COPY app/ /app/app/
+
+# ===== WhisperX Git Submodule (if using custom fork) =====
+# If using git submodule for WhisperX:
+# COPY app/ai_services/whisperx /app/app/ai_services/whisperx
+# RUN cd /app/app/ai_services/whisperx && pip install -e .
+
+# ===== Model Pre-Download (Optional - Reduces Cold Start Time) =====
+# Uncomment to pre-download WhisperX model during build (~3GB)
+# This eliminates first-job model download delay
+# RUN python -c "import whisperx; whisperx.load_model('large-v2', device='cpu', compute_type='int8')"
+
+# ===== Startup Validation Script =====
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Validate CUDA version\n\
+echo "Validating CUDA 12.x for WhisperX worker..."\n\
+CUDA_VERSION=$(nvcc --version | grep -oP "release \\K[0-9.]+")\n\
+if [[ ! "$CUDA_VERSION" =~ ^12\\. ]]; then\n\
+    echo "ERROR: CUDA 12.x required, found CUDA $CUDA_VERSION"\n\
+    exit 1\n\
+fi\n\
+\n\
+# Validate PyTorch version\n\
+PYTORCH_VERSION=$(python -c "import torch; print(torch.__version__)")\n\
+echo "PyTorch version: $PYTORCH_VERSION"\n\
+# WhisperX requires PyTorch ≥2.0 (typically 2.5.x-2.7.x in production)\n\
+if [[ "$PYTORCH_VERSION" < "2.0" ]]; then\n\
+    echo "ERROR: PyTorch ≥2.0 required for WhisperX, found $PYTORCH_VERSION"\n\
+    exit 1\n\
+fi\n\
+\n\
+# Validate GPU access\n\
+echo "Validating GPU access..."\n\
+python -c "import torch; assert torch.cuda.is_available(), \"CUDA not available\"; print(f\"GPU: {torch.cuda.get_device_name(0)}\")"\n\
+\n\
+# Display GPU memory\n\
+python -c "import torch; print(f\"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB\")"\n\
+\n\
+# Log worker startup\n\
+echo "WhisperX worker ready: CUDA $CUDA_VERSION, PyTorch $PYTORCH_VERSION, Queue: whisperx"\n\
+\n\
+# Execute Celery worker command\n\
+exec "$@"\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# ===== Health Check =====
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD celery -A app.celery_utils inspect ping -d whisperx@$HOSTNAME || exit 1
+
+# ===== Expose Ports =====
+# Note: Celery workers typically don't expose ports (use Flower for monitoring)
+
+# ===== Volume Mounts (Configured in docker-compose.yaml) =====
+# /uploads: Shared media storage (read-only)
+# /root/.cache/whisperx: WhisperX model cache (~3GB)
+
+# ===== Entry Point =====
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default command (overridden in docker-compose.yaml)
+CMD ["celery", "-A", "app.celery_utils", "worker", "--loglevel=info", "--concurrency=1", "--queues=whisperx"]
+
+# ===== Build Instructions =====
+# Build:
+#   docker build -f Dockerfile.whisperx -t klipnote-worker-cuda12:latest .
+#
+# Run standalone (testing):
+#   docker run --rm --gpus all \
+#     -e CELERY_BROKER_URL=redis://redis:6379/0 \
+#     -e CELERY_RESULT_BACKEND=redis://redis:6379/0 \
+#     klipnote-worker-cuda12:latest
+#
+# GPU Validation:
+#   docker run --rm --gpus all klipnote-worker-cuda12:latest nvidia-smi
+#
+# CUDA Version Check:
+#   docker run --rm klipnote-worker-cuda12:latest nvcc --version
+#
+# PyTorch Version Check:
+#   docker run --rm klipnote-worker-cuda12:latest python -c "import torch; print(torch.__version__)"
+#
+# Security Note:
+#   WhisperX requires PyTorch ≥2.0 (production: 2.5.x-2.7.x)
+#   Do NOT downgrade PyTorch version below 2.0 for this worker

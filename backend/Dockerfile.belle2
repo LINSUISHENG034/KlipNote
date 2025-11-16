@@ -1,0 +1,148 @@
+# Dockerfile.belle2
+# BELLE-2 Worker Container (CUDA 11.8 / PyTorch <2.6)
+# Epic 4 - Multi-Model Production Architecture
+
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set Python version
+ENV PYTHON_VERSION=3.12
+
+# ===== System Dependencies =====
+RUN apt-get update && apt-get install -y \
+    # Python and build tools
+    software-properties-common \
+    build-essential \
+    wget \
+    curl \
+    git \
+    # FFmpeg for audio processing
+    ffmpeg \
+    # WebRTC VAD dependencies
+    libportaudio2 \
+    # Cleanup
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y \
+        python${PYTHON_VERSION} \
+        python${PYTHON_VERSION}-dev \
+        python${PYTHON_VERSION}-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symbolic links for python and pip
+RUN ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python \
+    && ln -sf /usr/bin/python${PYTHON_VERSION} /usr/bin/python3
+
+# Install pip
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION}
+
+# ===== CUDA Environment Validation =====
+# Validate CUDA 11.8 is available
+RUN nvcc --version | grep "release 11.8" || \
+    (echo "ERROR: CUDA 11.8 not found! BELLE-2 worker requires CUDA 11.8" && exit 1)
+
+# Set CUDA environment variables
+ENV CUDA_HOME=/usr/local/cuda-11.8
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# ===== Application Setup =====
+WORKDIR /app
+
+# Copy requirements files
+COPY requirements-common.txt /app/
+COPY requirements-belle2.txt /app/
+
+# Install Python dependencies
+# Common dependencies first (FastAPI, Celery, Redis)
+RUN pip install --no-cache-dir -r requirements-common.txt
+
+# PyTorch with CUDA 11.8 support (MUST be <2.6 for BELLE-2)
+RUN pip install --no-cache-dir \
+    "torch<2.6.0" \
+    "torchaudio<2.6.0" \
+    --index-url https://download.pytorch.org/whl/cu118
+
+# BELLE-2 specific dependencies
+RUN pip install --no-cache-dir -r requirements-belle2.txt
+
+# Copy application code
+COPY app/ /app/app/
+
+# ===== Model Pre-Download (Optional - Reduces Cold Start Time) =====
+# Uncomment to pre-download BELLE-2 model during build (~3GB)
+# This eliminates first-job model download delay
+# RUN python -c "from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor; \
+#     AutoModelForSpeechSeq2Seq.from_pretrained('BELLE-2/Belle-whisper-large-v3-zh'); \
+#     AutoProcessor.from_pretrained('BELLE-2/Belle-whisper-large-v3-zh')"
+
+# ===== Startup Validation Script =====
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Validate CUDA version\n\
+echo "Validating CUDA 11.8 for BELLE-2 worker..."\n\
+CUDA_VERSION=$(nvcc --version | grep -oP "release \\K[0-9.]+")\n\
+if [[ ! "$CUDA_VERSION" =~ ^11\\.8 ]]; then\n\
+    echo "ERROR: CUDA 11.8 required, found CUDA $CUDA_VERSION"\n\
+    exit 1\n\
+fi\n\
+\n\
+# Validate PyTorch version\n\
+PYTORCH_VERSION=$(python -c "import torch; print(torch.__version__)")\n\
+echo "PyTorch version: $PYTORCH_VERSION"\n\
+if [[ "$PYTORCH_VERSION" > "2.6" ]]; then\n\
+    echo "WARNING: PyTorch $PYTORCH_VERSION may not be compatible with BELLE-2 (requires <2.6)"\n\
+fi\n\
+\n\
+# Validate GPU access\n\
+echo "Validating GPU access..."\n\
+python -c "import torch; assert torch.cuda.is_available(), \"CUDA not available\"; print(f\"GPU: {torch.cuda.get_device_name(0)}\")"\n\
+\n\
+# Display GPU memory\n\
+python -c "import torch; print(f\"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB\")"\n\
+\n\
+# Log worker startup\n\
+echo "BELLE-2 worker ready: CUDA 11.8, PyTorch $PYTORCH_VERSION, Queue: belle2"\n\
+\n\
+# Execute Celery worker command\n\
+exec "$@"\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# ===== Health Check =====
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD celery -A app.celery_utils inspect ping -d belle2@$HOSTNAME || exit 1
+
+# ===== Expose Ports =====
+# Note: Celery workers typically don't expose ports (use Flower for monitoring)
+
+# ===== Volume Mounts (Configured in docker-compose.yaml) =====
+# /uploads: Shared media storage (read-only)
+# /root/.cache/huggingface: BELLE-2 model cache (~3GB)
+
+# ===== Entry Point =====
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default command (overridden in docker-compose.yaml)
+CMD ["celery", "-A", "app.celery_utils", "worker", "--loglevel=info", "--concurrency=1", "--queues=belle2"]
+
+# ===== Build Instructions =====
+# Build:
+#   docker build -f Dockerfile.belle2 -t klipnote-worker-cuda118:latest .
+#
+# Run standalone (testing):
+#   docker run --rm --gpus all \
+#     -e CELERY_BROKER_URL=redis://redis:6379/0 \
+#     -e CELERY_RESULT_BACKEND=redis://redis:6379/0 \
+#     klipnote-worker-cuda118:latest
+#
+# GPU Validation:
+#   docker run --rm --gpus all klipnote-worker-cuda118:latest nvidia-smi
+#
+# CUDA Version Check:
+#   docker run --rm klipnote-worker-cuda118:latest nvcc --version
+#
+# PyTorch Version Check:
+#   docker run --rm klipnote-worker-cuda118:latest python -c "import torch; print(torch.__version__)"

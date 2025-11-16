@@ -8,14 +8,17 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
 from celery import shared_task
 from celery.exceptions import Retry
-from app.ai_services.whisperx_service import WhisperXService
-from app.ai_services.belle2_service import Belle2Service
-from app.ai_services.base import TranscriptionService
 from app.services.redis_service import RedisService
 from app.config import settings
+
+# Lazy imports to avoid loading PyTorch in web container
+if TYPE_CHECKING:
+    from app.ai_services.whisperx_service import WhisperXService
+    from app.ai_services.belle2_service import Belle2Service
+    from app.ai_services.base import TranscriptionService
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -43,7 +46,7 @@ def select_transcription_service(
     job_id: str,
     redis_service: RedisService,
     language: Optional[str] = None
-) -> Tuple[TranscriptionService, str, Dict[str, Any]]:
+) -> Tuple["TranscriptionService", str, Dict[str, Any]]:
     """
     Select appropriate transcription service based on language
 
@@ -55,6 +58,10 @@ def select_transcription_service(
     Returns:
         Tuple of (transcription_service, model_name, selection_details)
     """
+    # Lazy import to avoid loading PyTorch in web container
+    from app.ai_services.belle2_service import Belle2Service
+    from app.ai_services.whisperx_service import WhisperXService
+
     selection_details: Dict[str, Any] = {
         "detected_language": language or "auto",
         "user_language_hint": language,
@@ -117,7 +124,7 @@ def select_transcription_service(
 def save_model_metadata(
     job_id: str,
     model_name: str,
-    service: TranscriptionService,
+    service: "TranscriptionService",
     selection_details: Optional[Dict[str, Any]] = None
 ) -> None:
     """
@@ -235,12 +242,57 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         # ======================================================================
         logger.info(f"[Job {job_id}] Stage 2: Loading AI model")
 
-        # Select appropriate transcription service (BELLE-2 for Chinese, WhisperX fallback)
-        transcription_service, model_name, selection_details = select_transcription_service(
-            job_id=job_id,
-            redis_service=redis_service,
-            language=language
-        )
+        # In multi-worker architecture, use MODEL environment variable to determine service
+        # Each worker container has MODEL set to "belle2" or "whisperx"
+        worker_model = os.getenv("MODEL", "whisperx").lower()
+
+        # Lazy imports to avoid loading PyTorch in web container
+        from app.ai_services.belle2_service import Belle2Service
+        from app.ai_services.whisperx_service import WhisperXService
+
+        selection_details = {
+            "detected_language": language or "auto",
+            "user_language_hint": language,
+            "selection_reason": f"worker_queue_{worker_model}",
+            "fallback_reason": None
+        }
+
+        if worker_model == "belle2":
+            try:
+                logger.info(f"[Job {job_id}] Loading BELLE-2 (worker queue: belle2)")
+                redis_service.set_status(
+                    job_id=job_id,
+                    status="processing",
+                    progress=20,
+                    message="Loading BELLE-2 model for Mandarin..."
+                )
+                transcription_service = Belle2Service()
+                model_name = "belle2"
+                logger.info(f"[Job {job_id}] BELLE-2 loaded successfully")
+            except Exception as e:
+                # BELLE-2 load failed, fall back to WhisperX
+                logger.warning(f"[Job {job_id}] BELLE-2 load failed: {e}. Falling back to WhisperX.")
+                redis_service.set_status(
+                    job_id=job_id,
+                    status="processing",
+                    progress=20,
+                    message="BELLE-2 unavailable, using WhisperX fallback..."
+                )
+                selection_details["selection_reason"] = "belle2_load_failed"
+                selection_details["fallback_reason"] = str(e)
+                transcription_service = WhisperXService()
+                model_name = "whisperx"
+        else:
+            logger.info(f"[Job {job_id}] Loading WhisperX (worker queue: whisperx)")
+            redis_service.set_status(
+                job_id=job_id,
+                status="processing",
+                progress=20,
+                message="Loading AI model..."
+            )
+            transcription_service = WhisperXService()
+            model_name = "whisperx"
+            logger.info(f"[Job {job_id}] WhisperX loaded successfully")
 
         # ======================================================================
         # STAGE 3: Transcribing audio (40%)

@@ -24,6 +24,17 @@ class Settings(BaseSettings):
     # BELLE-2 model settings
     BELLE2_MODEL_NAME: Optional[str] = None
 
+    # Epic 4: Multi-Model Production Architecture
+    DEFAULT_TRANSCRIPTION_MODEL: Literal["belle2", "whisperx", "auto"] = Field(
+        default="auto",
+        description=(
+            "Default transcription model for multi-worker deployment. "
+            "'belle2': Route all jobs to BELLE-2 worker (Chinese-optimized). "
+            "'whisperx': Route all jobs to WhisperX worker (multi-language). "
+            "'auto': Automatic selection based on language detection (Chinese→belle2, others→whisperx)."
+        ),
+    )
+
     # Epic 3: Timestamp Optimization Settings
     OPTIMIZER_ENGINE: Literal["whisperx", "heuristic", "auto"] = Field(
         default="auto",

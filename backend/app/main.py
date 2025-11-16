@@ -3,7 +3,7 @@ FastAPI application initialization
 Main entry point for the web service
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pathlib import Path
@@ -16,6 +16,7 @@ from app.services.file_handler import FileHandler
 from app.services.redis_service import RedisService
 from app.services import export_service
 from app.tasks.transcription import transcribe_audio
+from app.ai_services.model_router import get_transcription_queue  # Epic 4: Queue routing
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -60,7 +61,11 @@ async def health_check():
 
 
 @app.post("/upload", response_model=UploadResponse, status_code=200)
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    model: str = Form(default=None),
+    language: str = Form(default=None)
+):
     """
     Upload audio/video file for transcription
 
@@ -72,10 +77,30 @@ async def upload_file(file: UploadFile = File(...)):
     The file is saved to storage and a Celery task is queued for async transcription.
     Returns a unique job_id (UUID v4) for tracking the transcription task.
 
+    **Form Parameters:**
+    - **file** (required): Audio/video file to transcribe
+    - **model** (optional): Transcription model selection ("belle2", "whisperx", "auto")
+      - Defaults to DEFAULT_TRANSCRIPTION_MODEL environment variable
+      - Per-request parameter overrides default
+    - **language** (optional): Language hint (ISO code: "zh", "en", etc.)
+      - Used for auto-routing when model="auto"
+
     **Example Request:**
     ```bash
+    # Use default model
     curl -X POST "http://localhost:8000/upload" \\
          -F "file=@/path/to/audio.mp3"
+
+    # Explicit model selection
+    curl -X POST "http://localhost:8000/upload" \\
+         -F "file=@/path/to/audio.mp3" \\
+         -F "model=belle2"
+
+    # Auto-selection with language hint
+    curl -X POST "http://localhost:8000/upload" \\
+         -F "file=@/path/to/audio.mp3" \\
+         -F "model=auto" \\
+         -F "language=zh"
     ```
 
     **Example Response:**
@@ -86,7 +111,7 @@ async def upload_file(file: UploadFile = File(...)):
     ```
 
     **Error Responses:**
-    - **400**: Invalid format or duration exceeds 2 hours
+    - **400**: Invalid format, duration exceeds 2 hours, or invalid model selection
     - **413**: File size exceeds 2GB limit
     - **500**: Storage or processing error
     """
@@ -106,8 +131,31 @@ async def upload_file(file: UploadFile = File(...)):
         # Initialize Redis service
         redis_service = RedisService()
 
-        # Queue Celery task for transcription
-        transcribe_audio.delay(job_id, file_path)
+        # Epic 4: Multi-Model Production Architecture
+        # Determine which Celery queue to route transcription task
+        # Priority: Per-request model parameter > DEFAULT_TRANSCRIPTION_MODEL env var
+        selected_model = model if model is not None else getattr(settings, "DEFAULT_TRANSCRIPTION_MODEL", "auto")
+
+        # Validate model selection (must be belle2, whisperx, or auto)
+        valid_models = {"belle2", "whisperx", "auto"}
+        if selected_model not in valid_models:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid model: '{selected_model}'. Must be one of {sorted(valid_models)}"
+            )
+
+        # Route to appropriate worker queue based on model and language hint
+        queue_name = get_transcription_queue(model=selected_model, language=language)
+
+        # Queue Celery task for transcription on the selected worker queue
+        logger.info(
+            f"Routing transcription job {job_id} to queue '{queue_name}' "
+            f"(model: {selected_model}, language: {language or 'auto-detect'})"
+        )
+        transcribe_audio.apply_async(
+            args=[job_id, file_path, language],
+            queue=queue_name
+        )
 
         # Initialize Redis status to "pending" (Stage 1 will update this)
         redis_service.set_status(

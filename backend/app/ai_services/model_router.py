@@ -21,21 +21,17 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
-import numpy as np
-import torch
 from pydantic import BaseModel, Field
+from typing import TYPE_CHECKING
 
-from app.ai_services.base import TranscriptionService
-from app.ai_services.belle2_service import Belle2Service
-from app.ai_services.whisperx_service import WhisperXService
-from app.ai_services.whisperx_shim import ensure_whisperx_available
+# Lazy imports to avoid loading PyTorch in web container
+if TYPE_CHECKING:
+    import numpy as np
+    import torch
+    from app.ai_services.base import TranscriptionService
+    from app.ai_services.belle2_service import Belle2Service
+    from app.ai_services.whisperx_service import WhisperXService
 
-ensure_whisperx_available()
-from app.ai_services.whisperx.whisperx.audio import (
-    SAMPLE_RATE,
-    log_mel_spectrogram,
-    pad_or_trim,
-)
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -164,6 +160,15 @@ class LanguageDetector:
     # Internal helpers
     # --------------------------------------------------------------------- #
     def _detect_sync(self, audio_path: str) -> Tuple[str, float]:
+        # Lazy import to avoid loading PyTorch in web container
+        from app.ai_services.whisperx_shim import ensure_whisperx_available
+        ensure_whisperx_available()
+        from app.ai_services.whisperx.whisperx.audio import (
+            SAMPLE_RATE,
+            log_mel_spectrogram,
+            pad_or_trim,
+        )
+
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found for detection: {audio_path}")
 
@@ -218,6 +223,9 @@ class LanguageDetector:
 
     @staticmethod
     def _resolve_device(preferred: str) -> str:
+        # Lazy import to avoid loading PyTorch in web container
+        import torch
+
         if preferred == "cuda" and not torch.cuda.is_available():
             return "cpu"
         return preferred
@@ -236,7 +244,7 @@ def select_engine(
     language_hint: Optional[str] = None,
     config: Optional[RouterConfig] = None,
     detector: Optional[LanguageDetector] = None,
-) -> Tuple[TranscriptionService, str, Dict[str, Any]]:
+) -> Tuple["TranscriptionService", str, Dict[str, Any]]:
     """
     Select the correct transcription engine for a job.
 
@@ -301,7 +309,7 @@ def select_engine(
 def _select_from_hint(
     selection_details: Dict[str, Any],
     config: RouterConfig,
-) -> Tuple[TranscriptionService, str]:
+) -> Tuple["TranscriptionService", str]:
     hint = selection_details["user_language_hint"]
     if hint and _is_mandarin(hint) and config.enable_belle2:
         selection_details["selection_reason"] = f"user_hint_{hint}"
@@ -318,7 +326,11 @@ def _select_from_hint(
 def _instantiate_service(
     requested_engine: str,
     selection_details: Dict[str, Any],
-) -> Tuple[TranscriptionService, str]:
+) -> Tuple["TranscriptionService", str]:
+    # Lazy imports to avoid loading PyTorch in web container
+    from app.ai_services.belle2_service import Belle2Service
+    from app.ai_services.whisperx_service import WhisperXService
+
     engine = (requested_engine or DEFAULT_ENGINE).lower()
 
     if engine == "belle2":
@@ -387,10 +399,17 @@ def _is_mandarin(language: Optional[str]) -> bool:
     return normalized in MANDARIN_CODES if normalized else False
 
 
-def _load_audio_snippet(audio_path: str, duration_seconds: int) -> np.ndarray:
+def _load_audio_snippet(audio_path: str, duration_seconds: int):
     """
     Efficiently decode only the first N seconds of audio using ffmpeg.
+    Returns numpy array of audio samples.
     """
+    # Lazy imports to avoid loading PyTorch/numpy in web container
+    import numpy as np
+    from app.ai_services.whisperx_shim import ensure_whisperx_available
+    ensure_whisperx_available()
+    from app.ai_services.whisperx.whisperx.audio import SAMPLE_RATE
+
     cmd = [
         "ffmpeg",
         "-nostdin",
@@ -423,3 +442,87 @@ def _load_audio_snippet(audio_path: str, duration_seconds: int) -> np.ndarray:
     return (
         np.frombuffer(result.stdout, dtype=np.int16).astype(np.float32) / 32768.0
     )
+
+
+# ------------------------------------------------------------------------- #
+# Epic 4: Multi-Worker Queue Routing
+# ------------------------------------------------------------------------- #
+def get_transcription_queue(
+    model: str = "auto",
+    language: Optional[str] = None,
+) -> str:
+    """
+    Map model selection to Celery worker queue name for multi-worker architecture.
+
+    This is a lightweight routing function that determines which Celery queue
+    should handle a transcription job based on model preference and language hint.
+    Used in Epic 4 Docker Compose multi-worker deployment.
+
+    Args:
+        model: Model selection ("belle2", "whisperx", or "auto")
+        language: Optional language hint (ISO code like "zh", "en", etc.)
+
+    Returns:
+        Queue name: "belle2" or "whisperx"
+
+    Routing Logic:
+        - Explicit "belle2" → belle2 queue
+        - Explicit "whisperx" → whisperx queue
+        - "auto" + Chinese language → belle2 queue
+        - "auto" + other/no language → whisperx queue (default)
+
+    Usage:
+        # In upload endpoint
+        queue_name = get_transcription_queue(model="auto", language="zh")
+        # → "belle2"
+
+        # Explicit model selection
+        queue_name = get_transcription_queue(model="whisperx")
+        # → "whisperx"
+
+    Notes:
+        - This function is stateless and does NOT load models
+        - For in-process model selection, use select_engine() instead
+        - Queue names must match CELERY_QUEUE environment variables in docker-compose.yaml
+    """
+    model_normalized = (model or "auto").lower().strip()
+
+    # Explicit model selection
+    if model_normalized == "belle2":
+        logger.debug(
+            "Queue routing: belle2 (explicit model selection)",
+            extra={"model": model, "language": language}
+        )
+        return "belle2"
+
+    if model_normalized == "whisperx":
+        logger.debug(
+            "Queue routing: whisperx (explicit model selection)",
+            extra={"model": model, "language": language}
+        )
+        return "whisperx"
+
+    # Auto-selection based on language
+    if model_normalized == "auto":
+        language_normalized = _normalize_language_code(language)
+
+        if language_normalized and _is_mandarin(language_normalized):
+            logger.debug(
+                f"Queue routing: belle2 (auto-selected for Chinese language '{language_normalized}')",
+                extra={"model": model, "language": language}
+            )
+            return "belle2"
+
+        # Default to WhisperX for non-Chinese or unknown language
+        logger.debug(
+            f"Queue routing: whisperx (auto-selected for language '{language_normalized or 'unknown'}')",
+            extra={"model": model, "language": language}
+        )
+        return "whisperx"
+
+    # Unsupported model name - fallback to WhisperX
+    logger.warning(
+        f"Queue routing: whisperx (fallback from unsupported model '{model}')",
+        extra={"model": model, "language": language}
+    )
+    return "whisperx"

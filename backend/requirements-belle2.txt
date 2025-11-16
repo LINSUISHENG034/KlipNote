@@ -1,0 +1,28 @@
+# requirements-belle2.txt
+# BELLE-2 Worker Specific Dependencies
+# Epic 4 - Multi-Model Production Architecture
+# CUDA 11.8 / PyTorch <2.6 Environment
+
+# ===== Notes =====
+# - PyTorch (<2.6) installed separately in Dockerfile.belle2 with CUDA 11.8 index:
+#   pip install torch<2.6.0 torchaudio<2.6.0 --index-url https://download.pytorch.org/whl/cu118
+#
+# - All common dependencies in requirements-common.txt (transformers, librosa, etc.)
+#
+# - BELLE-2 model uses HuggingFace transformers (already in common requirements)
+#   Model: BELLE-2/Belle-whisper-large-v3-zh
+#
+# - No additional BELLE-2-specific dependencies required beyond common requirements
+
+# ===== BELLE-2 Model Loading =====
+# Model loaded via transformers.AutoModelForSpeechSeq2Seq (in common requirements)
+# No extra dependencies needed
+
+# ===== Optimization Pipeline (Epic 3) =====
+webrtcvad==2.0.10  # VAD preprocessing
+pydub==0.25.1      # Audio format conversion
+scipy==1.11.4      # Signal processing
+
+# ===== Validation =====
+# Validate PyTorch version <2.6 in entrypoint.sh startup script
+# Validate CUDA 11.8 in entrypoint.sh startup script

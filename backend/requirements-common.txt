@@ -1,0 +1,52 @@
+# requirements-common.txt
+# Shared Dependencies for All KlipNote Services
+# Epic 4 - Multi-Model Production Architecture
+# Used by: Web service, BELLE-2 worker, WhisperX worker
+
+# ===== FastAPI and Web Server =====
+fastapi==0.120.0
+uvicorn[standard]==0.32.1
+
+# ===== Task Queue =====
+celery[redis]==5.5.3
+redis==5.2.1
+flower==2.0.1
+
+# ===== Data Validation and Settings =====
+pydantic==2.10.3
+pydantic-settings==2.7.0
+
+# ===== File Handling =====
+python-multipart==0.0.20
+
+# ===== Media Processing =====
+python-ffmpeg==1.0.16  # Wrapper for ffmpeg binary
+
+# ===== Core Dependencies (Shared Across Models) =====
+numpy<2.1.0  # Used by both BELLE-2 and WhisperX
+transformers>=4.48.0  # HuggingFace transformers for model loading
+
+# ===== Chinese Language Processing =====
+zhconv>=1.4.3  # Traditional→Simplified Chinese conversion
+
+# ===== Audio Processing =====
+librosa>=0.10.0  # Audio loading and preprocessing (used by both models)
+
+# ===== Quality Metrics (Epic 4 - Story 4.6) =====
+jiwer==3.0.3       # CER/WER calculation for validation
+
+# ===== Notes =====
+# Optimization Pipeline dependencies (webrtcvad, pydub, scipy) moved to worker-specific requirements
+# These require C compilation and are only needed by workers, not the web service
+
+# ===== Testing (Development Only) =====
+pytest==7.4.4
+pytest-mock==3.12.0
+pytest-cov==4.1.0
+httpx==0.28.1       # For testing FastAPI endpoints
+fakeredis==2.21.1   # In-memory Redis for testing
+
+# ===== Notes =====
+# - PyTorch (torch, torchaudio) installed separately in Dockerfiles with model-specific CUDA versions
+# - WhisperX-specific dependencies in requirements-whisperx.txt
+# - BELLE-2-specific dependencies in requirements-belle2.txt

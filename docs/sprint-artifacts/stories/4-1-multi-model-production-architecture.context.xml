@@ -1,0 +1,318 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4.1</storyId>
+    <title>Multi-Model Production Architecture Design</title>
+    <status>done</status>
+    <generatedAt>2025-11-15</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>E:\Projects\KlipNote\docs\sprint-artifacts\4-1-multi-model-production-architecture.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>platform architect</asA>
+    <iWant>production-ready multi-model architecture supporting both BELLE-2 and WhisperX</iWant>
+    <soThat>we can deploy both transcription models with isolated CUDA environments and runtime model selection</soThat>
+    <tasks>
+      <phase id="1" name="Foundation" effort="Day 1">
+        <task>Write ADR-004 documenting multi-model architecture decision</task>
+        <task>Get PM approval on architectural approach</task>
+        <task>Update architecture.md with deployment strategy</task>
+      </phase>
+      <phase id="2" name="Docker Configuration" effort="Day 1-2">
+        <task>Create docker-compose.multi-model.yaml</task>
+        <task>Define belle2-worker service with CUDA 11.8 image</task>
+        <task>Define whisperx-worker service with CUDA 12.x image</task>
+        <task>Configure Redis with health checks and restart policy</task>
+        <task>Configure shared volume mounts</task>
+      </phase>
+      <phase id="3" name="Model Selection Logic" effort="Day 2-3">
+        <task>Implement get_transcription_queue() routing function</task>
+        <task>Add model parameter to upload endpoint</task>
+        <task>Add input validation for model selection</task>
+        <task>Update Celery task with dynamic queue routing</task>
+        <task>Add logging for routing decisions</task>
+      </phase>
+      <phase id="4" name="Worker Task Implementation" effort="Day 3">
+        <task>Create Dockerfile.belle2 with CUDA 11.8 base</task>
+        <task>Create Dockerfile.whisperx with CUDA 12.x base</task>
+        <task>Add CUDA version validation to worker startup</task>
+        <task>Configure Celery worker commands with queue assignment</task>
+        <task>Implement model pre-download (Option 1) or volume persistence (Option 2)</task>
+      </phase>
+      <phase id="5" name="Testing &amp; Documentation" effort="Day 4-5">
+        <task>Test belle2 queue independently</task>
+        <task>Test whisperx queue independently</task>
+        <task>Test model selection routing</task>
+        <task>Test concurrent job processing</task>
+        <task>Write deployment documentation</task>
+        <task>Create prerequisites check script</task>
+        <task>Validate on fresh VM</task>
+        <task>Update all validation commands</task>
+      </phase>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1" priority="critical">
+      <title>ADR-004 Architecture Decision Record Created</title>
+      <description>
+        Create comprehensive ADR documenting multi-model architecture decision with context (PyTorch conflict, Epic 3 findings), decision (Docker Compose multi-worker), consequences, and alternatives. Must be approved by PM (Link).
+      </description>
+      <validation>
+        - File exists at docs/architecture-decisions/ADR-004-multi-model-architecture.md
+        - Contains sections: Context, Decision, Consequences, Alternatives Considered
+        - References Epic 3 Story 3.2c A/B comparison results
+        - Commit message includes "Reviewed-by: Link"
+      </validation>
+    </criterion>
+    <criterion id="AC2" priority="critical">
+      <title>Docker Compose Multi-Worker Configuration Functional</title>
+      <description>
+        Complete docker-compose.multi-model.yaml with 4 services (web, redis, belle2-worker, whisperx-worker), correct environment variables, volume mounts, and GPU allocation. All services must start and remain healthy.
+      </description>
+      <validation>
+        - docker-compose config validates syntax
+        - All 4 services defined and start successfully
+        - Both workers have nvidia GPU runtime configured
+        - Volume mounts for /uploads and model caches configured
+        - Environment variables: DEFAULT_TRANSCRIPTION_MODEL (web), CELERY_QUEUE (workers)
+      </validation>
+    </criterion>
+    <criterion id="AC3" priority="critical">
+      <title>Celery Task Routing to Model-Specific Queues Verified</title>
+      <description>
+        Implement dynamic queue routing based on model selection. Web service must dispatch jobs to correct queues (belle2 or whisperx) with input validation and error handling.
+      </description>
+      <validation>
+        - get_transcription_queue() function validates and returns queue name
+        - Upload endpoint accepts model parameter
+        - Invalid model names return 400 error
+        - Celery logs show tasks routed to correct queues
+        - Flower UI shows tasks in belle2 and whisperx queues
+      </validation>
+    </criterion>
+    <criterion id="AC4" priority="high">
+      <title>Model Selection Configuration Validated</title>
+      <description>
+        DEFAULT_TRANSCRIPTION_MODEL environment variable controls default model (defaults to belle2). Per-request model parameter overrides default. Invalid values rejected with clear errors.
+      </description>
+      <validation>
+        - Env var unset → defaults to belle2
+        - Env var set to whisperx → uses whisperx
+        - Request parameter overrides env var
+        - Invalid model names return 400 with descriptive error
+      </validation>
+    </criterion>
+    <criterion id="AC5" priority="high">
+      <title>Deployment Documentation Complete and Tested</title>
+      <description>
+        Create comprehensive deployment guide at docs/deployment/multi-model-setup.md covering prerequisites, GPU requirements, setup steps, model cache configuration, health checks, and troubleshooting. Must be validated on fresh VM.
+      </description>
+      <validation>
+        - Documentation includes all required sections
+        - Prerequisites check script provided and functional
+        - Fresh VM deployment succeeds following guide
+        - Health check endpoint returns both workers ready
+      </validation>
+    </criterion>
+    <criterion id="AC6" priority="critical">
+      <title>End-to-End Multi-Model Transcription Tested</title>
+      <description>
+        Both BELLE-2 and WhisperX complete full transcription workflows independently. Results retrievable via API. Concurrent jobs on different queues process without interference.
+      </description>
+      <validation>
+        - BELLE-2 transcription completes with valid segments
+        - WhisperX transcription completes with valid segments
+        - Results retrievable via /result/{job_id}
+        - Concurrent jobs on both queues complete successfully
+      </validation>
+    </criterion>
+    <criterion id="AC7" priority="high">
+      <title>Dependency Validation Implemented</title>
+      <description>
+        Implement health checks and validation for Redis, CUDA versions, and model selection. Workers must validate CUDA version on startup and fail fast with clear errors.
+      </description>
+      <validation>
+        - Redis health check configured (CMD redis-cli ping)
+        - BELLE-2 worker validates CUDA 11.8 on startup
+        - WhisperX worker validates CUDA 12.x on startup
+        - Invalid model selection returns 400 error
+      </validation>
+    </criterion>
+    <criterion id="AC8" priority="medium">
+      <title>Resource Contention Behavior Documented</title>
+      <description>
+        Document GPU scheduling behavior (sequential processing), configure worker concurrency limits, and set Redis restart policy. Provide guidance on monitoring queue depth.
+      </description>
+      <validation>
+        - Redis restart policy: unless-stopped
+        - Workers configured with concurrency=1
+        - Documentation includes GPU Scheduling Behavior section
+        - Guidance on monitoring via Flower UI
+      </validation>
+    </criterion>
+    <criterion id="AC9" priority="medium">
+      <title>Model File Persistence Strategy Implemented</title>
+      <description>
+        Either pre-download models during Docker build (preferred) OR configure volume mounts for model caches. Document first-job behavior if models not pre-cached.
+      </description>
+      <validation>
+        - Option 1: Models exist in Docker images before first run, OR
+        - Option 2: Volume mounts persist models across restarts
+        - First transcription doesn't re-download models (if Option 1)
+        - Documentation explains chosen strategy and first-job behavior
+      </validation>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="Product Requirements Document">
+        <section name="Epic 4 Overview">
+          Epic 4: Multi-Model Transcription Framework &amp; Composable Enhancements (POST-MVP). Production multi-model architecture with model-agnostic enhancement components. Delivers multi-model framework supporting 2+ transcription engines with composable enhancement pipeline.
+        </section>
+        <section name="FR003 - Multi-Model Support">
+          System shall process media using empirically validated transcription model (BELLE-2 or WhisperX selected for MVP based on Epic 3 A/B comparison; both models validated, multi-model support planned for post-MVP Epic 4).
+        </section>
+      </doc>
+      <doc path="docs/sprint-artifacts/tech-spec-epic-4.md" title="Epic 4 Technical Specification">
+        <section name="Overview">
+          Epic 4 operationalizes multi-model architecture by enabling production deployment of both BELLE-2 and WhisperX with isolated runtime environments. Core challenge: PyTorch dependency conflicts (BELLE-2 requires CUDA 11.8/PyTorch &lt;2.6, WhisperX requires CUDA 12.x/PyTorch ≥2.6) while enabling runtime model selection.
+        </section>
+        <section name="Multi-Model Worker Architecture">
+          Docker Compose multi-worker architecture: belle2-worker (CUDA 11.8), whisperx-worker (CUDA 12.x), ModelRouter for Celery task routing, environment isolation preventing PyTorch conflicts.
+        </section>
+        <section name="Docker Service Definitions">
+          Services: web (FastAPI with DEFAULT_TRANSCRIPTION_MODEL env var), belle2-worker (image: klipnote-worker-cuda118, queue: belle2), whisperx-worker (image: klipnote-worker-cuda12, queue: whisperx), redis (broker + result backend).
+        </section>
+        <section name="Celery Task Routing">
+          ModelRouter.route_transcription_task() determines queue based on model selection. Task routes: belle2 queue or whisperx queue. Auto-selection logic: Chinese → belle2, other languages → whisperx.
+        </section>
+      </doc>
+      <doc path="docs/architecture.md" title="Architecture Decision Document">
+        <section name="GPU Environment Requirements (§822-868)">
+          BELLE-2: CUDA 11.8 / PyTorch &lt;2.6. WhisperX: CUDA 12.x / PyTorch ≥2.6. Cannot coexist in single environment. Epic 4 strategy: Docker Compose multi-worker with isolated containers per model, Celery task routing, zero environment conflicts.
+        </section>
+        <section name="Development vs Production (§956-1038)">
+          Development: Local .venv with direct GPU access for rapid experimentation. Production: Docker Compose with validated configurations. Configuration promotion workflow: prototype → validate → promote → deploy.
+        </section>
+        <section name="Technology Stack">
+          Python 3.12.x, FastAPI 0.120.x, Celery 5.5.3, Redis 7.x, Docker with GPU support (nvidia-docker runtime), NVIDIA driver 530+.
+        </section>
+      </doc>
+    </docs>
+    <code>
+      <module path="backend/app/ai_services/model_router.py">
+        <interface>select_engine(job_id, audio_path, language_hint) → (service, engine_name, details)</interface>
+        <note>Existing language-based model selection. Story 4.1 adds Celery queue routing function: get_transcription_queue(model)</note>
+      </module>
+      <module path="backend/app/celery_utils.py">
+        <current>Single Celery instance, no queue routing</current>
+        <note>Story 4.1 extends with task_routes configuration for belle2/whisperx queues</note>
+      </module>
+      <module path="backend/app/main.py">
+        <endpoint>POST /upload - accepts file, returns job_id</endpoint>
+        <note>Story 4.1 adds optional 'model' parameter (belle2|whisperx|auto)</note>
+      </module>
+      <module path="backend/app/config.py">
+        <current>Settings class with CELERY_BROKER_URL, WHISPER_MODEL, BELLE2_MODEL_NAME</current>
+        <note>Story 4.1 adds DEFAULT_TRANSCRIPTION_MODEL env var</note>
+      </module>
+      <docker path="backend/docker-compose.yaml">
+        <current>3 services: web, worker (single), redis, flower</current>
+        <note>Story 4.1 creates docker-compose.multi-model.yaml with belle2-worker and whisperx-worker</note>
+      </docker>
+      <docker path="backend/Dockerfile">
+        <current>CUDA 12.3 base for WhisperX</current>
+        <note>Story 4.1 creates Dockerfile.belle2 (CUDA 11.8) and Dockerfile.whisperx (CUDA 12.x)</note>
+      </docker>
+    </code>
+    <dependencies>
+      <docker>
+        <image>nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 (BELLE-2 worker)</image>
+        <image>nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04 (WhisperX worker)</image>
+        <runtime>nvidia-docker2 (GPU support)</runtime>
+      </docker>
+      <python>
+        <package>celery[redis]==5.5.3 (task queue)</package>
+        <package>redis==5.0.x (broker + result backend)</package>
+        <package>fastapi==0.120.x (web framework)</package>
+        <package>torch (CUDA-specific: 11.8 for BELLE-2, 12.x for WhisperX)</package>
+      </python>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="environment">
+      BELLE-2 and WhisperX CANNOT coexist in same Python environment (PyTorch version conflict: BELLE-2 requires &lt;2.6, WhisperX requires ≥2.6). MUST use separate Docker containers.
+    </constraint>
+    <constraint type="gpu">
+      GPU scheduling is sequential (one model runs at a time). Workers must set concurrency=1. Document expected behavior.
+    </constraint>
+    <constraint type="compatibility">
+      Existing single-worker docker-compose.yaml must remain functional for backwards compatibility. New multi-model setup in separate file.
+    </constraint>
+    <constraint type="deployment">
+      Model selection must degrade gracefully if one model fails to load. Always have fallback to working model.
+    </constraint>
+    <constraint type="configuration">
+      Environment variables must support both DEFAULT_TRANSCRIPTION_MODEL (web service) and CELERY_QUEUE (worker-specific queue assignment).
+    </constraint>
+  </constraints>
+  <interfaces>
+    <api>
+      <endpoint method="POST" path="/upload">
+        <current>Accepts: multipart file. Returns: {job_id: string}</current>
+        <extends>Add optional form field: model (string, values: "belle2"|"whisperx"|"auto", default: from DEFAULT_TRANSCRIPTION_MODEL env var)</extends>
+      </endpoint>
+    </api>
+    <celery>
+      <task name="transcribe_audio">
+        <current>Single queue (default)</current>
+        <extends>Route to belle2 or whisperx queue based on model selection via get_transcription_queue() function</extends>
+      </task>
+    </celery>
+    <docker>
+      <service name="belle2-worker">
+        <config>
+          - Image: klipnote-worker-cuda118 (from Dockerfile.belle2)
+          - Queue: belle2 (CELERY_QUEUE env var)
+          - GPU: nvidia runtime, CUDA 11.8
+          - Environment: BELLE2_MODEL_NAME, CELERY_BROKER_URL, CELERY_RESULT_BACKEND
+        </config>
+      </service>
+      <service name="whisperx-worker">
+        <config>
+          - Image: klipnote-worker-cuda12 (from Dockerfile.whisperx)
+          - Queue: whisperx (CELERY_QUEUE env var)
+          - GPU: nvidia runtime, CUDA 12.x
+          - Environment: WHISPER_MODEL, CELERY_BROKER_URL, CELERY_RESULT_BACKEND
+        </config>
+      </service>
+    </docker>
+  </interfaces>
+  <tests>
+    <standards>
+      - All API endpoints must have pytest tests (backend/tests/test_api_*.py)
+      - Model routing logic must have unit tests with mocked services
+      - Docker Compose validation: docker-compose config --quiet
+      - Health checks: Redis ping, worker ready status
+      - Integration: Submit jobs to both queues, verify completion
+    </standards>
+    <locations>
+      - backend/tests/test_api_upload.py (upload endpoint with model parameter)
+      - backend/tests/test_model_router.py (get_transcription_queue function)
+      - backend/tests/test_celery_routing.py (Celery task routing configuration)
+      - Manual validation: docker-compose.multi-model.yaml syntax and GPU access
+    </locations>
+    <ideas>
+      - Test invalid model names return 400 error
+      - Test DEFAULT_TRANSCRIPTION_MODEL environment variable precedence
+      - Test concurrent jobs on different queues complete without interference
+      - Test fallback behavior if one worker is unavailable
+      - Test health check endpoints report both workers ready
+      - Validate CUDA version in worker startup logs
+    </ideas>
+  </tests>
+</story-context>
