@@ -51,6 +51,48 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Epic 4: Unified VAD + metadata schema configuration
+    VAD_ENGINE: Literal["auto", "silero", "webrtc"] = Field(
+        default="auto",
+        description="Unified VAD engine preference. Auto chooses Silero when available, else WebRTC.",
+    )
+    VAD_SILERO_THRESHOLD: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for Silero VAD speech detection.",
+    )
+    VAD_SILERO_MIN_SILENCE_MS: int = Field(
+        default=700,
+        ge=100,
+        description="Minimum silence (milliseconds) for Silero VAD filtering.",
+    )
+    VAD_WEBRTC_AGGRESSIVENESS: int = Field(
+        default=2,
+        ge=0,
+        le=3,
+        description="Aggressiveness level for WebRTC VAD (0-3).",
+    )
+    VAD_WEBRTC_MIN_SPEECH_MS: int = Field(
+        default=300,
+        ge=100,
+        description="Minimum speech segment duration (milliseconds) for WebRTC VAD.",
+    )
+    VAD_WEBRTC_MAX_SILENCE_MS: int = Field(
+        default=500,
+        ge=100,
+        description="Maximum silence gap (milliseconds) to merge adjacent speech segments in WebRTC VAD.",
+    )
+    VAD_MIN_SILENCE_DURATION: float = Field(
+        default=1.0,
+        ge=0.1,
+        description="Post-VAD silence duration threshold (seconds) for segment removal.",
+    )
+    INCLUDE_ENHANCED_METADATA: bool = Field(
+        default=True,
+        description="Return TranscriptionResult payloads (segments + metadata) by default.",
+    )
+
     # File Storage Configuration
     UPLOAD_DIR: str = "/uploads"
     MAX_FILE_SIZE: int = 2147483648  # 2GB in bytes

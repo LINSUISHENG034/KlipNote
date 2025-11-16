@@ -1,0 +1,370 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4.2</storyId>
+    <title>Model-Agnostic VAD Preprocessing &amp; Enhanced Metadata Schema</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-16</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-2-model-agnostic-vad-preprocessing.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user transcribing audio with background noise or silence</asA>
+    <iWant>the system to filter out non-speech segments with high-quality deep-learning VAD and capture rich metadata</iWant>
+    <soThat>transcription segments are more focused, accurately timed, and processing is fully transparent</soThat>
+    <tasks>
+### Phase 1: Enhanced Data Schema Implementation (AC: #1, #2, #3)
+- Create `backend/app/ai_services/schema.py` module with hierarchical TypedDict structures
+- Add backward compatibility alias (TimestampSegment = EnhancedSegment)
+- Implement service layer support for both simple and enhanced return modes
+
+### Phase 2: VAD Engine Architecture (AC: #4, #5, #6, #7, #9, #10)
+- Create base VAD interface with BaseVAD abstract class
+- Implement Silero VAD engine (primary) using torch.hub
+- Implement WebRTC VAD engine (fallback)
+- Create unified VAD manager with auto-selection logic
+- Disable WhisperX built-in VAD (vad_filter=False)
+- Ensure BELLE-2 and WhisperX compatibility
+
+### Phase 3: Configuration &amp; Integration (AC: #8, #11, #12, #13)
+- Add silence removal configuration (min_silence_duration=1.0s)
+- Performance validation (&lt;5 min for 1-hour audio)
+- Testing implementation (unit + integration tests)
+- Configuration expansion (VAD_ENGINE, thresholds, aggressiveness)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+### Task 1: Enhanced Data Schema (Technical Enabler)
+1. `backend/app/ai_services/schema.py` module created with hierarchical TypedDict structures
+2. Backward compatibility alias: `TimestampSegment = EnhancedSegment`
+3. Service layer supports both simple and enhanced return modes
+
+### Task 2: Multi-Engine VAD Architecture
+4. `VoiceActivityDetector` class implements model-agnostic VAD interface
+5. Silero VAD extracted from WhisperX as primary engine
+6. WebRTC VAD included as fallback engine
+7. Multi-engine support with auto-selection: Silero → WebRTC fallback
+8. VAD filters segments removing silence &gt;1s duration
+9. Disable WhisperX built-in VAD (vad_filter=False)
+10. Compatible with both BELLE-2 and WhisperX output formats
+
+### Task 3: Configuration &amp; Integration
+11. Processing completes &lt;5 min for 1-hour audio
+12. Unit tests verify filtering logic, integration tests validate with real audio
+13. Configuration expanded with VAD_ENGINE, thresholds, and aggressiveness settings
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>NFR005: Transcription Quality</section>
+        <snippet>Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows. Segments should typically span 1-7 seconds with maximum ~200 characters. Model selection determined through empirical A/B testing in Epic 3.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - VAD Engine Architecture (Epic 4)</title>
+        <section>§965-1182: VAD Engine Architecture</section>
+        <snippet>Multi-engine Voice Activity Detection with Silero deep-learning VAD as primary engine. Module structure: vad_manager.py, vad_engines/ (base_vad.py, silero_vad.py, webrtc_vad.py). Silero uses torch.hub, WhisperX extraction provides proven 70-line implementation.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Enhanced Data Schema Architecture (Epic 4)</title>
+        <section>§825-963: Enhanced Data Schema</section>
+        <snippet>Hierarchical metadata schema: CharTiming, WordTiming, BaseSegment, EnhancedSegment (with words, chars, confidence, source_model, enhancements_applied), TranscriptionMetadata, TranscriptionResult. Backward compatibility: TimestampSegment = EnhancedSegment.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Story 4.2: Model-Agnostic VAD Preprocessing</section>
+        <snippet>VoiceActivityDetector class implements model-agnostic VAD interface. Silero VAD extracted from WhisperX as primary engine (torch.hub based). WebRTC VAD included as fallback. Multi-engine support with auto-selection: Silero → WebRTC fallback. VAD filters segments removing silence &gt;1s duration.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic 4: Multi-Model Transcription Framework</title>
+        <section>Story 4.2 Acceptance Criteria</section>
+        <snippet>13 acceptance criteria across 3 tasks: Enhanced Data Schema (schema.py with TypedDict structures), Multi-Engine VAD Architecture (Silero + WebRTC with auto-selection), Configuration &amp; Integration (VAD_ENGINE, thresholds, aggressiveness settings). Processing completes &lt;5 min for 1-hour audio.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <module>
+        <path>backend/app/ai_services/base.py</path>
+        <class>TranscriptionService</class>
+        <purpose>Abstract base class for transcription services - defines common interface pattern</purpose>
+        <relevance>Reference for creating similar abstract base class for VAD components (BaseVAD)</relevance>
+        <interface>
+          - transcribe(audio_path, language, **kwargs) -> List[Dict]
+          - get_supported_languages() -> List[str]
+          - validate_audio_file(audio_path) -> bool
+        </interface>
+      </module>
+      <module>
+        <path>backend/app/ai_services/optimization/base.py</path>
+        <class>TimestampOptimizer</class>
+        <purpose>Abstract interface for pluggable optimizer implementations (Epic 3 Story 3.2a pattern)</purpose>
+        <relevance>Pattern to follow for VAD components - similar EnhancementComponent interface needed</relevance>
+        <interface>
+          - optimize(segments, audio_path, language) -> OptimizationResult
+          - is_available() -> bool (static method for dependency checking)
+        </interface>
+        <note>Uses dataclass OptimizationResult for standardized output format with metrics</note>
+      </module>
+      <module>
+        <path>backend/app/ai_services/whisperx/whisperx/vads/silero.py</path>
+        <class>Silero</class>
+        <purpose>Silero VAD implementation (70 lines) - TO BE EXTRACTED and adapted for KlipNote</purpose>
+        <relevance>Primary VAD engine to extract from WhisperX submodule</relevance>
+        <key_code>
+          - Uses torch.hub.load('snakers4/silero-vad', model='silero_vad')
+          - get_speech_timestamps() for VAD processing
+          - Returns segments with start/end timestamps
+          - Parameters: vad_onset (threshold), chunk_size, sample_rate (16000Hz only)
+        </key_code>
+        <dependencies>torch, whisperx.vads.vad (base Vad class), whisperx.diarize (SegmentX)</dependencies>
+      </module>
+      <module>
+        <path>backend/app/config.py</path>
+        <class>Settings</class>
+        <purpose>Application configuration with Pydantic BaseSettings</purpose>
+        <relevance>Add new VAD configuration fields following existing pattern</relevance>
+        <existing_pattern>
+          - DEFAULT_TRANSCRIPTION_MODEL: Literal["belle2", "whisperx", "auto"]
+          - OPTIMIZER_ENGINE: Literal["whisperx", "heuristic", "auto"]
+          - ENABLE_OPTIMIZATION: bool (feature flag)
+        </existing_pattern>
+        <new_fields_needed>
+          - VAD_ENGINE: Literal["auto", "silero", "webrtc"]
+          - VAD_SILERO_THRESHOLD: float (0.0-1.0)
+          - VAD_SILERO_MIN_SILENCE_MS: int
+          - VAD_WEBRTC_AGGRESSIVENESS: int (0-3)
+        </new_fields_needed>
+      </module>
+      <module>
+        <path>backend/app/ai_services/optimization/base.py</path>
+        <types>TimestampSegment, WordTiming, OptimizationResult</types>
+        <purpose>Existing type definitions for segments and word timings</purpose>
+        <relevance>Story 4.2 Task 1 creates NEW schema.py with enhanced types, but maintains backward compatibility</relevance>
+        <note>TimestampSegment = EnhancedSegment (backward compatibility alias needed)</note>
+      </module>
+    </code>
+    <dependencies>
+      <existing>
+        <package name="torch" version="&gt;=2.0.0" usage="Silero VAD torch.hub.load(), tensor operations"/>
+        <package name="pydantic" version="~=2.10" usage="Settings configuration with Field() validators"/>
+        <package name="typing" usage="TypedDict for schema.py hierarchical structures"/>
+      </existing>
+      <new>
+        <package name="webrtcvad" version="2.0.10" usage="WebRTC VAD fallback engine (Task 2 AC#6)"/>
+        <package name="librosa" version="0.10.x" usage="Audio waveform analysis (future Story 4.3)"/>
+      </new>
+      <architecture_alignment>
+        <pattern>Git submodule pattern for WhisperX integration (§809-813)</pattern>
+        <pattern>Pluggable architecture: TimestampOptimizer interface pattern (Story 3.2a)</pattern>
+        <pattern>Configuration-driven selection via environment variables (OPTIMIZER_ENGINE model)</pattern>
+        <pattern>Factory pattern: OptimizerFactory.create() → VadManagerFactory.create()</pattern>
+      </architecture_alignment>
+      <testing_frameworks>
+        <unit>pytest, pytest-mock for mocking audio</unit>
+        <integration>pytest with real audio samples from tests/integration/audio/</integration>
+        <performance>Custom benchmark decorators (processing_time_ms metrics)</performance>
+      </testing_frameworks>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <architectural>
+      <constraint id="ARCH-001">
+        <rule>Must maintain backward compatibility with existing TimestampSegment type</rule>
+        <implementation>TimestampSegment = EnhancedSegment (type alias in schema.py)</implementation>
+        <validation>Existing code using TimestampSegment must compile without changes</validation>
+      </constraint>
+      <constraint id="ARCH-002">
+        <rule>VAD must work with BOTH BELLE-2 and WhisperX output formats</rule>
+        <implementation>Model-agnostic interface accepting List[Dict] with start/end/text</implementation>
+        <validation>Integration tests run VAD on outputs from both Belle2Service and WhisperXService</validation>
+      </constraint>
+      <constraint id="ARCH-003">
+        <rule>Follow existing pluggable architecture pattern from Story 3.2a</rule>
+        <implementation>BaseVAD abstract class similar to TimestampOptimizer</implementation>
+        <validation>Code review confirms pattern consistency</validation>
+      </constraint>
+      <constraint id="ARCH-004">
+        <rule>Disable WhisperX built-in VAD to prevent duplicate processing</rule>
+        <implementation>Set vad_filter=False in WhisperX transcription calls</implementation>
+        <validation>WhisperX service logs confirm VAD disabled</validation>
+      </constraint>
+    </architectural>
+    <performance>
+      <constraint id="PERF-001">
+        <metric>Processing time &lt; 5 minutes for 1-hour audio</metric>
+        <source>Epic 4 Tech Spec AC-4.2-5, NFR-E4-002</source>
+        <validation>Performance test on 60-minute audio file</validation>
+      </constraint>
+      <constraint id="PERF-002">
+        <metric>Silero VAD requires 16000Hz sample rate</metric>
+        <source>whisperx/vads/silero.py:39 validation</source>
+        <mitigation>Resample audio to 16kHz before VAD processing if needed</mitigation>
+      </constraint>
+    </performance>
+    <data>
+      <constraint id="DATA-001">
+        <rule>Enhanced schema must be hierarchical TypedDict structures</rule>
+        <types>CharTiming, WordTiming, BaseSegment, EnhancedSegment, TranscriptionMetadata, TranscriptionResult</types>
+        <source>Architecture §825-963, Tech Spec Task 1</source>
+      </constraint>
+      <constraint id="DATA-002">
+        <rule>VAD filters segments removing silence &gt;1s duration</rule>
+        <source>Tech Spec AC-4.2-8, Epic 4.2 Story acceptance criteria</source>
+        <implementation>min_silence_duration=1.0s configuration parameter</implementation>
+      </constraint>
+    </data>
+  </constraints>
+  <interfaces>
+    <api>
+      <interface name="BaseVAD">
+        <type>Abstract Class</type>
+        <location>backend/app/ai_services/enhancement/vad_engines/base_vad.py</location>
+        <methods>
+          <method name="__init__" signature="(self, **config)">Initialize VAD engine with configuration</method>
+          <method name="filter_segments" signature="(self, segments: List[Dict], audio_path: str) -> List[Dict]">Filter segments removing silence</method>
+          <method name="get_metrics" signature="(self) -> Dict[str, Any]">Return VAD processing metrics</method>
+          <method name="is_available" signature="() -> bool" static="true">Check if VAD engine dependencies available</method>
+        </methods>
+        <pattern>Follows TimestampOptimizer pattern from Story 3.2a</pattern>
+      </interface>
+      <interface name="VoiceActivityDetector">
+        <type>Facade/Manager Class</type>
+        <location>backend/app/ai_services/enhancement/vad_manager.py</location>
+        <purpose>Unified VAD interface with multi-engine auto-selection (Silero → WebRTC fallback)</purpose>
+        <methods>
+          <method name="__init__" signature="(self, engine: str = 'auto', **config)">Initialize with engine selection</method>
+          <method name="filter_segments" signature="(self, segments, audio_path) -> Tuple[List[Dict], Dict]">Delegate to selected engine, return (filtered_segments, metrics)</method>
+        </methods>
+      </interface>
+      <interface name="EnhancedSegment (TypedDict)">
+        <type>Data Structure</type>
+        <location>backend/app/ai_services/schema.py</location>
+        <fields>
+          <required>start: float, end: float, text: str</required>
+          <optional>words: List[WordTiming], chars: List[CharTiming], confidence: float, no_speech_prob: float, avg_logprob: float, source_model: str, enhancements_applied: List[str], speaker: str</optional>
+        </fields>
+        <backward_compatibility>TimestampSegment = EnhancedSegment (alias)</backward_compatibility>
+      </interface>
+    </api>
+    <integration>
+      <point name="TranscriptionService.transcribe()">
+        <location>belle2_service.py, whisperx_service.py</location>
+        <change>Return EnhancedSegment format instead of simple dicts</change>
+        <migration>Populate source_model field, initialize enhancements_applied=[]</migration>
+      </point>
+      <point name="Settings configuration">
+        <location>backend/app/config.py</location>
+        <new_fields>VAD_ENGINE, VAD_SILERO_THRESHOLD, VAD_SILERO_MIN_SILENCE_MS, VAD_WEBRTC_AGGRESSIVENESS</new_fields>
+        <pattern>Follow OPTIMIZER_ENGINE Literal pattern with Field() validators</pattern>
+      </point>
+    </integration>
+  </interfaces>
+  <tests>
+    <standards>
+      <framework>pytest ~=8.0.0</framework>
+      <coverage_target>85% for enhancement components</coverage_target>
+      <patterns>
+        <unit>pytest-mock for mocking audio files and torch.hub dependencies</unit>
+        <integration>Real audio samples from tests/integration/audio/</integration>
+        <performance>Custom benchmark decorators measuring processing_time_ms</performance>
+      </patterns>
+      <naming_convention>
+        <unit>tests/unit/test_vad_{component}.py</unit>
+        <integration>tests/integration/test_vad_integration.py</integration>
+      </naming_convention>
+    </standards>
+    <locations>
+      <unit>
+        <file>tests/unit/test_schema.py</file>
+        <purpose>Validate EnhancedSegment TypedDict structures, backward compatibility alias</purpose>
+      </unit>
+      <unit>
+        <file>tests/unit/test_vad_silero.py</file>
+        <purpose>Mock Silero torch.hub.load, test filter logic, aggressiveness levels</purpose>
+      </unit>
+      <unit>
+        <file>tests/unit/test_vad_webrtc.py</file>
+        <purpose>Mock WebRTC VAD, test fallback behavior</purpose>
+      </unit>
+      <unit>
+        <file>tests/unit/test_vad_manager.py</file>
+        <purpose>Test auto-selection logic (Silero → WebRTC), engine availability checks</purpose>
+      </unit>
+      <integration>
+        <file>tests/integration/test_vad_integration.py</file>
+        <purpose>Run VAD on real noisy audio, validate with BELLE-2 and WhisperX outputs</purpose>
+        <test_cases>
+          - test_silero_vad_filters_silence_chinese_audio()
+          - test_webrtc_vad_fallback_when_silero_unavailable()
+          - test_vad_compatible_with_belle2_output()
+          - test_vad_compatible_with_whisperx_output()
+        </test_cases>
+      </integration>
+      <performance>
+        <file>tests/performance/test_vad_performance.py</file>
+        <benchmarks>
+          - test_vad_processing_time_60min_audio() (must complete &lt;5 minutes)
+          - test_vad_overhead_vs_transcription_time() (target ≤25% per NFR-E4-002)
+        </benchmarks>
+      </performance>
+    </locations>
+    <ideas>
+      <test_case id="TC-001">
+        <name>Schema backward compatibility validation</name>
+        <approach>Create TimestampSegment instance, verify it's also valid EnhancedSegment</approach>
+        <assertion>isinstance(segment, EnhancedSegment) passes for both old and new code</assertion>
+      </test_case>
+      <test_case id="TC-002">
+        <name>Silero VAD edge cases</name>
+        <scenarios>
+          - All silence audio (should return empty segments list)
+          - No silence audio (should return segments unchanged)
+          - Mixed silence/speech (should filter &gt;1s silence only)
+          - Sample rate validation (should raise ValueError if not 16kHz)
+        </scenarios>
+      </test_case>
+      <test_case id="TC-003">
+        <name>Multi-engine auto-selection and fallback</name>
+        <approach>
+          1. Mock Silero.is_available() = True → verify Silero used
+          2. Mock Silero.is_available() = False → verify WebRTC used
+          3. Both unavailable → verify graceful error with helpful message
+        </approach>
+      </test_case>
+      <test_case id="TC-004">
+        <name>VAD metrics collection</name>
+        <metrics_to_validate>
+          - removed_segment_count: int
+          - total_silence_duration: float
+          - processing_time_ms: float
+          - engine_name: str ("silero" or "webrtc")
+        </metrics_to_validate>
+      </test_case>
+      <test_case id="TC-005">
+        <name>Integration with BELLE-2 and WhisperX services</name>
+        <approach>
+          1. Call Belle2Service.transcribe() → get raw segments
+          2. Pass segments to VoiceActivityDetector.filter_segments()
+          3. Verify output format matches EnhancedSegment schema
+          4. Repeat for WhisperXService
+        </approach>
+      </test_case>
+      <test_case id="TC-006">
+        <name>Configuration validation</name>
+        <test_invalid_configs>
+          - VAD_ENGINE="invalid" → should raise validation error
+          - VAD_SILERO_THRESHOLD=1.5 → should raise (must be 0.0-1.0)
+          - VAD_WEBRTC_AGGRESSIVENESS=5 → should raise (must be 0-3)
+        </test_invalid_configs>
+      </test_case>
+    </ideas>
+  </tests>
+</story-context>

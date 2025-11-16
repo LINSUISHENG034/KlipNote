@@ -7,15 +7,17 @@ specifically optimized for Mandarin Chinese, achieving 24-65% CER improvement
 over baseline Whisper models.
 """
 
-import os
 import logging
+import os
 import time
-from typing import List, Dict, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import torch
 from app.ai_services.base import TranscriptionService
+from app.ai_services.enhancement import VADManager
+from app.ai_services.schema import BaseSegment, TranscriptionResult, build_transcription_result
 from app.config import settings
 
 # Set up logging
@@ -96,8 +98,9 @@ class Belle2Service(TranscriptionService):
         self,
         audio_path: str,
         language: Optional[str] = "zh",
+        include_metadata: bool = False,
         **kwargs
-    ) -> List[Dict[str, Any]]:
+    ) -> Union[List[BaseSegment], TranscriptionResult]:
         """
         Transcribe audio file using BELLE-2 with Chinese optimizations
 
@@ -118,7 +121,9 @@ class Belle2Service(TranscriptionService):
             ValueError: If audio file is invalid
             RuntimeError: If transcription fails
         """
-        # Validate audio file
+        metadata_requested = include_metadata or settings.INCLUDE_ENHANCED_METADATA
+        started_at = time.time()
+
         if not self.validate_audio_file(audio_path):
             raise FileNotFoundError(f"Audio file not found or invalid: {audio_path}")
 
@@ -192,33 +197,52 @@ class Belle2Service(TranscriptionService):
                     skip_special_tokens=True
                 )
 
-                # Parse into WhisperX-compatible segments
-                chunk_duration = len(audio_chunk) / 16000
-                chunk_segments = self._parse_segments(
-                    transcription_with_timestamps,
-                    chunk_duration
-                )
+            # Parse into WhisperX-compatible segments
+            chunk_duration = len(audio_chunk) / 16000
+            chunk_segments = self._parse_segments(
+                transcription_with_timestamps,
+                chunk_duration
+            )
 
-                # Fallback: if timestamp parsing failed, use the clean text as a single span
-                if not chunk_segments:
-                    fallback_text = transcription_clean[0] if transcription_clean else ""
-                    if fallback_text:
-                        chunk_segments = [{
-                            "start": 0.0,
-                            "end": chunk_duration,
-                            "text": fallback_text.strip()
-                        }]
+            # Fallback: if timestamp parsing failed, use the clean text as a single span
+            if not chunk_segments:
+                fallback_text = transcription_clean[0] if transcription_clean else ""
+                if fallback_text:
+                    chunk_segments = [{
+                        "start": 0.0,
+                        "end": chunk_duration,
+                        "text": fallback_text.strip()
+                    }]
 
-                # Offset chunk-relative timestamps to absolute timeline
-                for segment in chunk_segments:
-                    all_segments.append({
-                        "start": segment["start"] + chunk_start_time,
-                        "end": segment["end"] + chunk_start_time,
-                        "text": segment["text"]
-                    })
+            # Offset chunk-relative timestamps to absolute timeline
+            for segment in chunk_segments:
+                all_segments.append({
+                    "start": segment["start"] + chunk_start_time,
+                    "end": segment["end"] + chunk_start_time,
+                    "text": segment["text"]
+                })
 
             logger.info(f"BELLE-2 transcription complete: {len(all_segments)} segments")
-            return all_segments
+            vad_manager = VADManager()
+            filtered_segments, vad_engine = vad_manager.process_segments(
+                segments=all_segments,
+                audio_path=audio_path,
+            )
+
+            if not metadata_requested:
+                return filtered_segments
+
+            enhancements = [f"vad:{vad_engine}"] if vad_engine else []
+            return build_transcription_result(
+                segments=filtered_segments,
+                language="zh",
+                model_name="belle2",
+                processing_time=time.time() - started_at,
+                duration=len(audio) / 16000 if "audio" in locals() else None,
+                vad_enabled=bool(vad_engine),
+                alignment_model="belle2",
+                enhancements_applied=enhancements,
+            )
 
         except FileNotFoundError:
             logger.error(f"Audio file not found: {audio_path}")

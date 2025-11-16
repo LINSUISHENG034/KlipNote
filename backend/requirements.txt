@@ -10,6 +10,7 @@ flower==2.0.1
 # Data Validation and Settings
 pydantic==2.10.3
 pydantic-settings==2.7.0
+typing-extensions>=4.0.0  # Python 3.10 compatibility for NotRequired
 
 # File Handling
 python-multipart==0.0.20

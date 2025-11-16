@@ -661,6 +661,8 @@ logger.error(f"WhisperX failed for job {job_id}: {error}", exc_info=True)
 
 **Epic 3 Update (2025-11-15):** Both BELLE-2 and WhisperX validated in Epic 3 (Stories 3.2b-3.2c). MVP ships with single model selected via Story 4.7. Multi-model production deployment (both models available) implemented in Epic 4 using Docker Compose multi-worker architecture.
 
+**Epic 4 Update (2025-11-16):** Enhanced metadata schema and model-agnostic component architecture enable composable enhancement pipeline with comprehensive quality tracking.
+
 **Architecture:**
 ```python
 # app/ai_services/base.py
@@ -819,6 +821,365 @@ git submodule update --init --recursive
 - `faster_whisper_service.py` - Faster local alternative (post-MVP)
 
 **Affects:** Epic 1.3 (transcription task), Epic 3 (multi-model + optimization pipeline)
+
+### Enhanced Data Schema Architecture (Epic 4)
+
+**Decision:** Hierarchical metadata schema supporting rich transcription metadata, processing pipeline tracking, and multi-language optimization
+
+**Module:** `backend/app/ai_services/schema.py` (NEW in Epic 4)
+
+**Rationale:**
+1. **Character-level timestamps:** Essential for Chinese subtitle editing and precise navigation
+2. **Processing transparency:** Track which enhancements were applied (VAD, refinement, splitting)
+3. **Quality metrics:** Capture confidence scores for validation and debugging
+4. **Future extensibility:** Speaker embeddings prepare for diarization features
+5. **Backward compatibility:** Alias pattern prevents breaking existing code
+
+**Schema Layers:**
+
+**Layer 1: Atomic Timing Data**
+```python
+# Character-level timestamps (critical for Chinese)
+class CharTiming(TypedDict, total=False):
+    char: str              # Single character
+    start: float           # Start timestamp (seconds)
+    end: float             # End timestamp (seconds)
+    score: float           # Alignment confidence (0.0-1.0)
+
+# Word-level timestamps with metadata
+class WordTiming(TypedDict, total=False):
+    word: str              # Word text
+    start: float           # Start timestamp (seconds)
+    end: float             # End timestamp (seconds)
+    score: float           # Alignment confidence (0.0-1.0)
+    language: str          # Language code (e.g., "zh", "en")
+```
+
+**Layer 2: Base Segment (Backward Compatible)**
+```python
+class BaseSegment(TypedDict):
+    start: float           # Required: segment start time
+    end: float             # Required: segment end time
+    text: str              # Required: transcribed text
+```
+
+**Layer 3: Enhanced Segment (Rich Metadata)**
+```python
+class EnhancedSegment(BaseSegment, total=False):
+    # Enhanced timing arrays
+    words: List[WordTiming]           # Word-level timestamps
+    chars: Optional[List[CharTiming]] # Character-level (Chinese critical)
+
+    # Quality metrics
+    confidence: float                  # Overall confidence (0.0-1.0)
+    no_speech_prob: float              # Silence probability
+    avg_logprob: float                 # Average log probability
+
+    # Processing metadata
+    source_model: Literal["belle2", "whisperx"]
+    enhancements_applied: List[str]    # e.g., ["vad_silero", "timestamp_refine"]
+
+    # Speaker diarization (future)
+    speaker: Optional[str]             # Speaker ID
+    speaker_embedding: Optional[List[float]]
+```
+
+**Layer 4: Result Container**
+```python
+class TranscriptionMetadata(TypedDict, total=False):
+    language: str                      # Detected/specified language
+    language_prob: float               # Language detection confidence
+    duration: float                    # Total audio duration
+    model_name: str                    # Transcription model used
+    model_version: str                 # Model version
+    processing_time: float             # Total processing time
+    vad_enabled: bool                  # VAD preprocessing applied
+    alignment_model: Optional[str]     # Timestamp alignment model
+
+class TranscriptionResult(TypedDict):
+    segments: List[EnhancedSegment]    # Transcription segments
+    metadata: TranscriptionMetadata    # Global metadata
+    stats: Dict[str, Any]              # Processing statistics
+```
+
+**Migration Strategy:**
+```python
+# Backward compatibility alias
+TimestampSegment = EnhancedSegment
+
+# Service layer supports both simple and enhanced modes
+def transcribe_with_metadata(
+    audio_path: str,
+    include_metadata: bool = True
+) -> TranscriptionResult:
+    if include_metadata:
+        return {"segments": enhanced_segments, "metadata": {...}}
+    else:
+        return {"segments": base_segments}  # Simple mode
+```
+
+**Component Integration:**
+
+**VAD Component:**
+```python
+# VAD appends processing metadata
+enhanced_segment["enhancements_applied"].append("vad_silero")
+enhanced_segment["metadata"]["vad_enabled"] = True
+```
+
+**Timestamp Refiner:**
+```python
+# Populates character/word timing arrays
+enhanced_segment["chars"] = char_timings  # Chinese segments
+enhanced_segment["words"] = word_timings  # All segments
+enhanced_segment["enhancements_applied"].append("timestamp_refine")
+```
+
+**Segment Splitter:**
+```python
+# Preserves timing arrays when splitting
+split_segments = split_with_timing_preservation(segment)
+for seg in split_segments:
+    seg["enhancements_applied"].append("segment_split")
+```
+
+**Quality Validator:**
+```python
+# Leverages metadata for comprehensive analysis
+avg_confidence = mean([s["confidence"] for s in segments])
+chinese_char_accuracy = validate_char_timings(
+    [s["chars"] for s in segments if s.get("chars")]
+)
+pipeline_effectiveness = analyze_enhancements_applied(segments)
+```
+
+**Benefits Delivered:**
+1. **Chinese optimization:** Character-level timestamps enable precise editing
+2. **Pipeline transparency:** `enhancements_applied` enables debugging and A/B testing
+3. **Quality validation:** Confidence scores enable automated quality gates
+4. **Model comparison:** `source_model` enables BELLE-2 vs WhisperX analysis
+5. **Future-proof:** Speaker embeddings prepare for diarization (Epic 5+)
+
+**Affects:** Epic 4 Stories 4.2-4.6 (all enhancement components)
+
+### VAD Engine Architecture (Epic 4)
+
+**Decision:** Multi-engine Voice Activity Detection with Silero deep-learning VAD as primary engine
+
+**Module Structure:**
+```
+backend/app/ai_services/enhancement/
+├── vad_manager.py              # Unified VAD interface
+├── vad_engines/
+│   ├── __init__.py
+│   ├── base_vad.py             # Abstract VAD interface
+│   ├── silero_vad.py           # Silero deep-learning VAD (PRIMARY)
+│   └── webrtc_vad.py           # WebRTC signal-processing VAD (FALLBACK)
+```
+
+**Rationale:**
+1. **Silero VAD superiority:** Deep-learning VAD outperforms signal-processing approaches
+2. **WhisperX extraction:** Proven 70-line implementation from WhisperX codebase
+3. **Model consistency:** Unified VAD across BELLE-2 and WhisperX (prevents duplicate processing)
+4. **No new dependencies:** Silero uses torch.hub (already installed)
+5. **Fallback strategy:** WebRTC VAD as lightweight alternative if Silero unavailable
+
+**Abstract Interface:**
+```python
+# base_vad.py
+from abc import ABC, abstractmethod
+from typing import List, Tuple
+
+class BaseVAD(ABC):
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Check if VAD engine dependencies are available"""
+        pass
+
+    @abstractmethod
+    def detect_speech(
+        self,
+        audio_path: str,
+        threshold: float = 0.5
+    ) -> List[Tuple[float, float]]:
+        """
+        Returns: List of (start, end) tuples for speech segments
+        """
+        pass
+
+    @abstractmethod
+    def filter_segments(
+        self,
+        segments: List[EnhancedSegment],
+        min_silence_duration: float = 1.0
+    ) -> List[EnhancedSegment]:
+        """Remove segments with silence exceeding threshold"""
+        pass
+```
+
+**Silero VAD Implementation:**
+```python
+# silero_vad.py (extracted from WhisperX)
+import torch
+from typing import List, Tuple
+
+class SileroVAD(BaseVAD):
+    def __init__(
+        self,
+        threshold: float = 0.5,
+        min_silence_ms: int = 700,
+        min_speech_ms: int = 250
+    ):
+        self.model = None
+        self.threshold = threshold
+        self.min_silence_ms = min_silence_ms
+        self.min_speech_ms = min_speech_ms
+
+    def is_available(self) -> bool:
+        try:
+            import torch
+            return torch.cuda.is_available() or True  # CPU fallback
+        except ImportError:
+            return False
+
+    def _load_model(self):
+        if self.model is None:
+            # Load from torch.hub (WhisperX pattern)
+            self.model, utils = torch.hub.load(
+                repo_or_dir='snakers4/silero-vad',
+                model='silero_vad',
+                force_reload=False,
+                onnx=False
+            )
+
+    def detect_speech(
+        self,
+        audio_path: str,
+        threshold: float = None
+    ) -> List[Tuple[float, float]]:
+        self._load_model()
+        threshold = threshold or self.threshold
+
+        # Silero VAD processing (simplified from WhisperX)
+        speech_timestamps = get_speech_timestamps(
+            audio_path,
+            self.model,
+            threshold=threshold,
+            min_silence_duration_ms=self.min_silence_ms,
+            min_speech_duration_ms=self.min_speech_ms
+        )
+
+        return [(ts['start'], ts['end']) for ts in speech_timestamps]
+```
+
+**WebRTC VAD Implementation:**
+```python
+# webrtc_vad.py (fallback engine)
+import webrtcvad
+
+class WebRTCVAD(BaseVAD):
+    def __init__(self, aggressiveness: int = 2):
+        self.aggressiveness = aggressiveness  # 0-3
+        self.vad = None
+
+    def is_available(self) -> bool:
+        try:
+            import webrtcvad
+            return True
+        except ImportError:
+            return False
+
+    def _load_model(self):
+        if self.vad is None:
+            self.vad = webrtcvad.Vad(self.aggressiveness)
+
+    def detect_speech(
+        self,
+        audio_path: str,
+        threshold: float = None
+    ) -> List[Tuple[float, float]]:
+        # WebRTC frame-based VAD processing
+        # (Implementation details)
+        pass
+```
+
+**VAD Manager (Multi-Engine Support):**
+```python
+# vad_manager.py
+class VADManager:
+    def __init__(self, engine: str = "auto"):
+        self.engine = self._select_engine(engine)
+
+    def _select_engine(self, engine: str) -> BaseVAD:
+        if engine == "auto":
+            # Prefer Silero, fallback to WebRTC
+            if SileroVAD().is_available():
+                logger.info("Using Silero VAD (deep-learning)")
+                return SileroVAD()
+            elif WebRTCVAD().is_available():
+                logger.info("Using WebRTC VAD (fallback)")
+                return WebRTCVAD()
+            else:
+                raise RuntimeError("No VAD engine available")
+        elif engine == "silero":
+            return SileroVAD()
+        elif engine == "webrtc":
+            return WebRTCVAD()
+        else:
+            raise ValueError(f"Unknown VAD engine: {engine}")
+
+    def process_segments(
+        self,
+        segments: List[EnhancedSegment],
+        audio_path: str
+    ) -> List[EnhancedSegment]:
+        """Apply VAD filtering and update metadata"""
+        filtered = self.engine.filter_segments(segments)
+
+        # Update metadata
+        for seg in filtered:
+            seg.setdefault("enhancements_applied", [])
+            seg["enhancements_applied"].append(
+                f"vad_{self.engine.__class__.__name__.lower()}"
+            )
+
+        return filtered
+```
+
+**Configuration:**
+```python
+# config.py
+VAD_ENGINE: Literal["auto", "silero", "webrtc"] = "auto"
+VAD_SILERO_THRESHOLD: float = 0.5          # 0.0-1.0
+VAD_SILERO_MIN_SILENCE_MS: int = 700       # Milliseconds
+VAD_WEBRTC_AGGRESSIVENESS: int = 2         # 0-3
+```
+
+**WhisperX Integration:**
+```python
+# Disable WhisperX built-in VAD (prevents duplicate processing)
+whisperx_result = whisperx_model.transcribe(
+    audio_path,
+    language="zh",
+    vad_filter=False  # ← Disable built-in Silero VAD
+)
+
+# Apply unified VAD post-transcription
+vad_manager = VADManager(engine="silero")
+filtered_segments = vad_manager.process_segments(
+    whisperx_result["segments"],
+    audio_path
+)
+```
+
+**Benefits:**
+1. **Consistency:** Both BELLE-2 and WhisperX use same Silero VAD
+2. **No duplication:** WhisperX built-in VAD disabled
+3. **Quality:** Deep-learning VAD superior to signal processing
+4. **Minimal dependencies:** torch.hub, already installed
+5. **Extensibility:** Easy to add future VAD engines (e.g., pyannote.audio)
+
+**Affects:** Epic 4.2 (VAD preprocessing story)
 
 ### GPU Environment Requirements
 

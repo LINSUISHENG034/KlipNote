@@ -7,11 +7,15 @@ unsolvable dependency conflicts between whisperx's pyannote dependencies and tor
 faster-whisper provides the core Whisper transcription without pyannote coupling.
 """
 
-import os
 import logging
-from typing import List, Dict, Any, Optional
+import os
+import time
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
 from app.ai_services.base import TranscriptionService
+from app.ai_services.enhancement import VADManager
+from app.ai_services.schema import BaseSegment, TranscriptionResult, build_transcription_result
 from app.config import settings
 
 # Set up logging
@@ -79,9 +83,10 @@ class WhisperXService(TranscriptionService):
     def transcribe(
         self,
         audio_path: str,
-        language: Optional[str] = None,  # Changed: Auto-detect when None
+        language: Optional[str] = None,  # Auto-detect when None
+        include_metadata: bool = False,
         **kwargs
-    ) -> List[Dict[str, Any]]:
+    ) -> Union[List[BaseSegment], TranscriptionResult]:
         """
         Transcribe audio file using faster-whisper with automatic language detection
 
@@ -90,22 +95,21 @@ class WhisperXService(TranscriptionService):
             language: Language code for transcription (ISO 639-1). If None (default),
                       Whisper automatically detects the source audio language.
                       Examples: 'en', 'zh', 'es', 'fr'
+            include_metadata: Return the enhanced schema payload instead of simple segments.
             **kwargs: Additional Whisper parameters
 
         Returns:
-            List of transcription segments with timestamps in the detected/specified language
-            [
-                {"start": 0.5, "end": 3.2, "text": "Hello, welcome..."},  # English
-                {"start": 3.5, "end": 7.2, "text": "你好，欢迎..."},  # Chinese (auto-detected)
-                ...
-            ]
+            Either legacy `[{"start","end","text"}]` segments or a
+            `TranscriptionResult` structure containing metadata.
 
         Raises:
             FileNotFoundError: If audio file doesn't exist
             ValueError: If audio file is invalid
             RuntimeError: If transcription fails
         """
-        # Validate audio file
+        metadata_requested = include_metadata or settings.INCLUDE_ENHANCED_METADATA
+        started_at = time.time()
+
         if not self.validate_audio_file(audio_path):
             raise FileNotFoundError(f"Audio file not found or invalid: {audio_path}")
 
@@ -126,14 +130,7 @@ class WhisperXService(TranscriptionService):
                 compression_ratio_threshold=2.4,  # Detect repetitive text (e.g., "我用了一尾" × 32)
                 log_prob_threshold=-1.0,          # Filter low-confidence segments
                 no_speech_threshold=0.6,          # Better silence detection
-                
-                # VAD: Optimized for Chinese speech patterns
-                vad_filter=True,
-                vad_parameters=dict(
-                    min_silence_duration_ms=700,  # Chinese has different pause patterns
-                    speech_pad_ms=200,            # Tighter boundaries prevent bloat
-                    threshold=0.5                 # Balanced VAD sensitivity
-                ),
+                vad_filter=False,                 # Unified VAD handles silence
                 
                 # Chinese optimization: guide to Simplified Mandarin
                 initial_prompt="以下是普通话的句子。" if (language == "zh" or language is None) else None,
@@ -173,7 +170,7 @@ class WhisperXService(TranscriptionService):
                 )
 
             # Extract segments with timestamps
-            segments = []
+            segments: List[BaseSegment] = []
             for segment in segments_iter:
                 # faster-whisper segments have: start, end, text, words (optional)
                 text = segment.text.strip()
@@ -199,7 +196,27 @@ class WhisperXService(TranscriptionService):
                 })
 
             logger.info(f"Transcription complete: {len(segments)} segments")
-            return segments
+
+            vad_manager = VADManager()
+            filtered_segments, vad_engine = vad_manager.process_segments(
+                segments=segments,
+                audio_path=audio_path,
+            )
+
+            if not metadata_requested:
+                return filtered_segments
+
+            enhancements = [f"vad:{vad_engine}"] if vad_engine else []
+            return build_transcription_result(
+                segments=filtered_segments,
+                language=language or detected_lang,
+                model_name="whisperx",
+                processing_time=time.time() - started_at,
+                duration=self._get_audio_duration(audio_path),
+                vad_enabled=bool(vad_engine),
+                alignment_model="whisperx",
+                enhancements_applied=enhancements,
+            )
 
         except FileNotFoundError as e:
             logger.error(f"Audio file not found: {audio_path}")
@@ -227,6 +244,16 @@ class WhisperXService(TranscriptionService):
                 raise RuntimeError(
                     f"Transcription failed: {str(e)}"
                 )
+
+    @staticmethod
+    def _get_audio_duration(audio_path: str) -> Optional[float]:
+        """Best-effort audio duration lookup."""
+        try:
+            import librosa
+
+            return float(librosa.get_duration(path=audio_path))
+        except Exception:
+            return None
 
     def get_supported_languages(self) -> List[str]:
         """

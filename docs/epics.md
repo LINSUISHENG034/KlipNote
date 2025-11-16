@@ -639,59 +639,100 @@ So that I can choose between BELLE-2 and WhisperX based on my specific needs.
 
 ---
 
-**Story 4.2: Model-Agnostic VAD Preprocessing Component** 📋 PLANNED
+**Story 4.2: Model-Agnostic VAD Preprocessing & Enhanced Metadata Schema** 📋 PLANNED
 
 As a user transcribing audio with background noise or silence,
-I want the system to filter out non-speech segments regardless of which transcription model is used,
-So that transcription segments are more focused and accurately timed.
+I want the system to filter out non-speech segments with high-quality deep-learning VAD and capture rich metadata,
+So that transcription segments are more focused, accurately timed, and processing is fully transparent.
 
 **Acceptance Criteria:**
-1. `VoiceActivityDetector` component implemented as standalone preprocessing step
-2. Works with any transcription model output (BELLE-2, WhisperX, future models)
-3. WebRTC VAD integrated with configurable aggressiveness (0-3)
-4. VAD filtering removes silence segments >1s duration
-5. Processing completes in <5 minutes for 1-hour audio
-6. Unit tests with mocked audio, integration tests on noisy samples
-7. Component can be enabled/disabled via configuration
 
-**Prerequisites:** Story 4.1 (production architecture)
+**Task 1: Enhanced Data Schema (Technical Enabler)**
+1. `backend/app/ai_services/schema.py` module created with hierarchical TypedDict structures:
+   - `CharTiming`: Character-level timestamps (char, start, end, score)
+   - `WordTiming`: Word-level timestamps (word, start, end, score, language)
+   - `BaseSegment`: Minimal required fields (start, end, text)
+   - `EnhancedSegment`: Extends BaseSegment with words, chars, confidence, no_speech_prob, avg_logprob, source_model, enhancements_applied, speaker fields
+   - `TranscriptionMetadata`: Global metadata (language, duration, model_name, processing_time, vad_enabled, alignment_model)
+   - `TranscriptionResult`: Top-level container (segments + metadata + stats)
+2. Backward compatibility alias: `TimestampSegment = EnhancedSegment`
+3. Service layer supports both simple and enhanced return modes
+
+**Task 2: Multi-Engine VAD Architecture**
+4. `VoiceActivityDetector` class implements model-agnostic VAD interface
+5. Silero VAD extracted from WhisperX as primary engine (torch.hub based)
+6. WebRTC VAD included as fallback engine (lightweight alternative)
+7. Multi-engine support with auto-selection: Silero (preferred) → WebRTC (fallback)
+8. VAD filters segments removing silence >1s duration
+9. Disable WhisperX built-in VAD (vad_filter=False) to prevent duplicate processing
+10. Compatible with both BELLE-2 and WhisperX output formats
+
+**Task 3: Configuration & Integration**
+11. Processing completes <5 min for 1-hour audio
+12. Unit tests verify filtering logic, integration tests validate with real audio
+13. Configuration expanded:
+    - `VAD_ENGINE`: "auto" | "silero" | "webrtc"
+    - `VAD_SILERO_THRESHOLD`: 0.5 (0.0-1.0)
+    - `VAD_SILERO_MIN_SILENCE_MS`: 700
+    - `VAD_WEBRTC_AGGRESSIVENESS`: 2 (0-3)
+
+**Implementation Files:**
+```
+backend/app/ai_services/
+├── schema.py                    # NEW: Enhanced metadata schema
+├── enhancement/
+│   ├── vad_manager.py          # Unified VAD interface
+│   └── vad_engines/
+│       ├── base_vad.py         # Abstract interface
+│       ├── silero_vad.py       # Extracted from WhisperX (NEW)
+│       └── webrtc_vad.py       # Existing fallback
+```
+
+**Prerequisites:** Story 4.1b (frontend model selection)
 
 ---
 
 **Story 4.3: Model-Agnostic Timestamp Refinement Component** 📋 PLANNED
 
 As a user navigating transcriptions via click-to-timestamp,
-I want segment boundaries refined at natural speech breaks regardless of transcription model,
-So that playback jumps feel smooth and aligned with actual speech patterns.
+I want segment boundaries refined at natural speech breaks with character/word-level timing,
+So that playback jumps feel smooth, aligned with actual speech patterns, and Chinese editing is precise.
 
 **Acceptance Criteria:**
-1. `TimestampRefiner` component works with any model's segment output
-2. Energy-based refinement analyzes audio waveform (librosa)
-3. Boundary refinement searches ±200ms for optimal split point (minimum energy)
-4. Timestamp alignment maintains <200ms accuracy vs. original outputs
-5. Processing completes in <5 minutes for 500 segments
-6. Works with both BELLE-2 and WhisperX segment formats
-7. Component can be enabled/disabled via configuration
+1. `TimestampRefiner` class implements refinement interface
+2. **Populates CharTiming array for Chinese segments (character-level timestamps)**
+3. **Populates WordTiming array with confidence scores from alignment model**
+4. Energy-based boundary detection using librosa for segment splitting
+5. Boundary refinement searches ±200ms for optimal split point
+6. Maintains <200ms accuracy vs. original timestamps
+7. **Records alignment_model in EnhancedSegment metadata**
+8. **Appends "timestamp_refine" to enhancements_applied tracking**
+9. Processing completes <5 min for 500 segments
+10. Unit tests verify refinement logic and metadata population
+11. Integration tests validate click-to-timestamp accuracy and char/word timing arrays
 
-**Prerequisites:** Story 4.2 (VAD component pattern established)
+**Prerequisites:** Story 4.2 (VAD component + metadata schema)
 
 ---
 
 **Story 4.4: Model-Agnostic Segment Splitting Component** 📋 PLANNED
 
 As a user editing Chinese subtitles,
-I want long segments automatically split into subtitle-standard lengths regardless of transcription model,
-So that each subtitle is readable and conforms to industry conventions.
+I want long segments automatically split with preserved timing metadata,
+So that each subtitle is readable, conforms to industry conventions, and maintains precise character/word timing.
 
 **Acceptance Criteria:**
-1. `SegmentSplitter` component works with any model's segment output
-2. Segments >7 seconds split at natural boundaries (punctuation, pauses)
-3. Chinese text length estimation implemented (character count × 0.4s)
-4. Short segments <1s merged when safe
-5. 95% of output segments meet 1-7s, <200 char constraints
-6. Processing completes in <3 minutes for 500 segments
-7. Works with both BELLE-2 and WhisperX segment formats
-8. Component can be enabled/disabled via configuration
+1. `SegmentSplitter` class implements splitting interface
+2. Segments >7s split at natural boundaries (punctuation, pauses)
+3. **Uses CharTiming/WordTiming arrays for precise split point selection**
+4. Chinese text length estimation (character count × 0.4s)
+5. Short segments <1s merged when safe
+6. **Preserves char/word timing arrays when splitting segments**
+7. **Appends "segment_split" to enhancements_applied tracking**
+8. 95% of output segments meet 1-7s, <200 char constraints
+9. Processing completes <3 min for 500 segments
+10. Unit tests cover splitting/merging logic and metadata preservation
+11. Integration test validates constraint compliance and timing array integrity
 
 **Prerequisites:** Story 4.3 (refinement component pattern established)
 
@@ -700,17 +741,21 @@ So that each subtitle is readable and conforms to industry conventions.
 **Story 4.5: Enhancement Pipeline Composition Framework** 📋 PLANNED
 
 As a system,
-I want a composable pipeline where enhancement components can be chained in configurable order,
-So that different combinations of VAD, refinement, and splitting can be applied based on content needs.
+I want a composable pipeline where enhancement components track processing metadata,
+So that different combinations can be applied and their effectiveness measured transparently.
 
 **Acceptance Criteria:**
-1. `EnhancementPipeline` class supports dynamic component chaining
-2. Configuration-driven pipeline definition (YAML or environment variables)
-3. Pipeline examples: "VAD only", "VAD + Refine", "VAD + Refine + Split", "No enhancements"
-4. Component execution order configurable
-5. Pipeline metrics collected (processing time per component)
-6. Error handling: component failures don't crash entire pipeline
-7. Documentation: configuration guide, common pipeline recipes
+1. `EnhancementPipeline` class supports component composition
+2. Components registered via configuration (VAD, refinement, splitting)
+3. Pipeline executes components in declared order
+4. Each component receives previous component's output
+5. **Pipeline aggregates enhancements_applied from all components**
+6. **TranscriptionResult metadata tracks complete pipeline configuration**
+7. Pipeline supports component bypass via configuration flags
+8. Error handling: component failure doesn't break entire pipeline (graceful degradation)
+9. **Logging records pipeline execution with component timing metrics**
+10. Unit tests verify composition logic, execution order, and metadata aggregation
+11. Integration test validates multi-component pipeline with full metadata tracking
 
 **Prerequisites:** Stories 4.2, 4.3, 4.4 (all components implemented)
 
@@ -719,18 +764,22 @@ So that different combinations of VAD, refinement, and splitting can be applied 
 **Story 4.6: Multi-Model Quality Validation Framework** 📋 PLANNED
 
 As a system maintainer,
-I want automated quality validation measuring metrics across multiple models and enhancement configurations,
-So that I can objectively compare model+enhancement combinations and prevent regressions.
+I want automated quality validation leveraging enhanced metadata across models,
+So that I can objectively compare configurations and measure pipeline effectiveness comprehensively.
 
 **Acceptance Criteria:**
-1. Quality validator calculates CER/WER using jiwer library
+1. `QualityValidator` calculates CER/WER using jiwer library
 2. Segment length statistics (mean, median, P95, % meeting constraints)
-3. Cross-model comparison reports (BELLE-2 vs WhisperX with same enhancements)
-4. Baseline regression testing against Story 3.2c A/B test results
-5. Quality metrics stored per model+enhancement configuration
-6. CLI tool for manual validation and baseline generation
-7. Unit tests verify metric calculations
-8. Integration test validates metrics across both models
+3. **Character-level timing accuracy metrics (for Chinese segments)**
+4. **Confidence score analysis (avg_confidence, low_confidence_segments)**
+5. **Enhancement pipeline effectiveness metrics (per-component impact)**
+6. Baseline comparison (CER delta, length improvement %, confidence trends)
+7. **Model comparison reports using TranscriptionMetadata (BELLE-2 vs WhisperX)**
+8. Regression testing compares against stored baselines
+9. Quality metrics stored in quality_metrics.json with enhanced metadata
+10. CLI tool for manual validation and baseline generation
+11. Unit tests verify metric calculations including new metadata fields
+12. Integration test validates optimization improvements ≥20% with metadata tracking
 
 **Prerequisites:** Story 4.5 (pipeline framework complete)
 

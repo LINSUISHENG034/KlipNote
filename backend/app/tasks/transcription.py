@@ -306,9 +306,10 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         )
 
         # Call transcription with automatic language detection if not specified
-        segments = transcription_service.transcribe(
+        segments_or_result = transcription_service.transcribe(
             audio_path=file_path,
-            language=language  # None = auto-detect, 'zh' = Chinese, 'en' = English
+            language=language,  # None = auto-detect, 'zh' = Chinese, 'en' = English
+            include_metadata=True,
         )
 
         # ======================================================================
@@ -331,14 +332,21 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         logger.info(f"[Job {job_id}] Stage 5: Saving results")
 
         # Save result to Redis
-        redis_service.set_result(job_id=job_id, segments=segments)
+        if isinstance(segments_or_result, dict) and "segments" in segments_or_result:
+            redis_service.set_result(job_id=job_id, segments=segments_or_result["segments"])
+        else:
+            redis_service.set_result(job_id=job_id, segments=segments_or_result)  # fallback
 
         # Save result to disk: /uploads/{job_id}/transcription.json
         job_dir = os.path.join(settings.UPLOAD_DIR, job_id)
         os.makedirs(job_dir, exist_ok=True)
 
         transcription_file = os.path.join(job_dir, "transcription.json")
-        result_data = {"segments": segments}
+        # Normalize result for disk payload
+        if isinstance(segments_or_result, dict) and "segments" in segments_or_result:
+            result_data = segments_or_result
+        else:
+            result_data = {"segments": segments_or_result}
 
         with open(transcription_file, "w", encoding="utf-8") as f:
             json.dump(result_data, f, indent=2, ensure_ascii=False)

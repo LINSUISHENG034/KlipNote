@@ -4,7 +4,9 @@ Defines interface for WhisperX and future AI service implementations
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Union
+
+from app.ai_services.schema import BaseSegment, TranscriptionResult
 
 
 class TranscriptionService(ABC):
@@ -21,26 +23,23 @@ class TranscriptionService(ABC):
         self,
         audio_path: str,
         language: str = "en",
+        include_metadata: bool = False,
         **kwargs
-    ) -> List[Dict[str, Any]]:
+    ) -> Union[List[BaseSegment], TranscriptionResult]:
         """
-        Transcribe audio file to text with timestamps
+        Transcribe audio file to text with timestamps.
 
         Args:
             audio_path: Path to audio file
             language: Language code (e.g., 'en', 'es', 'fr')
+            include_metadata: When True, return a TranscriptionResult payload with
+                metadata + enhanced segments; otherwise return the legacy list of
+                BaseSegment dictionaries for backward compatibility.
             **kwargs: Additional service-specific parameters
 
         Returns:
-            List of segment dictionaries with structure:
-            [
-                {
-                    "start": float,  # Start time in seconds
-                    "end": float,    # End time in seconds
-                    "text": str      # Transcribed text
-                },
-                ...
-            ]
+            Either a simple `List[BaseSegment]` or a structured
+            `TranscriptionResult` depending on `include_metadata`.
 
         Raises:
             FileNotFoundError: If audio file doesn't exist
