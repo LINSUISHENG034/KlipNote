@@ -92,6 +92,25 @@ class Settings(BaseSettings):
         default=True,
         description="Return TranscriptionResult payloads (segments + metadata) by default.",
     )
+    SEGMENT_SPLITTER_ENABLED: bool = Field(
+        default=True,
+        description="Feature flag for SegmentSplitter enhancement component (Story 4.4).",
+    )
+    SEGMENT_SPLITTER_MAX_DURATION: float = Field(
+        default=7.0,
+        ge=1.0,
+        description="Maximum desired segment duration in seconds before splitting occurs.",
+    )
+    SEGMENT_SPLITTER_MAX_CHARS: int = Field(
+        default=200,
+        ge=50,
+        description="Maximum desired character count for subtitle readability.",
+    )
+    SEGMENT_SPLITTER_CHAR_DURATION_SEC: float = Field(
+        default=0.4,
+        ge=0.1,
+        description="Chinese text heuristic duration per character (seconds per char).",
+    )
 
     # File Storage Configuration
     UPLOAD_DIR: str = "/uploads"
