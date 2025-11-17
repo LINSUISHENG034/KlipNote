@@ -1,0 +1,416 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4.3</storyId>
+    <title>Model-Agnostic Timestamp Refinement Component</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-17</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/4-3-model-agnostic-timestamp-refinement.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user navigating transcriptions via click-to-timestamp</asA>
+    <iWant>segment boundaries refined at natural speech breaks with character/word-level timing</iWant>
+    <soThat>playback jumps feel smooth, aligned with actual speech patterns, and Chinese editing is precise</soThat>
+    <tasks>
+- Task 1: Create TimestampRefiner base interface (AC: 1)
+  - Subtask 1.1: Define abstract BaseRefiner class in base_refiner.py
+  - Subtask 1.2: Define refine() method signature accepting List[EnhancedSegment]
+  - Subtask 1.3: Define is_available() method for dependency checking
+
+- Task 2: Implement character-level timing extraction (AC: 2, 3, 7)
+  - Subtask 2.1: Extract character-level timestamps from model outputs (BELLE-2/WhisperX)
+  - Subtask 2.2: Populate CharTiming array with char, start, end, score fields
+  - Subtask 2.3: Populate WordTiming array with word, start, end, score, language fields
+  - Subtask 2.4: Record alignment model name in segment metadata
+
+- Task 3: Implement energy-based boundary refinement (AC: 4, 5, 6)
+  - Subtask 3.1: Integrate librosa for audio waveform analysis
+  - Subtask 3.2: Detect low-energy regions using energy envelope calculation
+  - Subtask 3.3: Search ±200ms window for optimal boundary (minimum energy)
+  - Subtask 3.4: Validate refined boundaries maintain &lt;200ms accuracy
+
+- Task 4: Implement metadata tracking (AC: 8)
+  - Subtask 4.1: Append "timestamp_refine" to enhancements_applied list
+  - Subtask 4.2: Record processing metrics (segments processed, timing adjustments)
+
+- Task 5: Optimize performance (AC: 9)
+  - Subtask 5.1: Profile processing time on 500-segment test dataset
+  - Subtask 5.2: Optimize librosa audio loading (cache waveform, avoid re-reads)
+  - Subtask 5.3: Verify &lt;5 min processing time constraint
+
+- Task 6: Write unit tests (AC: 10)
+  - Subtask 6.1: Test CharTiming/WordTiming array population
+  - Subtask 6.2: Test boundary refinement logic with synthetic audio
+  - Subtask 6.3: Test metadata tracking (enhancements_applied, alignment_model)
+  - Subtask 6.4: Test error handling (missing audio file, invalid segments)
+
+- Task 7: Write integration tests (AC: 11)
+  - Subtask 7.1: Test with real Chinese audio (verify char-level timing accuracy)
+  - Subtask 7.2: Test with real English audio (verify word-level timing accuracy)
+  - Subtask 7.3: Validate click-to-timestamp accuracy in frontend (&lt;200ms deviation)
+  - Subtask 7.4: Test end-to-end pipeline: BELLE-2 → Refiner → Frontend
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. TimestampRefiner class implements refinement interface
+2. Populates CharTiming array for Chinese segments (character-level timestamps)
+3. Populates WordTiming array with confidence scores from alignment model
+4. Energy-based boundary detection using librosa for segment splitting
+5. Boundary refinement searches ±200ms for optimal split point
+6. Maintains &lt;200ms accuracy vs. original timestamps
+7. Records alignment_model in EnhancedSegment metadata
+8. Appends "timestamp_refine" to enhancements_applied tracking
+9. Processing completes &lt;5 min for 500 segments
+10. Unit tests verify refinement logic and metadata population
+11. Integration tests validate click-to-timestamp accuracy and char/word timing arrays
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <!-- PRD Requirements -->
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Functional Requirements - FR011</section>
+        <snippet>System shall enable click-to-timestamp navigation - clicking any subtitle jumps to exact media position. Requires precise timestamp alignment for smooth playback experience.</snippet>
+      </doc>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>KlipNote Product Requirements Document</title>
+        <section>Non-Functional Requirements - NFR005</section>
+        <snippet>Subtitle segments shall conform to industry-standard length conventions (1-7 seconds, ~200 characters max). Chinese/Mandarin transcription quality prioritized as primary use case.</snippet>
+      </doc>
+
+      <!-- Architecture Decisions -->
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>Enhanced Data Schema Architecture (Epic 4)</section>
+        <snippet>CharTiming and WordTiming structures provide character/word-level timestamps essential for Chinese subtitle editing. EnhancedSegment tracks enhancements_applied and alignment_model for pipeline transparency.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>VAD Engine Architecture (Epic 4)</section>
+        <snippet>Multi-engine VAD with Silero deep-learning VAD as primary. BaseVAD abstract interface pattern established for enhancement components.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>Decision Architecture - KlipNote</title>
+        <section>Development vs. Production Environment Strategy</section>
+        <snippet>Local .venv environment for rapid experimentation. CUDA 11.8 (BELLE-2) and CUDA 12.x (WhisperX) validated in isolated environments.</snippet>
+      </doc>
+
+      <!-- Epic 4 Context -->
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic 4: Multi-Model Transcription Framework</title>
+        <section>Story 4.2: Model-Agnostic VAD Preprocessing</section>
+        <snippet>Established enhancement component pattern with EnhancedSegment schema. VAD components populate enhancements_applied metadata for pipeline tracking.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic 4: Multi-Model Transcription Framework</title>
+        <section>Story 4.4: Model-Agnostic Segment Splitting</section>
+        <snippet>Downstream component will use CharTiming/WordTiming arrays for precise split point selection. Must preserve timing arrays when splitting segments.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <!-- Schema Definitions (Story 4.2) -->
+      <artifact>
+        <path>backend/app/ai_services/schema.py</path>
+        <kind>schema</kind>
+        <symbol>CharTiming</symbol>
+        <lines>19-25</lines>
+        <reason>Character-level timestamp structure required by AC2. Fields: char, start, end, score (optional confidence).</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/schema.py</path>
+        <kind>schema</kind>
+        <symbol>WordTiming</symbol>
+        <lines>28-35</lines>
+        <reason>Word-level timestamp structure required by AC3. Fields: word, start, end, score, language (optional).</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/schema.py</path>
+        <kind>schema</kind>
+        <symbol>EnhancedSegment</symbol>
+        <lines>46-56</lines>
+        <reason>Extended segment metadata. Contains chars/words arrays (AC2/AC3), enhancements_applied tracking (AC8), and source_model/alignment_model fields (AC7).</reason>
+      </artifact>
+
+      <!-- VAD Pattern Reference (Story 4.2) -->
+      <artifact>
+        <path>backend/app/ai_services/enhancement/vad_manager.py</path>
+        <kind>service</kind>
+        <symbol>VADManager</symbol>
+        <lines>15-86</lines>
+        <reason>Pattern for model-agnostic enhancement components. Demonstrates multi-engine selection, process_segments() interface, and metadata tracking approach.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/enhancement/vad_engines/base_vad.py</path>
+        <kind>interface</kind>
+        <symbol>BaseVAD</symbol>
+        <lines>14-15</lines>
+        <reason>Abstract base class pattern for enhancement engines. Defines is_available() method (AC1) and common interface structure.</reason>
+      </artifact>
+
+      <!-- Existing Transcription Services -->
+      <artifact>
+        <path>backend/app/ai_services/belle2_service.py</path>
+        <kind>service</kind>
+        <symbol>Belle2Service.transcribe</symbol>
+        <lines>97-226</lines>
+        <reason>BELLE-2 transcription output format. Returns BaseSegment list - requires enrichment with char/word timing by TimestampRefiner.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/whisperx_service.py</path>
+        <kind>service</kind>
+        <symbol>WhisperXService.transcribe</symbol>
+        <lines>83-200</lines>
+        <reason>WhisperX transcription output. May include word_timestamps if enabled - can be source for WordTiming population.</reason>
+      </artifact>
+
+      <!-- Configuration -->
+      <artifact>
+        <path>backend/app/config.py</path>
+        <kind>config</kind>
+        <symbol>Settings</symbol>
+        <lines>54-89</lines>
+        <reason>VAD configuration settings pattern. Similar config structure needed for timestamp refinement parameters (window size, energy thresholds).</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <python>
+        <package name="librosa" version=">=0.10.0">Audio waveform analysis and energy envelope calculation (AC4)</package>
+        <package name="numpy" version="<2.1.0">Numerical operations for timestamp calculations and array manipulation</package>
+        <package name="torch" version="2.6.0+">Required for model loading if using alignment models</package>
+        <package name="scipy" version="1.11.4">Signal processing utilities for energy-based refinement</package>
+        <package name="transformers" version=">=4.48.0">HuggingFace models for character/word alignment extraction</package>
+        <package name="pytest" version="7.4.4">Unit test framework (AC10)</package>
+        <package name="pytest-mock" version="3.12.0">Mocking for unit tests</package>
+      </python>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+**Model-Agnostic Design:**
+- Must work with both BELLE-2 and WhisperX model outputs
+- Should not depend on model-specific internal APIs
+- Receives segments in standardized EnhancedSegment format
+
+**Component Integration:**
+- Part of composable enhancement pipeline (Epic 4.5)
+- Builds on metadata schema from Story 4.2
+- Preserves EnhancedSegment structure with rich metadata
+
+**Performance Requirements:**
+- Processing &lt;5 min for 500 segments (AC9)
+- Boundary accuracy &lt;200ms deviation (AC6)
+- Suitable for real-time production workloads
+
+**File Structure:**
+```
+backend/app/ai_services/enhancement/
+├── vad_manager.py              # Existing from Story 4.2
+├── timestamp_refiner.py        # NEW: This story
+├── base_refiner.py             # NEW: Abstract interface
+└── vad_engines/
+    ├── base_vad.py
+    ├── silero_vad.py
+    └── webrtc_vad.py
+```
+
+**Schema Usage:**
+- CharTiming: char (str), start (float), end (float), score (float)
+- WordTiming: word (str), start (float), end (float), score (float), language (str)
+- EnhancedSegment: extends BaseSegment with chars, words, enhancements_applied, alignment_model
+
+**Python Environment:**
+- Use uv virtual environment: backend/.venv
+- MUST activate before running: source .venv/Scripts/activate
+- Install with: uv pip install librosa scipy
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>BaseRefiner (Abstract Interface)</name>
+      <kind>Abstract Base Class</kind>
+      <signature>
+class BaseRefiner(ABC):
+    @abstractmethod
+    def is_available() -> bool:
+        """Check if refiner dependencies are available"""
+        pass
+
+    @abstractmethod
+    def refine(segments: List[EnhancedSegment], audio_path: str) -> List[EnhancedSegment]:
+        """Refine segment timestamps and populate timing arrays"""
+        pass
+      </signature>
+      <path>backend/app/ai_services/enhancement/base_refiner.py</path>
+    </interface>
+
+    <interface>
+      <name>TimestampRefiner.refine()</name>
+      <kind>Public Method</kind>
+      <signature>
+def refine(
+    self,
+    segments: List[EnhancedSegment],
+    audio_path: str,
+    language: str = "zh"
+) -> List[EnhancedSegment]:
+    """
+    Refine segment boundaries and populate char/word timing arrays.
+
+    Args:
+        segments: Input segments with basic start/end/text
+        audio_path: Path to original audio file for waveform analysis
+        language: Language code for timing extraction strategy
+
+    Returns:
+        Segments with populated chars/words arrays and refined boundaries
+    """
+      </signature>
+      <path>backend/app/ai_services/enhancement/timestamp_refiner.py</path>
+    </interface>
+
+    <interface>
+      <name>EnhancedSegment Schema</name>
+      <kind>TypedDict</kind>
+      <signature>
+class EnhancedSegment(BaseSegment, total=False):
+    words: List[WordTiming]           # Populated by AC3
+    chars: List[CharTiming]           # Populated by AC2
+    confidence: Optional[float]
+    no_speech_prob: Optional[float]
+    avg_logprob: Optional[float]
+    source_model: Optional[str]
+    enhancements_applied: List[str]   # Append "timestamp_refine" per AC8
+    speaker: Optional[str]
+      </signature>
+      <path>backend/app/ai_services/schema.py</path>
+    </interface>
+
+    <interface>
+      <name>VADManager.process_segments() (Pattern Reference)</name>
+      <kind>Service Method</kind>
+      <signature>
+def process_segments(
+    self,
+    segments: List[BaseSegment],
+    audio_path: str
+) -> Tuple[List[BaseSegment], Optional[str]]:
+    """Pattern for enhancement components returning (segments, engine_name)"""
+      </signature>
+      <path>backend/app/ai_services/enhancement/vad_manager.py</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+**Testing Framework:**
+- pytest for all backend tests
+- pytest-mock for dependency mocking
+- Coverage target: 70%+ for service layer
+
+**Test Organization:**
+```
+backend/tests/
+├── test_timestamp_refiner.py              # Unit tests (AC10)
+├── test_timestamp_refiner_integration.py  # Integration tests (AC11)
+└── fixtures/
+    ├── chinese_test_5min.mp3              # Chinese audio sample
+    └── english_test_5min.mp3              # English audio sample
+```
+
+**Mocking Strategy:**
+- Mock librosa.load() for unit tests (avoid loading real audio)
+- Mock alignment model outputs for character/word extraction
+- Use synthetic audio for boundary refinement logic tests
+- Real audio files only for integration tests
+
+**Existing Test Patterns:**
+- test_enhancement_vad_manager.py: Pattern for enhancement component tests
+- test_ai_services_schema.py: Schema validation tests
+- test_belle2_integration.py: Integration test with real audio
+    </standards>
+
+    <locations>
+backend/tests/test_timestamp_refiner.py
+backend/tests/test_timestamp_refiner_integration.py
+backend/tests/fixtures/
+    </locations>
+
+    <ideas>
+**Unit Test Ideas (AC10):**
+
+1. test_char_timing_population_chinese()
+   - AC2: Verify CharTiming array populated for Chinese segments
+   - Input: EnhancedSegment with Chinese text
+   - Assert: chars array contains correct number of characters
+   - Assert: Each CharTiming has char, start, end, score fields
+   - Assert: Timestamps are sequential and within segment bounds
+
+2. test_word_timing_population_english()
+   - AC3: Verify WordTiming array populated for English segments
+   - Input: EnhancedSegment with English text
+   - Assert: words array matches word count in text
+   - Assert: Each WordTiming has word, start, end, score, language
+   - Assert: Timestamps progress monotonically
+
+3. test_boundary_refinement_accuracy()
+   - AC5, AC6: Verify ±200ms window search and &lt;200ms accuracy
+   - Input: Segment with boundary at known low-energy point
+   - Mock librosa energy envelope with known pattern
+   - Assert: Refined boundary within ±200ms of optimal point
+   - Assert: Deviation from original &lt;200ms
+
+4. test_metadata_tracking()
+   - AC7, AC8: Verify enhancements_applied and alignment_model
+   - Input: Segments without prior enhancements
+   - Assert: "timestamp_refine" appended to enhancements_applied
+   - Assert: alignment_model field populated with engine name
+
+5. test_error_handling_missing_audio()
+   - Subtask 6.4: Handle missing audio file gracefully
+   - Input: Invalid audio path
+   - Assert: Raises appropriate exception with clear message
+
+**Integration Test Ideas (AC11):**
+
+1. test_chinese_audio_char_timing_accuracy()
+   - AC2, AC11: End-to-end Chinese character timing
+   - Input: 5-minute Chinese audio file
+   - Process: BELLE-2 transcribe → TimestampRefiner
+   - Assert: All Chinese segments have chars array
+   - Assert: Character boundaries align with audio (manual validation)
+   - Assert: Click-to-timestamp simulation shows &lt;200ms accuracy
+
+2. test_english_audio_word_timing_accuracy()
+   - AC3, AC11: End-to-end English word timing
+   - Input: 5-minute English audio file
+   - Process: WhisperX transcribe → TimestampRefiner
+   - Assert: All segments have words array
+   - Assert: Word boundaries reasonable (spot check)
+
+3. test_performance_500_segments()
+   - AC9: Verify &lt;5 min processing time constraint
+   - Input: Audio file generating ~500 segments
+   - Measure: Total refine() execution time
+   - Assert: Processing time &lt;300 seconds
+
+4. test_belle2_to_frontend_pipeline()
+   - AC11, Subtask 7.4: Complete pipeline validation
+   - Input: Chinese audio → BELLE-2 → Refiner → Export
+   - Assert: Frontend can render char-level timing
+   - Assert: Click-to-timestamp navigation accurate
+    </ideas>
+  </tests>
+</story-context>

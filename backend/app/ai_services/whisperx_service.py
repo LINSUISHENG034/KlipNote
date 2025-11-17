@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from app.ai_services.base import TranscriptionService
-from app.ai_services.enhancement import VADManager
+from app.ai_services.enhancement import TimestampRefiner, VADManager
 from app.ai_services.schema import BaseSegment, TranscriptionResult, build_transcription_result
 from app.config import settings
 
@@ -203,18 +203,35 @@ class WhisperXService(TranscriptionService):
                 audio_path=audio_path,
             )
 
+            timestamp_refiner = TimestampRefiner()
+            refined_segments = timestamp_refiner.refine(
+                segments=filtered_segments,
+                audio_path=audio_path,
+                language=language or detected_lang,
+            )
+            refiner_alignment = (
+                timestamp_refiner.alignment_model_name
+                if any("alignment_model" in seg for seg in refined_segments)
+                else "whisperx"
+            )
+
             if not metadata_requested:
-                return filtered_segments
+                return refined_segments
 
             enhancements = [f"vad:{vad_engine}"] if vad_engine else []
+            if any(
+                "timestamp_refine" in (seg.get("enhancements_applied") or [])
+                for seg in refined_segments
+            ):
+                enhancements.append("timestamp_refine")
             return build_transcription_result(
-                segments=filtered_segments,
+                segments=refined_segments,
                 language=language or detected_lang,
                 model_name="whisperx",
                 processing_time=time.time() - started_at,
                 duration=self._get_audio_duration(audio_path),
                 vad_enabled=bool(vad_engine),
-                alignment_model="whisperx",
+                alignment_model=refiner_alignment,
                 enhancements_applied=enhancements,
             )
 

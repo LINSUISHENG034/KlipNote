@@ -6,6 +6,8 @@ services can apply consistent silence filtering regardless of transcription
 engine.
 """
 
+from app.ai_services.enhancement.base_refiner import BaseRefiner
+from app.ai_services.enhancement.timestamp_refiner import TimestampRefiner
 from app.ai_services.enhancement.vad_manager import VADManager
 
-__all__ = ["VADManager"]
+__all__ = ["BaseRefiner", "TimestampRefiner", "VADManager"]

@@ -54,6 +54,7 @@ class EnhancedSegment(BaseSegment, total=False):
     source_model: Optional[str]
     enhancements_applied: List[str]
     speaker: Optional[str]
+    alignment_model: Optional[str]
 
 
 class TranscriptionMetadata(TypedDict, total=False):
@@ -120,6 +121,7 @@ def build_transcription_result(
                 source_model=segment.get("source_model", model_name),
                 enhancements_applied=list(segment.get("enhancements_applied", applied)),
                 speaker=segment.get("speaker"),
+                alignment_model=segment.get("alignment_model"),
             )
         )
 
