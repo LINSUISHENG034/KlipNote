@@ -17,6 +17,7 @@
 2. **Eliminate cost and duration barriers** - Provide unlimited, free transcription for 1-2 hour meetings that paid services restrict
 3. **Validate data flywheel foundation** - Collect human-edited transcriptions as training data to enable continuous quality improvement
 4. **Prove technical feasibility** - Demonstrate self-hosted GPU architecture reliably handles concurrent transcription jobs for 10-20 users
+5. **Ensure transcription accuracy meets production standards** - Validate transcription outputs against hand-verified ground truth, establish baseline accuracy metrics (CER/WER), enable continuous quality monitoring across releases, and provide objective data for model selection decisions
 
 ### Background Context
 
@@ -76,7 +77,26 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 
 - **NFR004: Compatibility** - Web interface shall function on desktop, tablet, and mobile browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+. System shall handle media files up to 2 hours duration (primary constraint for GPU processing). File size limit of 2GB serves as practical upload boundary, though actual constraint is processing duration.
 
-- **NFR005: Transcription Quality** - Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows. Segments should typically span 1-7 seconds with maximum ~200 characters to ensure usability in review and editing interfaces. Chinese/Mandarin transcription quality is prioritized as the primary use case. Model selection determined through empirical A/B testing in Epic 3 (Stories 3.2b-3.2c) validating both BELLE-2 and WhisperX across comprehensive metrics: CER/WER accuracy, segment length compliance (1-7s / ≤200 chars), gibberish elimination, processing speed, and GPU memory efficiency. MVP ships with [selected model TBD], multi-model framework deferred to post-MVP Epic 4.
+- **NFR005: Transcription Quality**
+
+  **Accuracy Targets:**
+  - Character Error Rate (CER) ≤ 10% for Chinese audio
+  - Word Error Rate (WER) ≤ 15% for Chinese audio
+  - Measured against hand-verified ground truth transcripts
+  - Continuous regression testing using standardized test samples
+
+  **Format Quality:**
+  - Subtitle segments shall conform to industry-standard length conventions for subtitle editing workflows
+  - Segments should typically span 1-7 seconds with maximum ~200 characters to ensure usability in review and editing interfaces
+  - Segmentation differences acceptable if within subtitle format standards
+  - Chinese/Mandarin transcription quality is prioritized as the primary use case
+
+  **Quality Validation:**
+  - Hand-verified test samples: zh_long_audio1, zh_medium_audio1, zh_short_video1
+  - Baseline CER/WER metrics tracked across releases
+  - Automated accuracy regression tests in CI/CD pipeline
+
+  **Model Selection:** Determined through empirical A/B testing in Epic 3 (Stories 3.2b-3.2c) validating both BELLE-2 and WhisperX across comprehensive metrics: CER/WER accuracy, segment length compliance (1-7s / ≤200 chars), gibberish elimination, processing speed, and GPU memory efficiency. MVP ships with [selected model TBD based on Story 4.6b accuracy baselines], multi-model framework deferred to post-MVP Epic 4.
 
 ---
 
@@ -206,8 +226,15 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 - **Estimated Stories:** 7 stories (4.1-4.7)
 - **Deliverable:** Multi-model framework supporting 2+ transcription engines with composable enhancement pipeline
 
-**MVP Scope:** Epics 1-3 + Single Model Selection (Story 4.7 decision)
-**Post-MVP:** Epic 4 (Multi-Model Framework)
+**MVP Scope:** Epics 1-3 + **Validated** Single Model Selection
+- Epic 1: Foundation & Core Transcription Workflow ✅ COMPLETE
+- Epic 2: Integrated Review & Export Experience ✅ COMPLETE
+- Epic 3: Chinese Transcription Model Selection ✅ COMPLETE
+- Epic 4 (Partial): Stories 4.6b + 4.7
+  - Story 4.6b: Hand-verified accuracy baselines (quality checkpoint)
+  - Story 4.7: MVP model selection decision (data-driven choice)
+
+**Post-MVP:** Epic 4 Remainder (Multi-Model Production Deployment)
 
 > **Note:** Detailed epic breakdown with full story specifications is available in [epics.md](./epics.md)
 

@@ -961,8 +961,8 @@ npx playwright show-report  # View test results
 ### References
 
 - [Source: docs/epics.md#Story-2.7] - Story statement and acceptance criteria
-- [Source: docs/PRD.md#User-Journeys] - Sarah's workflow validation path
-- [Source: docs/PRD.md#NFR001-NFR004] - Performance, usability, reliability, compatibility requirements
+- [Source: docs/prd.md#User-Journeys] - Sarah's workflow validation path
+- [Source: docs/prd.md#NFR001-NFR004] - Performance, usability, reliability, compatibility requirements
 - [Source: docs/tech-spec-epic-2.md#Test-Strategy-Summary] - Comprehensive testing approach
 - [Source: docs/tech-spec-epic-2.md#Acceptance-Criteria-Authoritative] - Epic-level success criteria and story-level ACs
 - [Source: docs/architecture.md#Testing-Strategy] - Testing framework selection and patterns

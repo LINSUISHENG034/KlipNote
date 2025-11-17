@@ -1,0 +1,54 @@
+{
+  "model_name": "belle2",
+  "pipeline_config": "none",
+  "cer": null,
+  "wer": null,
+  "segment_stats": {
+    "segment_count": 2,
+    "mean_duration": 7.480843749999989,
+    "median_duration": 7.480843749999989,
+    "p95_duration": 12.531109374999978,
+    "duration_compliance_pct": 50.0,
+    "too_short_count": 0,
+    "too_long_count": 1
+  },
+  "char_stats": {
+    "mean_chars": 38,
+    "median_chars": 38,
+    "p95_chars": 65,
+    "char_compliance_pct": 100.0,
+    "over_limit_count": 0
+  },
+  "char_timing_stats": {
+    "segments_with_chars": 0,
+    "char_coverage_pct": 0.0,
+    "total_chars": 77,
+    "chars_with_timing": 0,
+    "mean_chars_per_segment": null
+  },
+  "confidence_stats": {
+    "segments_with_confidence": 0,
+    "confidence_coverage_pct": 0.0,
+    "mean_confidence": null,
+    "median_confidence": null,
+    "low_confidence_count": 0,
+    "low_confidence_pct": 0.0
+  },
+  "enhancement_metrics": {
+    "enhancements_applied": [
+      "segment_split",
+      "vad:silero"
+    ],
+    "segments_modified_count": 2,
+    "modification_rate_pct": 100.0,
+    "vad_removed_count": null,
+    "split_increase_count": null,
+    "refine_boundary_shifts": null
+  },
+  "transcription_time": 203.07067823410034,
+  "enhancement_time": 0.0,
+  "total_time": 203.07067823410034,
+  "language": "zh",
+  "audio_duration": 374.9616875,
+  "timestamp": "2025-11-18T18:17:36.119935Z"
+}

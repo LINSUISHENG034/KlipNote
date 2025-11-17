@@ -645,9 +645,9 @@ This incremental approach ensures each story builds upon the previous foundation
 ### References
 
 - [Source: docs/epics.md#Story-2.3] - User story statement and acceptance criteria
-- [Source: docs/PRD.md#FR011] - Click-to-timestamp navigation requirement: "System shall enable click-to-timestamp navigation - clicking any subtitle jumps to exact media position"
-- [Source: docs/PRD.md#FR013] - Active segment highlighting: "System shall highlight active subtitle segment during media playback"
-- [Source: docs/PRD.md#NFR001] - Performance requirement: "timestamp seeking shall respond in <1 second"
+- [Source: docs/prd.md#FR011] - Click-to-timestamp navigation requirement: "System shall enable click-to-timestamp navigation - clicking any subtitle jumps to exact media position"
+- [Source: docs/prd.md#FR013] - Active segment highlighting: "System shall highlight active subtitle segment during media playback"
+- [Source: docs/prd.md#NFR001] - Performance requirement: "timestamp seeking shall respond in <1 second"
 - [Source: docs/architecture.md#Click-to-Timestamp-Synchronization-Pattern] - Complete implementation pattern with state flow, incremental search optimization, edge cases
 - [Source: docs/tech-spec-epic-2.md#Detailed-Design] - Pinia store extensions, updateActiveSegment() algorithm, auto-scroll behavior
 - [Source: docs/tech-spec-epic-2.md#Workflows-and-Sequencing] - Click-to-timestamp workflow diagram with performance metrics

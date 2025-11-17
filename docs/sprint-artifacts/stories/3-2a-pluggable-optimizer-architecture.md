@@ -556,7 +556,7 @@ Story 3.2a is architecture-only with no GPU/external dependencies. All tests are
 - [Source: docs/tech-spec-epic-3.md#Core-Interfaces] - Interface specifications (lines 90-131)
 - [Source: docs/tech-spec-epic-3.md#Architectural-Decisions] - ADR-001 Pluggable Interface rationale (lines 33-42)
 - [Source: docs/epics.md#Story-3.2a] - User story and prerequisites (lines 387-402)
-- [Source: docs/PRD.md#NFR-005] - Transcription quality requirements (line 79)
+- [Source: docs/prd.md#NFR-005] - Transcription quality requirements (line 79)
 - [Source: docs/architecture.md#AI-Service-Abstraction-Strategy] - Interface pattern (lines 650-706)
 - [Source: docs/architecture.md#Development-Environment-Requirements] - uv virtual environment (lines 115-228)
 - [Source: docs/stories/3-1-belle2-integration.md#Learnings-from-Previous-Story] - Previous story patterns (lines 258-294)

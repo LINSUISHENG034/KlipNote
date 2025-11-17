@@ -615,9 +615,9 @@ This incremental approach ensures each story builds upon the previous foundation
 ### References
 
 - [Source: docs/epics.md#Story-2.2] - User story statement and acceptance criteria
-- [Source: docs/PRD.md#FR012] - Media player requirement: "System shall provide integrated media player supporting play, pause, and seek controls"
-- [Source: docs/PRD.md#NFR001] - Performance requirement: "media playback shall start within 2 seconds, timestamp seeking shall respond in <1 second"
-- [Source: docs/PRD.md#NFR004] - Browser compatibility: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+ (desktop, tablet, mobile)
+- [Source: docs/prd.md#FR012] - Media player requirement: "System shall provide integrated media player supporting play, pause, and seek controls"
+- [Source: docs/prd.md#NFR001] - Performance requirement: "media playback shall start within 2 seconds, timestamp seeking shall respond in <1 second"
+- [Source: docs/prd.md#NFR004] - Browser compatibility: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+ (desktop, tablet, mobile)
 - [Source: docs/architecture.md#Click-to-Timestamp-Synchronization-Pattern] - State flow architecture and implementation pattern
 - [Source: docs/architecture.md#Frontend-API-Client] - Native fetch() usage pattern
 - [Source: docs/tech-spec-epic-2.md#Services-and-Modules] - MediaPlayer component specification

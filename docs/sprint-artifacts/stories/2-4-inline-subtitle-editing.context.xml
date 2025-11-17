@@ -40,13 +40,13 @@
   <artifacts>
     <docs>
       <!-- PRD Requirements -->
-      <doc path="docs/PRD.md" title="Product Requirements Document" section="FR-009: Inline Editing">
+      <doc path="docs/prd.md" title="Product Requirements Document" section="FR-009: Inline Editing">
         System shall allow users to edit subtitle text inline within the web interface for correcting transcription errors before export.
       </doc>
-      <doc path="docs/PRD.md" title="Product Requirements Document" section="FR-020: localStorage Persistence">
+      <doc path="docs/prd.md" title="Product Requirements Document" section="FR-020: localStorage Persistence">
         System shall persist user edits to browser localStorage to prevent data loss during browser refresh or accidental navigation.
       </doc>
-      <doc path="docs/PRD.md" title="Product Requirements Document" section="NFR-003: Reliability">
+      <doc path="docs/prd.md" title="Product Requirements Document" section="NFR-003: Reliability">
         Browser-based state shall prevent data loss during normal operation including page refresh and accidental navigation.
       </doc>
 

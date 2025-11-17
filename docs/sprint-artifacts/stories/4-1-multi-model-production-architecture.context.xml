@@ -168,7 +168,7 @@
 
   <artifacts>
     <docs>
-      <doc path="docs/PRD.md" title="Product Requirements Document">
+      <doc path="docs/prd.md" title="Product Requirements Document">
         <section name="Epic 4 Overview">
           Epic 4: Multi-Model Transcription Framework &amp; Composable Enhancements (POST-MVP). Production multi-model architecture with model-agnostic enhancement components. Delivers multi-model framework supporting 2+ transcription engines with composable enhancement pipeline.
         </section>

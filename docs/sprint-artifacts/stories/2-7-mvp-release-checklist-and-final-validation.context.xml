@@ -92,13 +92,13 @@
   <artifacts>
     <docs>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Non-Functional Requirements (NFR001-NFR004)</section>
         <snippet>NFR001: Performance - UI load &lt;3s, media playback &lt;2s, seek &lt;1s, transcription 1-2x real-time. NFR002: Usability - Non-technical users complete workflow without documentation. NFR003: Reliability - 90%+ completion rate, browser state prevents data loss. NFR004: Compatibility - Chrome 90+, Firefox 88+, Safari 14+, Edge 90+, mobile browsers, 2GB/2hr file limits.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>User Journey 1: Office Worker Transcribes Meeting</section>
         <snippet>Sarah's complete workflow: Access KlipNote → Upload recording → Monitor progress → Review transcription → Click-to-timestamp navigation → Edit errors → Export results (SRT/TXT) → Use in LLM workflow. Total time: 35 minutes for 45-minute meeting.</snippet>

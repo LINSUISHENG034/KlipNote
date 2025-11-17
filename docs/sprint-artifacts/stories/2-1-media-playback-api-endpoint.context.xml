@@ -81,19 +81,19 @@
   <artifacts>
     <docs>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>FR012 - Media Player</section>
         <snippet>System shall provide integrated media player supporting play, pause, and seek controls. Media playback shall start within 2 seconds (NFR001).</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>NFR001 - Performance</section>
         <snippet>UI shall load in &lt;3 seconds, media playback shall start within 2 seconds, and timestamp seeking shall respond in &lt;1 second.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>NFR004 - Compatibility</section>
         <snippet>Web interface shall function on desktop, tablet, and mobile browsers including Chrome 90+, Firefox 88+, Safari 14+, and Edge 90+.</snippet>

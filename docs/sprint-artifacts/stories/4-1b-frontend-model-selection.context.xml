@@ -125,13 +125,13 @@
   <artifacts>
     <docs>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>User Interface Design Goals</section>
         <snippet>Target Platforms: Web browser (desktop, tablet, mobile). Design Constraints: Minimal Dependencies using browser-native components, no complex branding. Mobile-First Accessibility with touch-optimized controls for tablets and mobile devices. Responsive layout adapts to screen sizes from 320px to desktop.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>UX Design Principles</section>
         <snippet>Zero-Friction "Use and Go" - Single-purpose workflow: Upload → Review → Export → Done. Self-Service Clarity with visual feedback and status indicators. Mobile-First Accessibility with touch-optimized controls.</snippet>

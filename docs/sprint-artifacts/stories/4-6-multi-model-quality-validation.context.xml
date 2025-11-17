@@ -1,0 +1,261 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>6</storyId>
+    <title>Multi-Model Quality Validation Framework</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-17</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>E:\Projects\KlipNote\docs\sprint-artifacts\4-6-multi-model-quality-validation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system maintainer</asA>
+    <iWant>automated quality validation leveraging enhanced metadata across models</iWant>
+    <soThat>I can objectively compare configurations and measure pipeline effectiveness comprehensively</soThat>
+    <tasks>
+- Task 1: Create QualityValidator class with CER/WER calculation (AC: 1)
+- Task 2: Implement segment length statistics analyzer (AC: 2)
+- Task 3: Implement character-level timing accuracy metrics (AC: 3)
+- Task 4: Implement confidence score analysis (AC: 4)
+- Task 5: Implement enhancement pipeline effectiveness metrics (AC: 5)
+- Task 6: Implement baseline comparison system (AC: 6, 8)
+- Task 7: Implement model comparison reports (AC: 7)
+- Task 8: Implement quality metrics storage (AC: 9)
+- Task 9: Create CLI tool for validation (AC: 10)
+- Task 10: Write unit tests (AC: 11)
+- Task 11: Write integration tests (AC: 12)
+- Task 12: Write documentation (AC: 10)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. `QualityValidator` calculates CER/WER using jiwer library
+2. Segment length statistics (mean, median, P95, % meeting constraints)
+3. Character-level timing accuracy metrics (for Chinese segments)
+4. Confidence score analysis (avg_confidence, low_confidence_segments)
+5. Enhancement pipeline effectiveness metrics (per-component impact)
+6. Baseline comparison (CER delta, length improvement %, confidence trends)
+7. Model comparison reports using TranscriptionMetadata (BELLE-2 vs WhisperX)
+8. Regression testing compares against stored baselines
+9. Quality metrics stored in quality_metrics.json with enhanced metadata
+10. CLI tool for manual validation and baseline generation
+11. Unit tests verify metric calculations including new metadata fields
+12. Integration test validates optimization improvements ≥20% with metadata tracking
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <artifact>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Story 4.6: Multi-Model Quality Validation Framework</section>
+        <snippet>Comprehensive validation framework with CER/WER metrics, segment quality analysis, enhancement effectiveness measurement, model comparison reports (BELLE-2 vs WhisperX), and baseline regression testing (AC §1019-1055)</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/4-5-enhancement-pipeline-composition.md</path>
+        <title>Story 4.5 - Enhancement Pipeline Composition (Previous Story)</title>
+        <section>Completion Notes and Learnings</section>
+        <snippet>EnhancementPipeline returns tuple (enhanced_segments, aggregated_metrics) with structure {ComponentName: {processing_time_ms, ...}, total_pipeline_time_ms}. Components track modifications in metrics. 91% test coverage achieved.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/sprint-artifacts/4-2-model-agnostic-vad-preprocessing.md</path>
+        <title>Story 4.2 - Enhanced Metadata Schema</title>
+        <section>Schema Definition</section>
+        <snippet>EnhancedSegment schema includes: chars (CharTiming[]), confidence, no_speech_prob, avg_logprob, enhancements_applied, source_model. TranscriptionMetadata tracks model_name, language, duration, processing_time.</snippet>
+      </artifact>
+      <artifact>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Enhanced Data Schema Architecture</section>
+        <snippet>Layered metadata model enables rich quality analysis while maintaining backward compatibility. EnhancedSegment extends BaseSegment with optional confidence scores, character-level timing, and enhancement tracking.</snippet>
+      </artifact>
+    </docs>
+    <code>
+      <artifact>
+        <path>backend/app/ai_services/schema.py</path>
+        <kind>data_model</kind>
+        <symbol>EnhancedSegment, TranscriptionMetadata, TranscriptionResult</symbol>
+        <lines>1-159</lines>
+        <reason>Core data structures that QualityValidator will analyze. Contains EnhancedSegment with confidence, chars[], enhancements_applied fields needed for quality metrics.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/enhancement/pipeline.py</path>
+        <kind>service</kind>
+        <symbol>EnhancementPipeline</symbol>
+        <lines>17-160</lines>
+        <reason>Pipeline class that QualityValidator will measure effectiveness of. Returns (segments, metrics) tuple with processing_time_ms and component telemetry.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/enhancement/factory.py</path>
+        <kind>factory</kind>
+        <symbol>create_pipeline</symbol>
+        <reason>Factory for creating enhancement pipelines. QualityValidator CLI tool will use this to apply enhancements before validation.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/belle2_service.py</path>
+        <kind>service</kind>
+        <symbol>Belle2Service</symbol>
+        <reason>BELLE-2 transcription service. QualityValidator needs to validate outputs from this model.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/whisperx_service.py</path>
+        <kind>service</kind>
+        <symbol>WhisperXService</symbol>
+        <reason>WhisperX transcription service. QualityValidator needs to validate outputs from this model.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/test_enhancement_pipeline.py</path>
+        <kind>test</kind>
+        <symbol>test_empty_pipeline_returns_input_unchanged, test_pipeline_handles_component_exception</symbol>
+        <lines>1-100</lines>
+        <reason>Testing patterns: DummyComponent mocking, metrics validation, exception handling. Use similar approach for QualityValidator tests.</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <python>
+        <package name="jiwer" version="3.0.3" reason="CER/WER calculation library (AC #1)" />
+        <package name="numpy" version="&lt;2.1.0" reason="Statistical calculations (mean, median, percentiles for AC #2)" />
+        <package name="librosa" version="&gt;=0.10.0" reason="Audio waveform analysis (already in requirements-common)" />
+        <package name="pytest" version="7.4.4" reason="Testing framework (AC #11, #12)" />
+        <package name="pytest-mock" version="3.12.0" reason="Mocking for unit tests" />
+        <package name="pytest-cov" version="4.1.0" reason="Test coverage measurement" />
+      </python>
+      <system>
+        <dependency name="FFmpeg" version="6.x" reason="Audio file processing (existing dependency)" />
+      </system>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>QualityValidator must be model-agnostic - works with both BELLE-2 and WhisperX outputs via TranscriptionMetadata.source_model field</constraint>
+    <constraint>No direct model dependencies - validator analyzes transcription output only, does not perform transcription</constraint>
+    <constraint>Graceful degradation - missing metadata fields (chars, confidence) should not crash validation, return None for unavailable metrics</constraint>
+    <constraint>Follow Story 4.5 configuration pattern - use environment variables for thresholds (QUALITY_VALIDATOR_LOW_CONFIDENCE_THRESHOLD, etc.)</constraint>
+    <constraint>CLI tool must support validation modes: "compare" (model comparison), "baseline-create" (save baseline), "batch" (validate corpus)</constraint>
+    <constraint>Baseline file format must include version field for future schema evolution</constraint>
+    <constraint>Integration test must validate ≥20% improvement after enhancements (AC #12)</constraint>
+    <constraint>Follow existing testing patterns: pytest with pytest-mock, DummyComponent pattern for mocking, 85%+ coverage target</constraint>
+    <constraint>Store quality metrics in JSON format at backend/quality_metrics/{model}_{pipeline}_{timestamp}.json (AC #9)</constraint>
+    <constraint>Register pytest marks (integration, slow) in pytest.ini to fix technical debt from Story 4.5</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>QualityValidator.__init__</name>
+      <kind>class_constructor</kind>
+      <signature>def __init__(self, low_confidence_threshold: float = 0.7, ideal_segment_min: float = 1.0, ideal_segment_max: float = 7.0, ideal_char_max: int = 200)</signature>
+      <path>backend/app/ai_services/quality/validator.py (NEW)</path>
+    </interface>
+    <interface>
+      <name>QualityValidator.calculate_accuracy_metrics</name>
+      <kind>method</kind>
+      <signature>def calculate_accuracy_metrics(self, reference: str, hypothesis: str, language: str = "zh") -> Dict[str, float]</signature>
+      <path>backend/app/ai_services/quality/validator.py (NEW)</path>
+    </interface>
+    <interface>
+      <name>QualityValidator.validate_all</name>
+      <kind>method</kind>
+      <signature>def validate_all(self, segments: List[EnhancedSegment], metadata: TranscriptionMetadata, reference_transcript: Optional[str] = None, pipeline_metrics: Optional[Dict[str, Any]] = None) -> Dict[str, Any]</signature>
+      <path>backend/app/ai_services/quality/validator.py (NEW)</path>
+    </interface>
+    <interface>
+      <name>BaselineManager.save_baseline</name>
+      <kind>method</kind>
+      <signature>def save_baseline(self, name: str, audio_file: str, segments: List[EnhancedSegment], metadata: TranscriptionMetadata, reference_transcript: str = "") -> None</signature>
+      <path>backend/app/ai_services/quality/baseline.py (NEW)</path>
+    </interface>
+    <interface>
+      <name>BaselineManager.compare_to_baseline</name>
+      <kind>method</kind>
+      <signature>def compare_to_baseline(self, baseline_name: str, current_metrics: Dict[str, Any]) -> Dict[str, Any]</signature>
+      <path>backend/app/ai_services/quality/baseline.py (NEW)</path>
+    </interface>
+    <interface>
+      <name>EnhancementPipeline.process</name>
+      <kind>existing_method</kind>
+      <signature>def process(self, segments: Sequence[BaseSegment], audio_path: str, **kwargs) -> Tuple[List[EnhancedSegment], Dict[str, Any]]</signature>
+      <path>backend/app/ai_services/enhancement/pipeline.py</path>
+    </interface>
+    <interface>
+      <name>jiwer.cer</name>
+      <kind>external_function</kind>
+      <signature>def cer(reference: str, hypothesis: str) -> float</signature>
+      <path>External library: jiwer</path>
+    </interface>
+    <interface>
+      <name>jiwer.wer</name>
+      <kind>external_function</kind>
+      <signature>def wer(reference: str, hypothesis: str) -> float</signature>
+      <path>External library: jiwer</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+Testing framework: pytest with pytest-mock for mocking. Coverage target: ≥85% for quality validation components. Testing strategy follows Story 4.5 patterns: unit tests (mocked dependencies, synthetic data) + integration tests (real audio files, actual models). Test structure: test_{module_name}.py for unit tests, test_{module_name}_integration.py for integration tests. Use fixtures for test data (EnhancedSegment samples, TranscriptionMetadata samples). Mock jiwer library in unit tests to avoid external dependency. Integration tests use real test corpus from fixtures/chinese_test_5min.mp3. Performance tests validate processing time thresholds. Register pytest marks in pytest.ini: @pytest.mark.integration, @pytest.mark.slow.
+    </standards>
+    <locations>
+      <location>backend/tests/test_quality_validator.py (NEW - Unit tests)</location>
+      <location>backend/tests/test_quality_baseline.py (NEW - Baseline management tests)</location>
+      <location>backend/tests/test_quality_validator_integration.py (NEW - Integration tests with real models)</location>
+      <location>backend/tests/test_quality_cli.py (NEW - CLI tool tests)</location>
+      <location>backend/tests/regression/test_epic3_baseline.py (NEW - Regression tests)</location>
+      <location>backend/tests/fixtures/ (Existing - Test audio files and baseline data)</location>
+    </locations>
+    <ideas>
+      <test id="AC1" criteria="QualityValidator calculates CER/WER using jiwer library">
+        <idea>Unit test: test_calculate_cer_wer_with_known_inputs - Use reference="你好世界", hypothesis="你好世间" (1 char error), assert CER > 0</idea>
+        <idea>Unit test: test_calculate_cer_wer_perfect_match - Use identical reference and hypothesis, assert CER=0, WER=0</idea>
+        <idea>Unit test: test_calculate_accuracy_metrics_error_handling - Mock jiwer to raise exception, assert returns {"cer": None, "wer": None, "error": ...}</idea>
+      </test>
+      <test id="AC2" criteria="Segment length statistics (mean, median, P95, % meeting constraints)">
+        <idea>Unit test: test_segment_length_statistics - Create segments with known durations [2.5s, 8.0s, 4.0s], validate mean, median, P95 calculations</idea>
+        <idea>Unit test: test_duration_compliance_percentage - Create 10 segments, 7 in 1-7s range, 3 outside, assert compliance_pct = 70%</idea>
+        <idea>Unit test: test_char_compliance_percentage - Create segments with char counts [50, 150, 250], assert compliance calculation for &lt;=200 char constraint</idea>
+      </test>
+      <test id="AC3" criteria="Character-level timing accuracy metrics">
+        <idea>Unit test: test_character_timing_analysis_with_chars - Create EnhancedSegment with chars=[{char:"你",score:0.95},{char:"好",score:0.85}], validate average_char_score calculation</idea>
+        <idea>Unit test: test_character_timing_missing_chars_field - Segments without chars[] field should return {segments_with_char_timing: 0, average_char_score: None}</idea>
+        <idea>Unit test: test_low_character_timing_score_detection - Create segment with low char scores (&lt;0.7), validate low_score_segments count</idea>
+      </test>
+      <test id="AC4" criteria="Confidence score analysis">
+        <idea>Unit test: test_confidence_analysis - Create segments with confidence [0.95, 0.5], low_confidence_threshold=0.7, assert low_confidence_segments=1</idea>
+        <idea>Unit test: test_confidence_missing_field - Segments without confidence field should return {average_confidence: None, low_confidence_segments: 0}</idea>
+      </test>
+      <test id="AC5" criteria="Enhancement pipeline effectiveness metrics">
+        <idea>Unit test: test_analyze_enhancements_from_segments - Create segments with enhancements_applied=["vad:webrtc","refine"], validate component_counts</idea>
+        <idea>Unit test: test_analyze_enhancements_with_pipeline_metrics - Pass pipeline_metrics dict from Story 4.5 format, validate total_overhead_ms extraction</idea>
+      </test>
+      <test id="AC6_AC8" criteria="Baseline comparison and regression testing">
+        <idea>Unit test: test_save_baseline - Call save_baseline(), verify JSON file created with correct structure (version, timestamp, segments, metadata)</idea>
+        <idea>Unit test: test_load_baseline - Save baseline, then load it, verify data integrity</idea>
+        <idea>Unit test: test_compare_to_baseline_improvements - Create baseline with CER=0.15, current with CER=0.10, assert cer_delta=-0.05 (improvement)</idea>
+        <idea>Integration test: test_regression_against_epic3_baseline - Load tests/regression/epic3_baselines.json, re-transcribe corpus, assert CER degradation &lt;=15%</idea>
+      </test>
+      <test id="AC7" criteria="Model comparison reports">
+        <idea>Integration test: test_model_comparison_belle2_vs_whisperx - Transcribe same audio with both models, generate comparison report, validate side-by-side metrics</idea>
+        <idea>Unit test: test_aggregate_metrics_by_model - Create metrics for belle2 and whisperx, validate model-specific aggregation logic</idea>
+      </test>
+      <test id="AC9" criteria="Quality metrics stored in JSON">
+        <idea>Unit test: test_export_metrics_to_json - Call export_metrics(), verify file path format: {model}_{pipeline}_{timestamp}.json</idea>
+        <idea>Unit test: test_import_metrics_from_json - Export metrics, then import, verify data integrity</idea>
+      </test>
+      <test id="AC10" criteria="CLI tool for validation">
+        <idea>Integration test: test_cli_compare_mode - Run python validate_quality.py --audio test.mp3 --model belle2, verify console output and JSON export</idea>
+        <idea>Integration test: test_cli_baseline_create - Run with --save-baseline flag, verify baseline file created</idea>
+        <idea>Unit test: test_cli_argument_parsing - Validate argparse configuration accepts required arguments</idea>
+      </test>
+      <test id="AC11" criteria="Unit tests verify metric calculations">
+        <idea>Use pytest fixtures for EnhancedSegment samples with known properties (duration, char_count, confidence, chars)</idea>
+        <idea>Mock jiwer.cer and jiwer.wer to return known values for unit test isolation</idea>
+        <idea>Test edge cases: empty segments list, segments with missing optional fields, zero-length segments</idea>
+      </test>
+      <test id="AC12" criteria="Integration test validates ≥20% improvement">
+        <idea>test_enhancement_improvement_validation - Transcribe with apply_enhancements=False (baseline), then =True (enhanced), calculate compliance improvement, assert &gt;=20%</idea>
+        <idea>Use fixtures/chinese_test_5min.mp3 for consistent test data across integration tests</idea>
+        <idea>Log baseline and enhanced metrics for debugging: print(f"Baseline: {baseline_compliance}%, Enhanced: {enhanced_compliance}%")</idea>
+      </test>
+    </ideas>
+  </tests>
+</story-context>

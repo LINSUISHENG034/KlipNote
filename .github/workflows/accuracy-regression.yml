@@ -1,0 +1,148 @@
+name: Accuracy Regression Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/app/ai_services/**'
+      - 'backend/tests/test_accuracy_regression.py'
+      - 'test-fixtures/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/app/ai_services/**'
+      - 'backend/tests/test_accuracy_regression.py'
+      - 'test-fixtures/**'
+  workflow_dispatch:  # Allow manual trigger
+  schedule:
+    # Run weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+
+jobs:
+  accuracy-tests:
+    name: Run Accuracy Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Allow sufficient time for long audio samples
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # Pull LFS files (test audio/video samples)
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Verify test fixtures
+        run: |
+          echo "Checking test-fixtures directory..."
+          ls -lh test-fixtures/
+          echo "Sample directories:"
+          ls -l test-fixtures/*/
+
+      - name: Run accuracy regression tests
+        working-directory: backend
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: |
+          pytest tests/test_accuracy_regression.py \
+            -v \
+            --tb=short \
+            -m "accuracy" \
+            --continue-on-collection-errors
+
+      - name: Generate test report
+        if: always()
+        working-directory: backend
+        run: |
+          pytest tests/test_accuracy_regression.py \
+            -v \
+            -m "accuracy" \
+            --junitxml=test-results/accuracy-report.xml \
+            --continue-on-collection-errors || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accuracy-test-results
+          path: backend/test-results/
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'backend/test-results/accuracy-report.xml';
+
+            if (fs.existsSync(reportPath)) {
+              const report = fs.readFileSync(reportPath, 'utf8');
+              // Parse and format report
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.name,
+                body: `## Accuracy Regression Test Results\n\nView full results in the Actions tab.`
+              });
+            }
+
+  # Optional: GPU-enabled tests (requires self-hosted runner with GPU)
+  accuracy-tests-gpu:
+    name: Run Accuracy Tests (GPU)
+    runs-on: self-hosted  # Requires self-hosted runner with NVIDIA GPU
+    if: false  # Disabled by default - enable when GPU runner available
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Check GPU availability
+        run: nvidia-smi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run GPU-accelerated accuracy tests
+        working-directory: backend
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+          CUDA_VISIBLE_DEVICES: 0
+        run: |
+          pytest tests/test_accuracy_regression.py \
+            -v \
+            -m "accuracy" \
+            --tb=short
+
+      - name: Upload GPU test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accuracy-test-results-gpu
+          path: backend/test-results/

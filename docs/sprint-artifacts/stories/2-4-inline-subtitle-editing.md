@@ -918,9 +918,9 @@ This incremental approach ensures each story builds upon the previous foundation
 ### References
 
 - [Source: docs/epics.md#Story-2.4] - User story statement and acceptance criteria
-- [Source: docs/PRD.md#FR009] - Inline editing requirement: "System shall allow users to edit subtitle text inline within the web interface"
-- [Source: docs/PRD.md#FR020] - localStorage persistence: "System shall persist user edits to browser localStorage to prevent data loss during browser refresh or accidental navigation"
-- [Source: docs/PRD.md#NFR003] - Reliability requirement: "Browser-based state shall prevent data loss during normal operation including page refresh and accidental navigation"
+- [Source: docs/prd.md#FR009] - Inline editing requirement: "System shall allow users to edit subtitle text inline within the web interface"
+- [Source: docs/prd.md#FR020] - localStorage persistence: "System shall persist user edits to browser localStorage to prevent data loss during browser refresh or accidental navigation"
+- [Source: docs/prd.md#NFR003] - Reliability requirement: "Browser-based state shall prevent data loss during normal operation including page refresh and accidental navigation"
 - [Source: docs/architecture.md#localStorage-Persistence-for-Edit-Recovery] - Complete implementation pattern with localStorage key format, save strategy, restoration priority, edge case handling
 - [Source: docs/tech-spec-epic-2.md#Workflow-2-Inline-Subtitle-Editing] - Detailed workflow with implementation steps, edge cases, error handling
 - [Source: docs/tech-spec-epic-2.md#Data-Models-and-Contracts] - localStorage structure, TypeScript interfaces, Pydantic models

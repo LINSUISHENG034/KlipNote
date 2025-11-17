@@ -761,7 +761,7 @@ So that different combinations can be applied and their effectiveness measured t
 
 ---
 
-**Story 4.6: Multi-Model Quality Validation Framework** 📋 PLANNED
+**Story 4.6: Multi-Model Quality Validation Framework** ✅ COMPLETE
 
 As a system maintainer,
 I want automated quality validation leveraging enhanced metadata across models,
@@ -783,24 +783,7 @@ So that I can objectively compare configurations and measure pipeline effectiven
 
 **Prerequisites:** Story 4.5 (pipeline framework complete)
 
----
-
-**Story 4.7: MVP Model Selection & Epic 4 Handoff Preparation** 📋 PLANNED
-
-As a product team,
-I want to select one model for MVP deployment and document Epic 4 roadmap,
-So that MVP ships on schedule while preserving multi-model evolution path.
-
-**Acceptance Criteria:**
-1. MVP model selection decision documented (BELLE-2 or WhisperX based on Story 3.2c data)
-2. Selected model configured as production default
-3. Non-selected model documented for Epic 4 integration
-4. Epic 4 roadmap finalized with story priorities
-5. Technical debt documented: areas where single-model shortcuts were taken
-6. Handoff documentation: what Epic 4 implementers need to know
-7. MVP deployment guide updated with selected model
-
-**Prerequisites:** Story 4.6 (validation framework ready for Epic 4 execution)
+**Status:** COMPLETE (2025-11-20)
 
 ---
 

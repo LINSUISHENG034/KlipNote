@@ -155,7 +155,7 @@
         </snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Functional Requirements</section>
         <snippet>
@@ -163,7 +163,7 @@
         </snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote PRD</title>
         <section>Non-Functional Requirements</section>
         <snippet>

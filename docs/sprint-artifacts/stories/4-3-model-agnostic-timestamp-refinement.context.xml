@@ -72,13 +72,13 @@
     <docs>
       <!-- PRD Requirements -->
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Functional Requirements - FR011</section>
         <snippet>System shall enable click-to-timestamp navigation - clicking any subtitle jumps to exact media position. Requires precise timestamp alignment for smooth playback experience.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Non-Functional Requirements - NFR005</section>
         <snippet>Subtitle segments shall conform to industry-standard length conventions (1-7 seconds, ~200 characters max). Chinese/Mandarin transcription quality prioritized as primary use case.</snippet>

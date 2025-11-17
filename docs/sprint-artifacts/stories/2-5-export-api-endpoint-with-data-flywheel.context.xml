@@ -110,7 +110,7 @@
 
   <artifacts>
     <docs>
-      <doc path="docs/PRD.md" title="Product Requirements Document" section="Functional Requirements - Export & Data Persistence">
+      <doc path="docs/prd.md" title="Product Requirements Document" section="Functional Requirements - Export & Data Persistence">
 FR014: System shall export edited transcriptions in SRT (SubRip) subtitle format
 FR015: System shall export edited transcriptions in plain TXT format for LLM processing
 FR016: System shall capture both original AI-generated and human-edited versions during export

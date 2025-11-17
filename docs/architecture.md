@@ -2405,6 +2405,250 @@ export const useTranscriptionStore = defineStore('transcription', {
 
 ---
 
+## Accuracy Regression Testing
+
+### Purpose
+
+Ensure transcription accuracy doesn't degrade across releases by continuously validating against hand-verified ground truth samples.
+
+### Test Sample Repository
+
+```
+test-fixtures/
+├── zh_long_audio1/
+│   ├── audio.mp3
+│   ├── reference_transcript.txt
+│   └── metadata.json
+├── zh_medium_audio1/
+│   ├── audio.mp3
+│   ├── reference_transcript.txt
+│   └── metadata.json
+└── zh_short_video1/
+    ├── video.mp4
+    ├── reference_transcript.txt
+    └── metadata.json
+```
+
+**Sample Characteristics:**
+- **zh_long_audio1**: Long-form Chinese audio (>30 minutes) for stress testing
+- **zh_medium_audio1**: Medium-length Chinese audio (10-30 minutes) for balanced testing
+- **zh_short_video1**: Short video sample (<10 minutes) for quick validation
+
+**Metadata Format (metadata.json):**
+```json
+{
+  "language": "zh",
+  "duration_seconds": 1847,
+  "content_description": "Business meeting with technical discussion",
+  "recording_quality": "medium",
+  "speaker_count": 3,
+  "accent": "Mandarin (Standard)"
+}
+```
+
+### Accuracy Targets
+
+**Character Error Rate (CER):**
+- Target: ≤ 10% for Chinese audio
+- Measurement: Character-level edit distance against reference transcript
+- Calculation: `CER = (S + D + I) / N` where S=substitutions, D=deletions, I=insertions, N=total characters
+
+**Word Error Rate (WER):**
+- Target: ≤ 15% for Chinese audio
+- Measurement: Word-level edit distance against reference transcript
+- Calculation: `WER = (S + D + I) / N` where S=substitutions, D=deletions, I=insertions, N=total words
+
+**Segmentation Tolerance:**
+- Segmentation differences ignored if within subtitle format standards (1-7s, ≤200 chars)
+- Focus on **text content accuracy** rather than segmentation method
+- Quality validation compares normalized text (whitespace/punctuation normalized)
+
+### Quality Validator Implementation
+
+**Tool:** `backend/app/cli/validate_quality.py`
+
+**Usage:**
+```bash
+# Generate baseline for a test sample
+python backend/app/cli/validate_quality.py \
+  --audio test-fixtures/zh_long_audio1/audio.mp3 \
+  --reference test-fixtures/zh_long_audio1/reference_transcript.txt \
+  --output backend/quality_metrics/baselines/zh_long_audio1_belle2.json \
+  --model belle2
+
+# Compare against baseline
+python backend/app/cli/validate_quality.py \
+  --audio test-fixtures/zh_long_audio1/audio.mp3 \
+  --reference test-fixtures/zh_long_audio1/reference_transcript.txt \
+  --baseline backend/quality_metrics/baselines/zh_long_audio1_belle2.json \
+  --model belle2
+```
+
+**Baseline File Format:**
+```json
+{
+  "sample_id": "zh_long_audio1",
+  "model": "belle2",
+  "timestamp": "2025-11-20T10:30:00Z",
+  "metrics": {
+    "cer": 0.087,
+    "wer": 0.132,
+    "segment_count": 245,
+    "avg_segment_length_seconds": 4.2,
+    "segments_within_constraints_pct": 94.7
+  },
+  "reference_hash": "sha256:abc123..."
+}
+```
+
+### CI/CD Integration
+
+**Workflow:** `.github/workflows/accuracy-regression.yml`
+
+**Trigger Events:**
+- Push to `main` branch
+- Pull requests targeting `main`
+- Manual workflow dispatch (for ad-hoc testing)
+
+**Test Execution:**
+```yaml
+name: Accuracy Regression Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  accuracy-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      - name: Run accuracy regression tests
+        run: |
+          cd backend
+          pytest tests/test_accuracy_regression.py -v
+```
+
+**Failure Condition:**
+- CER > 10% OR WER > 15% for any test sample
+- More than 1/3 samples failing accuracy targets
+- Segment length constraint violations >10% (segments outside 1-7s or >200 chars)
+
+**Notification:**
+- Failed tests block PR merge
+- Slack/email notification to maintainers on main branch failures
+- Test report attached to PR as comment
+
+### Integration Tests
+
+**Test Module:** `backend/tests/test_accuracy_regression.py`
+
+**Test Cases:**
+```python
+import pytest
+from app.ai_services.quality_validator import QualityValidator
+
+@pytest.mark.accuracy
+def test_zh_long_audio1_accuracy():
+    """Validate accuracy for long Chinese audio sample."""
+    validator = QualityValidator()
+    result = validator.validate(
+        audio_path="test-fixtures/zh_long_audio1/audio.mp3",
+        reference_path="test-fixtures/zh_long_audio1/reference_transcript.txt",
+        model="belle2"
+    )
+
+    assert result.cer <= 0.10, f"CER {result.cer:.2%} exceeds 10% threshold"
+    assert result.wer <= 0.15, f"WER {result.wer:.2%} exceeds 15% threshold"
+    assert result.segments_within_constraints_pct >= 90.0
+
+@pytest.mark.accuracy
+def test_zh_medium_audio1_accuracy():
+    """Validate accuracy for medium Chinese audio sample."""
+    # Similar structure to test_zh_long_audio1_accuracy
+    pass
+
+@pytest.mark.accuracy
+def test_zh_short_video1_accuracy():
+    """Validate accuracy for short video sample."""
+    # Similar structure to test_zh_long_audio1_accuracy
+    pass
+```
+
+**Test Execution:**
+```bash
+# Run only accuracy tests
+pytest -m accuracy -v
+
+# Run with coverage
+pytest -m accuracy --cov=app.ai_services --cov-report=term-missing
+```
+
+### Baseline Management
+
+**Initial Baseline Generation (Story 4.6b):**
+1. Run QualityValidator on all 3 samples with BELLE-2 model
+2. Run QualityValidator on all 3 samples with WhisperX model
+3. Generate 6 baseline files (3 samples × 2 models)
+4. Commit baselines to `backend/quality_metrics/baselines/`
+
+**Baseline Update Process:**
+1. **When to update:**
+   - Model architecture changes
+   - Enhancement pipeline modifications (VAD, timestamp refinement, segment splitting)
+   - Intentional accuracy improvements
+   - Reference transcript corrections
+
+2. **Update procedure:**
+   - Regenerate baselines using updated model/pipeline
+   - Document reason for baseline change in commit message
+   - Run full regression test suite before committing
+   - Require code review approval for baseline changes
+
+3. **Baseline versioning:**
+   - Baselines stored in git with full history
+   - Tag major baseline changes (e.g., `baseline-v1.0`, `baseline-v2.0`)
+   - Changelog documents accuracy metric evolution
+
+### Quality Monitoring Dashboard (Post-MVP)
+
+**Future Enhancement (Epic 4+):**
+- Web dashboard displaying historical accuracy trends
+- Per-sample metric visualization (CER/WER over time)
+- Model comparison charts (BELLE-2 vs WhisperX accuracy)
+- Alert thresholds for accuracy degradation detection
+
+**Data Collection:**
+- Store test results in time-series database (InfluxDB/Prometheus)
+- Capture: timestamp, model, sample_id, cer, wer, processing_time
+- Retention: 90 days detailed, 1 year aggregated
+
+### Documentation
+
+**Test Sample README:** `test-fixtures/README.md`
+- Sample selection criteria
+- Reference transcript creation guidelines
+- How to add new test samples
+- Baseline regeneration procedures
+
+**Quality Validation Guide:** `docs/quality-validation.md`
+- Using QualityValidator tool
+- Interpreting accuracy metrics
+- Troubleshooting failed tests
+- Best practices for maintaining test samples
+
+---
+
 ## Architectural Coherence Validation
 
 ### Decision Compatibility Check

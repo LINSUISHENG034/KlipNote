@@ -453,7 +453,7 @@ pytest tests/ --cov=app --cov-report=html  # Full coverage report
 - [Source: docs/tech-spec-epic-1.md#Non-Functional-Requirements] - Performance targets (1-2x real-time), reliability strategies
 - [Source: docs/tech-spec-epic-1.md#Test-Strategy-Summary] - Testing framework, coverage targets, mock strategies
 - [Source: docs/architecture.md#Development-Environment-Requirements] - uv environment activation, GPU requirements
-- [Source: docs/PRD.md#Non-Functional-Requirements] - NFR-001: Performance targets, NFR-003: Reliability
+- [Source: docs/prd.md#Non-Functional-Requirements] - NFR-001: Performance targets, NFR-003: Reliability
 - [Source: docs/stories/1-2-backend-api-upload-endpoint.md#Dev-Notes] - FileHandler service, Pydantic Settings, Docker configuration
 
 ## Dev Agent Record

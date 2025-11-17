@@ -906,7 +906,7 @@ def test_optimize_with_mock(mocker):
 - [Source: docs/tech-spec-epic-3.md#Phase-Gate-Decision-Criteria] - Success criteria table (lines 304-316)
 - [Source: docs/tech-spec-epic-3.md#ADR-002] - Two-phase implementation rationale (lines 39-42)
 - [Source: docs/epics.md#Story-3.2b] - User story and prerequisites (lines 407-428)
-- [Source: docs/PRD.md#NFR-005] - Transcription quality requirements (line 79)
+- [Source: docs/prd.md#NFR-005] - Transcription quality requirements (line 79)
 - [Source: docs/architecture.md#AI-Service-Abstraction-Strategy] - Interface pattern (lines 650-798)
 - [Source: docs/stories/3-2a-pluggable-optimizer-architecture.md#Learnings-from-Previous-Story] - Previous story patterns (lines 330-400)
 

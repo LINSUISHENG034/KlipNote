@@ -106,13 +106,13 @@
   <artifacts>
     <docs>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Export & Delivery (FR014, FR015)</section>
         <snippet>FR014: System shall export edited transcriptions in SRT (SubRip) subtitle format. FR015: System shall export edited transcriptions in plain TXT format for LLM processing.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Non-Functional Requirements (NFR002: Usability)</section>
         <snippet>Non-technical users shall complete the upload → review → export workflow without documentation or technical assistance. System shall provide clear error messages and visual feedback throughout all operations.</snippet>

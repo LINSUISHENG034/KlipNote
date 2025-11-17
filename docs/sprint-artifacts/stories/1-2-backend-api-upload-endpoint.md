@@ -270,7 +270,7 @@ pytest tests/ --cov=app --cov-report=html  # Full coverage report
 - [Source: docs/tech-spec-epic-1.md#Security] - Input validation requirements, file format whitelist, size limits
 - [Source: docs/tech-spec-epic-1.md#Test-Strategy-Summary] - Testing requirements, coverage targets, test organization
 - [Source: docs/architecture.md#Development-Environment-Requirements] - uv environment activation requirements
-- [Source: docs/PRD.md#Non-Functional-Requirements] - NFR-004: 2-hour duration limit, 2GB file size limit
+- [Source: docs/prd.md#Non-Functional-Requirements] - NFR-004: 2-hour duration limit, 2GB file size limit
 - [Source: docs/stories/1-1-project-scaffolding-and-development-environment.md#Dev-Notes] - FFmpeg binary installation, Pydantic Settings pattern, test infrastructure
 
 ## Dev Agent Record

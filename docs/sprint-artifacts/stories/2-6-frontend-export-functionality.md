@@ -769,8 +769,8 @@ npm run dev
 ### References
 
 - [Source: docs/epics.md#Story-2.6] - User story statement and acceptance criteria
-- [Source: docs/PRD.md#FR014, FR015] - Export format requirements: SRT and TXT
-- [Source: docs/PRD.md#NFR002] - Usability: Self-service workflow without documentation
+- [Source: docs/prd.md#FR014, FR015] - Export format requirements: SRT and TXT
+- [Source: docs/prd.md#NFR002] - Usability: Self-service workflow without documentation
 - [Source: docs/tech-spec-epic-2.md#APIs-and-Interfaces] - Export API specification
 - [Source: docs/tech-spec-epic-2.md#Workflows-and-Sequencing] - Workflow 4: Export with Data Flywheel
 - [Source: docs/architecture.md#Frontend-API-Client] - Native fetch() pattern

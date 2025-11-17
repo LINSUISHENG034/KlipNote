@@ -25,11 +25,13 @@ venv/
 .venv-whisperx/
 test-results/
 fixtures/
+tests/
 reference/
 
 # AIGC Files
 .serena/
 .claude/
+.codex/
 .gemini/
 .pytest_cache/
 .bmad/

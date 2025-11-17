@@ -1,8 +1,8 @@
-# generated: 2025-11-15
+# generated: 2025-11-20
 # project: KlipNote
 # project_key: KlipNote
 # tracking_system: file-system
-# story_location: {project-root}/docs/stories
+# story_location: {project-root}/docs/sprint-artifacts/stories
 
 # STATUS DEFINITIONS:
 # ==================
@@ -32,11 +32,11 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
 
-generated: 2025-11-15
+generated: 2025-11-20
 project: KlipNote
 project_key: KlipNote
 tracking_system: file-system
-story_location: "{project-root}/docs/stories"
+story_location: "{project-root}/docs/sprint-artifacts/stories"
 
 development_status:
   epic-1: done
@@ -72,13 +72,11 @@ development_status:
   epic-3-retrospective: completed
 
   epic-4: contexted
-  4-1-multi-model-production-architecture: done  # ✅ Completed 2025-11-16: PM approved, code review passed, all 4 integration tests verified
-  4-1b-frontend-model-selection: done  # ✅ Completed 2025-11-16: Manual testing passed, all 28 tests passing
-  4-2-model-agnostic-vad-preprocessing: done  # ✅ TODO: AdvancedVAD
-  4-3-model-agnostic-timestamp-refinement: done  # ✅ Completed 2025-11-17: All blockers resolved, 11 tests passing, 80% coverage, performance 70x better than constraint
-  4-4-model-agnostic-segment-splitting: done  # ✅ Completed 2025-11-17: Code review approved, 16 tests passing, 91% coverage, Task 9.3 + Subtask 3.2 completed during review
-  4-5-enhancement-pipeline-composition: done  # ✅ Completed 2025-11-17: Code review approved, services refactored, 29 tests passing (6 unit + 11 task + 12 integration), 91% coverage on pipeline.py
-  4-6-multi-model-quality-validation: backlog
-  4-7-mvp-model-selection-and-handoff: backlog
+  4-1-multi-model-production-architecture: done
+  4-1b-frontend-model-selection: done
+  4-2-model-agnostic-vad-preprocessing: done
+  4-3-model-agnostic-timestamp-refinement: done
+  4-4-model-agnostic-segment-splitting: done
+  4-5-enhancement-pipeline-composition: done
+  4-6-multi-model-quality-validation: done
   epic-4-retrospective: optional
-

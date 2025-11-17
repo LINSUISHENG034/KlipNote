@@ -418,9 +418,9 @@ Story 2.1 reads from this exact structure. No migration needed.
 ### References
 
 - [Source: docs/epics.md#Story-2.1] - User story statement and acceptance criteria
-- [Source: docs/PRD.md#FR012] - Media player requirement
-- [Source: docs/PRD.md#NFR001] - Performance requirement: playback <2s, seek <1s
-- [Source: docs/PRD.md#NFR004] - Browser compatibility: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+- [Source: docs/prd.md#FR012] - Media player requirement
+- [Source: docs/prd.md#NFR001] - Performance requirement: playback <2s, seek <1s
+- [Source: docs/prd.md#NFR004] - Browser compatibility: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
 - [Source: docs/architecture.md#HTTP-Range-Request-Support] - FileResponse Range support pattern
 - [Source: docs/architecture.md#Media-File-Storage-Strategy] - Job-based folder structure
 - [Source: docs/architecture.md#API-Response-Format] - Error response format (404 with detail)

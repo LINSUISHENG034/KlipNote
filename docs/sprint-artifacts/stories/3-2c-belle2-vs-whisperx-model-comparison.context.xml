@@ -112,14 +112,14 @@
     <docs>
       <!-- PRD Context -->
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Requirements - FR003b</section>
         <snippet>System shall optimize Chinese/Mandarin transcription quality as primary use case with segment lengths suitable for subtitle editing workflows (typically 1-7 seconds per segment, maximum ~200 characters). Model selection (BELLE-2 vs WhisperX) determined through empirical A/B testing in Epic 3.</snippet>
       </doc>
 
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>NFR005 - Transcription Quality</section>
         <snippet>Model selection (BELLE-2 vs WhisperX) determined through empirical A/B testing in Epic 3 across comprehensive metrics: CER/WER accuracy, segment length compliance (1-7s / ≤200 chars), gibberish elimination, processing speed, and GPU memory efficiency.</snippet>

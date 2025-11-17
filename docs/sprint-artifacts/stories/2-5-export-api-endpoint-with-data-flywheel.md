@@ -751,8 +751,8 @@ uvicorn app.main:app --reload
 ### References
 
 - [Source: docs/epics.md#Story-2.5] - User story statement and acceptance criteria
-- [Source: docs/PRD.md#FR016] - Data flywheel requirement: "System shall capture both original AI-generated and human-edited versions during export"
-- [Source: docs/PRD.md#FR014, FR015] - Export formats: SRT and TXT
+- [Source: docs/prd.md#FR016] - Data flywheel requirement: "System shall capture both original AI-generated and human-edited versions during export"
+- [Source: docs/prd.md#FR014, FR015] - Export formats: SRT and TXT
 - [Source: docs/architecture.md#Data-Flywheel-Foundation] - Implementation architecture
 - [Source: docs/tech-spec-epic-2.md#Data-Models-and-Contracts] - ExportRequest and ExportMetadata models
 - [Source: docs/tech-spec-epic-2.md#APIs-and-Interfaces] - POST /export endpoint specification

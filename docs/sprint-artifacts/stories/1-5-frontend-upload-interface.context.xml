@@ -39,7 +39,7 @@
   <artifacts>
     <docs>
       <artifact>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>KlipNote Product Requirements Document</title>
         <section>Functional Requirements - File Upload & Processing</section>
         <snippet>FR001: System shall accept audio and video file uploads via web interface. FR002: System shall support common media formats including MP3, MP4, WAV, M4A. NFR002: Non-technical users shall complete upload → review → export workflow without documentation.</snippet>

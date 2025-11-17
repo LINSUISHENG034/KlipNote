@@ -26,24 +26,26 @@ project: "KlipNote"
 project_type: "software"
 project_level: "2"
 field_type: "greenfield"
-workflow_path: "bmad/bmm/workflows/workflow-status/paths/method-greenfield.yaml"
+workflow_path: ".bmad/bmm/workflows/workflow-status/paths/method-greenfield.yaml"
+
 
 workflow_status:
   # Phase 1: Analysis
-  brainstorm-project: docs/bmm-brainstorming-session-2025-11-02.md
+  brainstorm-project: docs/initial/bmm-brainstorming-session-2025-11-02.md
   research: optional
-  product-brief: docs/bmm-product-brief-KlipNote-2025-11-03.md
+  product-brief: docs/initial/bmm-product-brief-KlipNote-2025-11-03.md
 
   # Phase 2: Planning
-  prd: docs/PRD.md
+  prd: docs/prd.md
   validate-prd: optional
+  
   create-design: conditional
   tech-spec: optional
 
   # Phase 3: Solutioning
   create-architecture: docs/architecture.md
   validate-architecture: optional
-  solutioning-gate-check: docs/implementation-readiness-report-2025-11-04.md
+  solutioning-gate-check: optional
 
   # Phase 4: Implementation
   sprint-planning: docs/sprint-status.yaml

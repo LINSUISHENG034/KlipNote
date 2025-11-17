@@ -103,19 +103,19 @@
   <artifacts>
     <docs>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>FR011: Click-to-Timestamp Navigation</section>
         <snippet>System shall enable click-to-timestamp navigation - clicking any subtitle jumps to exact media position. This transforms tedious verification into rapid workflow.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>FR013: Active Segment Highlighting</section>
         <snippet>System shall highlight active subtitle segment during media playback, providing visual feedback of current playback position.</snippet>
       </doc>
       <doc>
-        <path>docs/PRD.md</path>
+        <path>docs/prd.md</path>
         <title>Product Requirements Document</title>
         <section>NFR001: Performance Requirements</section>
         <snippet>Timestamp seeking shall respond in &lt;1 second. UI shall load in &lt;3 seconds, media playback shall start within 2 seconds.</snippet>

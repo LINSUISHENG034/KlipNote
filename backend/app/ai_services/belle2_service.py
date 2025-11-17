@@ -197,30 +197,30 @@ class Belle2Service(TranscriptionService):
                     skip_special_tokens=True
                 )
 
-            # Parse into WhisperX-compatible segments
-            chunk_duration = len(audio_chunk) / 16000
-            chunk_segments = self._parse_segments(
-                transcription_with_timestamps,
-                chunk_duration
-            )
+                # Parse into WhisperX-compatible segments
+                chunk_duration = len(audio_chunk) / 16000
+                chunk_segments = self._parse_segments(
+                    transcription_with_timestamps,
+                    chunk_duration
+                )
 
-            # Fallback: if timestamp parsing failed, use the clean text as a single span
-            if not chunk_segments:
-                fallback_text = transcription_clean[0] if transcription_clean else ""
-                if fallback_text:
-                    chunk_segments = [{
-                        "start": 0.0,
-                        "end": chunk_duration,
-                        "text": fallback_text.strip()
-                    }]
+                # Fallback: if timestamp parsing failed, use the clean text as a single span
+                if not chunk_segments:
+                    fallback_text = transcription_clean[0] if transcription_clean else ""
+                    if fallback_text:
+                        chunk_segments = [{
+                            "start": 0.0,
+                            "end": chunk_duration,
+                            "text": fallback_text.strip()
+                        }]
 
-            # Offset chunk-relative timestamps to absolute timeline
-            for segment in chunk_segments:
-                all_segments.append({
-                    "start": segment["start"] + chunk_start_time,
-                    "end": segment["end"] + chunk_start_time,
-                    "text": segment["text"]
-                })
+                # Offset chunk-relative timestamps to absolute timeline
+                for segment in chunk_segments:
+                    all_segments.append({
+                        "start": segment["start"] + chunk_start_time,
+                        "end": segment["end"] + chunk_start_time,
+                        "text": segment["text"]
+                    })
 
             logger.info(f"BELLE-2 transcription complete: {len(all_segments)} segments")
 
