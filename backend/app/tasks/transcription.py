@@ -13,6 +13,7 @@ from celery import shared_task
 from celery.exceptions import Retry
 from app.services.redis_service import RedisService
 from app.config import settings
+from app.ai_services.enhancement.factory import create_pipeline
 
 # Lazy imports to avoid loading PyTorch in web container
 if TYPE_CHECKING:
@@ -246,10 +247,6 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         # Each worker container has MODEL set to "belle2" or "whisperx"
         worker_model = os.getenv("MODEL", "whisperx").lower()
 
-        # Lazy imports to avoid loading PyTorch in web container
-        from app.ai_services.belle2_service import Belle2Service
-        from app.ai_services.whisperx_service import WhisperXService
-
         selection_details = {
             "detected_language": language or "auto",
             "user_language_hint": language,
@@ -266,7 +263,7 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
                     progress=20,
                     message="Loading BELLE-2 model for Mandarin..."
                 )
-                transcription_service = Belle2Service()
+                transcription_service = _load_belle2_service()
                 model_name = "belle2"
                 logger.info(f"[Job {job_id}] BELLE-2 loaded successfully")
             except Exception as e:
@@ -280,7 +277,7 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
                 )
                 selection_details["selection_reason"] = "belle2_load_failed"
                 selection_details["fallback_reason"] = str(e)
-                transcription_service = WhisperXService()
+                transcription_service = _load_whisperx_service()
                 model_name = "whisperx"
         else:
             logger.info(f"[Job {job_id}] Loading WhisperX (worker queue: whisperx)")
@@ -290,7 +287,7 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
                 progress=20,
                 message="Loading AI model..."
             )
-            transcription_service = WhisperXService()
+            transcription_service = _load_whisperx_service()
             model_name = "whisperx"
             logger.info(f"[Job {job_id}] WhisperX loaded successfully")
 
@@ -306,11 +303,60 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         )
 
         # Call transcription with automatic language detection if not specified
+        pipeline_enabled = bool(settings.ENABLE_ENHANCEMENTS)
         segments_or_result = transcription_service.transcribe(
             audio_path=file_path,
             language=language,  # None = auto-detect, 'zh' = Chinese, 'en' = English
             include_metadata=True,
+            apply_enhancements=not pipeline_enabled,
         )
+
+        if isinstance(segments_or_result, dict):
+            result_data = dict(segments_or_result)
+        else:
+            result_data = {"segments": list(segments_or_result)}
+
+        pipeline_metrics = None
+        if pipeline_enabled:
+            try:
+                pipeline = create_pipeline()
+            except ValueError as config_error:
+                logger.error(
+                    "[Job %s] Invalid enhancement pipeline config: %s",
+                    job_id,
+                    config_error,
+                )
+                pipeline = None
+
+            if pipeline and not pipeline.is_empty():
+                enhanced_segments, pipeline_metrics = pipeline.process(
+                    segments=result_data.get("segments", []),
+                    audio_path=file_path,
+                    language=language,
+                )
+                result_data["segments"] = enhanced_segments
+                stats = result_data.setdefault("stats", {})
+                stats["enhancement_pipeline"] = pipeline_metrics
+                metadata = result_data.setdefault("metadata", {})
+                metadata["enhancement_pipeline"] = pipeline_metrics.get("pipeline_config")
+                metadata["enhancements_applied"] = pipeline_metrics.get(
+                    "applied_enhancements"
+                )
+                logger.info(
+                    "[Job %s] Enhancement pipeline metrics: %s",
+                    job_id,
+                    pipeline_metrics,
+                )
+            else:
+                logger.info(
+                    "[Job %s] Enhancement pipeline skipped (no components configured)",
+                    job_id,
+                )
+        else:
+            logger.info(
+                "[Job %s] Enhancements disabled via ENABLE_ENHANCEMENTS=false",
+                job_id,
+            )
 
         # ======================================================================
         # STAGE 4: Aligning timestamps (80%)
@@ -332,22 +378,13 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         logger.info(f"[Job {job_id}] Stage 5: Saving results")
 
         # Save result to Redis
-        if isinstance(segments_or_result, dict) and "segments" in segments_or_result:
-            redis_service.set_result(job_id=job_id, segments=segments_or_result["segments"])
-        else:
-            redis_service.set_result(job_id=job_id, segments=segments_or_result)  # fallback
+        redis_service.set_result(job_id=job_id, segments=result_data.get("segments", []))
 
         # Save result to disk: /uploads/{job_id}/transcription.json
         job_dir = os.path.join(settings.UPLOAD_DIR, job_id)
         os.makedirs(job_dir, exist_ok=True)
 
         transcription_file = os.path.join(job_dir, "transcription.json")
-        # Normalize result for disk payload
-        if isinstance(segments_or_result, dict) and "segments" in segments_or_result:
-            result_data = segments_or_result
-        else:
-            result_data = {"segments": segments_or_result}
-
         with open(transcription_file, "w", encoding="utf-8") as f:
             json.dump(result_data, f, indent=2, ensure_ascii=False)
 
@@ -431,3 +468,14 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
             logger.error(f"[Job {job_id}] Failed to update error status: {status_error}")
 
         raise RuntimeError(error_msg)
+# Helper factories so tests can patch without importing heavy dependencies.
+def _load_belle2_service() -> "TranscriptionService":
+    from app.ai_services.belle2_service import Belle2Service
+
+    return Belle2Service()
+
+
+def _load_whisperx_service() -> "TranscriptionService":
+    from app.ai_services.whisperx_service import WhisperXService
+
+    return WhisperXService()

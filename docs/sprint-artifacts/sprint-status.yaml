@@ -77,7 +77,7 @@ development_status:
   4-2-model-agnostic-vad-preprocessing: done  # ✅ TODO: AdvancedVAD
   4-3-model-agnostic-timestamp-refinement: done  # ✅ Completed 2025-11-17: All blockers resolved, 11 tests passing, 80% coverage, performance 70x better than constraint
   4-4-model-agnostic-segment-splitting: done  # ✅ Completed 2025-11-17: Code review approved, 16 tests passing, 91% coverage, Task 9.3 + Subtask 3.2 completed during review
-  4-5-enhancement-pipeline-composition: backlog
+  4-5-enhancement-pipeline-composition: done  # ✅ Completed 2025-11-17: Code review approved, services refactored, 29 tests passing (6 unit + 11 task + 12 integration), 91% coverage on pipeline.py
   4-6-multi-model-quality-validation: backlog
   4-7-mvp-model-selection-and-handoff: backlog
   epic-4-retrospective: optional

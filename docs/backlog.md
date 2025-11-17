@@ -1,0 +1,31 @@
+# Technical Backlog
+
+## Overview
+This document tracks technical debt, improvements, and follow-up items identified during development and code reviews.
+
+## Status Legend
+- **Open**: Not yet started
+- **In Progress**: Currently being worked on
+- **Done**: Completed
+- **Won't Fix**: Decided not to pursue
+
+---
+
+## Items
+
+| Date | Story | Epic | Type | Severity | Owner | Status | Notes |
+|------|-------|------|------|----------|-------|--------|-------|
+| 2025-11-17 | 4.5 | 4 | TechDebt | Low | TBD | Open | Register pytest custom marks (integration, slow) in pytest.ini to eliminate warnings. Currently shows 13 warnings during test runs. |
+| 2025-11-17 | 4.5 | 4 | Enhancement | Low | TBD | Open | Increase test coverage for segment_splitter.py (currently 38%). Component has comprehensive logic but lacks complete test coverage. |
+| 2025-11-17 | 4.5 | 4 | Enhancement | Low | TBD | Open | Add Protocol or ABC base class for enhancement components to improve type safety and catch interface violations at static analysis time. |
+| 2025-11-17 | 4.5 | 4 | Enhancement | Low | TBD | Open | Add production telemetry for pipeline metrics tracking. Current implementation collects metrics but doesn't persist them for analysis. |
+| 2025-11-17 | 4.5 | 4 | Documentation | Low | TBD | Open | Add architecture diagrams showing enhancement pipeline flow and component interaction patterns. |
+
+---
+
+## Completed Items
+
+| Date Closed | Story | Epic | Type | Severity | Description |
+|-------------|-------|------|------|----------|-------------|
+| 2025-11-17 | 4.5 | 4 | Bug | High | Services (belle2_service.py, whisperx_service.py) were directly calling components instead of using EnhancementPipeline. Refactored to delegate to pipeline for consistency. |
+| 2025-11-17 | 4.5 | 4 | Testing | High | Integration tests missing for enhancement pipeline. Created test_enhancement_pipeline_integration.py with 12 comprehensive tests. |

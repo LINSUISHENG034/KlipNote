@@ -111,6 +111,14 @@ class Settings(BaseSettings):
         ge=0.1,
         description="Chinese text heuristic duration per character (seconds per char).",
     )
+    ENABLE_ENHANCEMENTS: bool = Field(
+        default=True,
+        description="Global kill switch for enhancement pipeline integration.",
+    )
+    ENHANCEMENT_PIPELINE: str = Field(
+        default="vad,refine,split",
+        description="Comma-separated enhancement component list (e.g., 'vad,refine,split', 'vad', 'none').",
+    )
 
     # File Storage Configuration
     UPLOAD_DIR: str = "/uploads"

@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional, Union
 import numpy as np
 import torch
 from app.ai_services.base import TranscriptionService
-from app.ai_services.enhancement import TimestampRefiner, VADManager
 from app.ai_services.schema import BaseSegment, TranscriptionResult, build_transcription_result
 from app.config import settings
 
@@ -99,6 +98,7 @@ class Belle2Service(TranscriptionService):
         audio_path: str,
         language: Optional[str] = "zh",
         include_metadata: bool = False,
+        apply_enhancements: bool = True,
         **kwargs
     ) -> Union[List[BaseSegment], TranscriptionResult]:
         """
@@ -223,29 +223,48 @@ class Belle2Service(TranscriptionService):
                 })
 
             logger.info(f"BELLE-2 transcription complete: {len(all_segments)} segments")
-            vad_manager = VADManager()
-            filtered_segments, vad_engine = vad_manager.process_segments(
-                segments=all_segments,
-                audio_path=audio_path,
-            )
 
-            timestamp_refiner = TimestampRefiner()
-            refined_segments = timestamp_refiner.refine(
-                segments=filtered_segments,
-                audio_path=audio_path,
-                language="zh",
-            )
-            refiner_alignment = (
-                timestamp_refiner.alignment_model_name
-                if any("alignment_model" in seg for seg in refined_segments)
-                else "belle2"
-            )
+            # Enhancement pipeline integration (Story 4.5)
+            # Services now delegate to pipeline for consistent enhancement orchestration
+            enhanced_segments = list(all_segments)
+            vad_engine: Optional[str] = None
+            refiner_alignment = "belle2"
+
+            if apply_enhancements and settings.ENABLE_ENHANCEMENTS:
+                from app.ai_services.enhancement.factory import create_pipeline
+                try:
+                    pipeline = create_pipeline()
+                    if not pipeline.is_empty():
+                        enhanced_segments, pipeline_metrics = pipeline.process(
+                            segments=all_segments,
+                            audio_path=audio_path,
+                            language="zh",
+                        )
+                        logger.info(f"Enhancement pipeline applied: {pipeline_metrics.get('pipeline_config')}")
+
+                        # Extract telemetry for metadata compatibility
+                        applied_enhancements = pipeline_metrics.get("applied_enhancements", [])
+                        for enhancement in applied_enhancements:
+                            if enhancement.startswith("vad:"):
+                                vad_engine = enhancement.split(":")[1]
+                            if enhancement == "timestamp_refine":
+                                refiner_alignment = "whisperx"  # Refiner uses WhisperX alignment
+                    else:
+                        logger.info("Enhancement pipeline empty (no components configured)")
+                except Exception as pipeline_error:
+                    logger.warning(f"Enhancement pipeline failed, returning raw segments: {pipeline_error}")
+            else:
+                logger.info(f"Enhancements disabled (apply_enhancements={apply_enhancements}, ENABLE_ENHANCEMENTS={settings.ENABLE_ENHANCEMENTS})")
+
+            refined_segments = enhanced_segments
 
             if not metadata_requested:
                 return refined_segments
 
-            enhancements = [f"vad:{vad_engine}"] if vad_engine else []
-            if any(
+            enhancements: List[str] = []
+            if vad_engine:
+                enhancements.append(f"vad:{vad_engine}")
+            if apply_enhancements and any(
                 "timestamp_refine" in (seg.get("enhancements_applied") or [])
                 for seg in refined_segments
             ):

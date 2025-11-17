@@ -11,10 +11,14 @@ from app.ai_services.enhancement.base_segment_splitter import BaseSegmentSplitte
 from app.ai_services.enhancement.segment_splitter import SegmentSplitter
 from app.ai_services.enhancement.timestamp_refiner import TimestampRefiner
 from app.ai_services.enhancement.vad_manager import VADManager
+from app.ai_services.enhancement.pipeline import EnhancementPipeline
+from app.ai_services.enhancement.factory import create_pipeline
 
 __all__ = [
     "BaseRefiner",
     "BaseSegmentSplitter",
+    "EnhancementPipeline",
+    "create_pipeline",
     "SegmentSplitter",
     "TimestampRefiner",
     "VADManager",

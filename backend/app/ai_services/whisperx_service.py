@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from app.ai_services.base import TranscriptionService
-from app.ai_services.enhancement import TimestampRefiner, VADManager
 from app.ai_services.schema import BaseSegment, TranscriptionResult, build_transcription_result
 from app.config import settings
 
@@ -85,6 +84,7 @@ class WhisperXService(TranscriptionService):
         audio_path: str,
         language: Optional[str] = None,  # Auto-detect when None
         include_metadata: bool = False,
+        apply_enhancements: bool = True,
         **kwargs
     ) -> Union[List[BaseSegment], TranscriptionResult]:
         """
@@ -197,29 +197,48 @@ class WhisperXService(TranscriptionService):
 
             logger.info(f"Transcription complete: {len(segments)} segments")
 
-            vad_manager = VADManager()
-            filtered_segments, vad_engine = vad_manager.process_segments(
-                segments=segments,
-                audio_path=audio_path,
-            )
+            # Enhancement pipeline integration (Story 4.5)
+            # Services now delegate to pipeline for consistent enhancement orchestration
+            enhanced_segments: List[BaseSegment] = list(segments)
+            vad_engine: Optional[str] = None
+            refiner_alignment = "whisperx"
 
-            timestamp_refiner = TimestampRefiner()
-            refined_segments = timestamp_refiner.refine(
-                segments=filtered_segments,
-                audio_path=audio_path,
-                language=language or detected_lang,
-            )
-            refiner_alignment = (
-                timestamp_refiner.alignment_model_name
-                if any("alignment_model" in seg for seg in refined_segments)
-                else "whisperx"
-            )
+            if apply_enhancements and settings.ENABLE_ENHANCEMENTS:
+                from app.ai_services.enhancement.factory import create_pipeline
+                try:
+                    pipeline = create_pipeline()
+                    if not pipeline.is_empty():
+                        enhanced_segments, pipeline_metrics = pipeline.process(
+                            segments=segments,
+                            audio_path=audio_path,
+                            language=language or detected_lang,
+                        )
+                        logger.info(f"Enhancement pipeline applied: {pipeline_metrics.get('pipeline_config')}")
+
+                        # Extract telemetry for metadata compatibility
+                        applied_enhancements = pipeline_metrics.get("applied_enhancements", [])
+                        for enhancement in applied_enhancements:
+                            if enhancement.startswith("vad:"):
+                                vad_engine = enhancement.split(":")[1]
+                            if enhancement == "timestamp_refine":
+                                # Refiner provides alignment model metadata
+                                refiner_alignment = "whisperx"  # Default, may be overridden by component metadata
+                    else:
+                        logger.info("Enhancement pipeline empty (no components configured)")
+                except Exception as pipeline_error:
+                    logger.warning(f"Enhancement pipeline failed, returning raw segments: {pipeline_error}")
+            else:
+                logger.info(f"Enhancements disabled (apply_enhancements={apply_enhancements}, ENABLE_ENHANCEMENTS={settings.ENABLE_ENHANCEMENTS})")
+
+            refined_segments = enhanced_segments
 
             if not metadata_requested:
                 return refined_segments
 
-            enhancements = [f"vad:{vad_engine}"] if vad_engine else []
-            if any(
+            enhancements: List[str] = []
+            if vad_engine:
+                enhancements.append(f"vad:{vad_engine}")
+            if apply_enhancements and any(
                 "timestamp_refine" in (seg.get("enhancements_applied") or [])
                 for seg in refined_segments
             ):

@@ -24,6 +24,7 @@ class TranscriptionService(ABC):
         audio_path: str,
         language: str = "en",
         include_metadata: bool = False,
+        apply_enhancements: bool = True,
         **kwargs
     ) -> Union[List[BaseSegment], TranscriptionResult]:
         """
@@ -35,6 +36,8 @@ class TranscriptionService(ABC):
             include_metadata: When True, return a TranscriptionResult payload with
                 metadata + enhanced segments; otherwise return the legacy list of
                 BaseSegment dictionaries for backward compatibility.
+            apply_enhancements: When False, skip downstream enhancement components
+                and return raw transcription segments (pipeline will handle them).
             **kwargs: Additional service-specific parameters
 
         Returns:

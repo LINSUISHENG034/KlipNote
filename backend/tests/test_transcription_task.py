@@ -47,9 +47,9 @@ def mock_redis_service():
 @pytest.fixture
 def mock_whisperx_service():
     """Mock WhisperXService for testing"""
-    with patch("app.tasks.transcription.WhisperXService") as MockWhisperXService:
+    with patch("app.tasks.transcription._load_whisperx_service") as MockLoader:
         mock_service = MagicMock()
-        MockWhisperXService.return_value = mock_service
+        MockLoader.return_value = mock_service
 
         # Mock transcribe to return test segments
         mock_service.transcribe.return_value = [
@@ -58,6 +58,16 @@ def mock_whisperx_service():
         ]
 
         yield mock_service
+
+
+@pytest.fixture(autouse=True)
+def mock_pipeline_factory():
+    """Stub enhancement pipeline factory to avoid heavy dependencies."""
+    with patch("app.tasks.transcription.create_pipeline") as mock_factory:
+        pipeline = MagicMock()
+        pipeline.is_empty.return_value = True
+        mock_factory.return_value = pipeline
+        yield mock_factory
 
 
 def test_transcribe_audio_task_accepts_parameters(mock_redis_service, mock_whisperx_service, temp_audio_file, tmp_path):
@@ -218,7 +228,9 @@ def test_transcribe_audio_calls_whisperx_service(mock_redis_service, mock_whispe
     # Verify WhisperXService.transcribe was called
     mock_whisperx_service.transcribe.assert_called_once_with(
         audio_path=file_path,
-        language="en"
+        language=None,
+        include_metadata=True,
+        apply_enhancements=False,
     )
 
 
@@ -257,3 +269,21 @@ def test_transcribe_audio_logs_job_id(mock_redis_service, mock_whisperx_service,
 
     # Verify job_id appears in logs
     assert job_id in caplog.text
+
+
+def test_transcribe_audio_runs_enhancement_pipeline(mock_redis_service, mock_whisperx_service, mock_pipeline_factory, temp_audio_file, tmp_path):
+    """Ensure enhancement pipeline executes when components are configured."""
+    job_id = str(uuid.uuid4())
+    file_path = temp_audio_file
+
+    pipeline = MagicMock()
+    pipeline.is_empty.return_value = False
+    enhanced_segment = {"start": 0.0, "end": 1.0, "text": "enhanced"}
+    pipeline.process.return_value = ([enhanced_segment], {"component_metrics": []})
+    mock_pipeline_factory.return_value = pipeline
+
+    with patch("app.tasks.transcription.settings.UPLOAD_DIR", str(tmp_path)):
+        result = transcribe_audio(job_id, file_path)
+
+    pipeline.process.assert_called_once()
+    assert result["segments"] == [enhanced_segment]

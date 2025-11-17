@@ -1,0 +1,492 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Story Context: Enhancement Pipeline Composition Framework -->
+<!-- Generated: 2025-11-17 -->
+<!-- Story: 4-5-enhancement-pipeline-composition -->
+
+<story-context>
+  <metadata>
+    <story_id>4.5</story_id>
+    <epic_id>4</epic_id>
+    <story_key>4-5-enhancement-pipeline-composition</story_key>
+    <title>Enhancement Pipeline Composition Framework</title>
+    <status>ready-for-dev</status>
+    <priority>High</priority>
+    <created_date>2025-11-17</created_date>
+  </metadata>
+
+  <story_summary>
+    <as_a>a system</as_a>
+    <i_want>a composable pipeline where enhancement components track processing metadata</i_want>
+    <so_that>different combinations can be applied and their effectiveness measured transparently</so_that>
+
+    <description>
+      Story 4.5 implements the EnhancementPipeline framework that orchestrates the model-agnostic
+      enhancement components delivered in Stories 4.2-4.4 (VAD, TimestampRefiner, SegmentSplitter).
+
+      The pipeline enables:
+      - Dynamic component composition via configuration
+      - Metadata aggregation from all components (enhancements_applied tracking)
+      - Component execution in declared order with graceful error handling
+      - Processing metrics collection for pipeline performance analysis
+
+      This completes the model-agnostic enhancement architecture by providing the composition
+      layer that makes individual components usable in production transcription workflows.
+    </description>
+  </story_summary>
+
+  <acceptance_criteria>
+    <criterion id="1">EnhancementPipeline class supports dynamic component chaining</criterion>
+    <criterion id="2">Configuration-driven pipeline definition (environment variables)</criterion>
+    <criterion id="3">Pipeline examples work: "VAD only", "VAD + Refine", "VAD + Refine + Split", "No enhancements"</criterion>
+    <criterion id="4">Component execution order configurable</criterion>
+    <criterion id="5">Pipeline metrics collected (processing time per component)</criterion>
+    <criterion id="6">Error handling: component failures don't crash entire pipeline</criterion>
+    <criterion id="7">Documentation includes configuration guide and common pipeline recipes</criterion>
+    <criterion id="8">Prerequisites: Story 4.1 (routing) + Story 4.2-4.4 (components) complete</criterion>
+  </acceptance_criteria>
+
+  <tasks>
+    <task id="1" status="pending">
+      <title>Phase 1: Core Pipeline Architecture (AC: #1, #4, #5)</title>
+      <subtasks>
+        <subtask id="1.1">Create EnhancementPipeline class in backend/app/ai_services/enhancement/pipeline.py</subtask>
+        <subtask id="1.2">Define __init__(components: List[Union[BaseRefiner, BaseSegmentSplitter, VADManager]])</subtask>
+        <subtask id="1.3">Implement process() method that chains components in order</subtask>
+        <subtask id="1.4">Each component receives previous component's output</subtask>
+        <subtask id="1.5">Aggregate metrics from all components via get_metrics()</subtask>
+      </subtasks>
+    </task>
+
+    <task id="2" status="pending">
+      <title>Phase 2: Configuration System (AC: #2, #4)</title>
+      <subtasks>
+        <subtask id="2.1">Add config.py settings: ENHANCEMENT_PIPELINE_ENABLED, ENHANCEMENT_PIPELINE_COMPONENTS</subtask>
+        <subtask id="2.2">Create pipeline_factory.py with create_pipeline_from_config() function</subtask>
+        <subtask id="2.3">Parse component list from comma-separated string (e.g., "vad,refine,split")</subtask>
+        <subtask id="2.4">Instantiate components with their config settings (VAD_*, SEGMENT_SPLITTER_*)</subtask>
+      </subtasks>
+    </task>
+
+    <task id="3" status="pending">
+      <title>Phase 3: Metadata Aggregation (AC: #1, #5)</title>
+      <subtasks>
+        <subtask id="3.1">Pipeline aggregates enhancements_applied from all components</subtask>
+        <subtask id="3.2">TranscriptionResult metadata tracks complete pipeline configuration</subtask>
+        <subtask id="3.3">Pipeline collects timing metrics per component</subtask>
+        <subtask id="3.4">Export combined metrics in get_metrics() output</subtask>
+      </subtasks>
+    </task>
+
+    <task id="4" status="pending">
+      <title>Phase 4: Error Handling & Graceful Degradation (AC: #6)</title>
+      <subtasks>
+        <subtask id="4.1">Wrap component.process() calls in try/except blocks</subtask>
+        <subtask id="4.2">Log component failure with traceback</subtask>
+        <subtask id="4.3">Continue pipeline with original segments (skip failed component)</subtask>
+        <subtask id="4.4">Mark failed component in metrics output</subtask>
+      </subtasks>
+    </task>
+
+    <task id="5" status="pending">
+      <title>Phase 5: Pipeline Presets & Testing (AC: #3, #7)</title>
+      <subtasks>
+        <subtask id="5.1">Test pipeline preset: "vad" (VAD only)</subtask>
+        <subtask id="5.2">Test pipeline preset: "vad,refine" (VAD + TimestampRefiner)</subtask>
+        <subtask id="5.3">Test pipeline preset: "vad,refine,split" (full pipeline)</subtask>
+        <subtask id="5.4">Test pipeline preset: "" (no enhancements)</subtask>
+        <subtask id="5.5">Document common pipeline recipes in docs/</subtask>
+      </subtasks>
+    </task>
+
+    <task id="6" status="pending">
+      <title>Phase 6: Unit Tests</title>
+      <subtasks>
+        <subtask id="6.1">Test component composition logic</subtask>
+        <subtask id="6.2">Test execution order preservation</subtask>
+        <subtask id="6.3">Test metadata aggregation (enhancements_applied tracking)</subtask>
+        <subtask id="6.4">Test graceful degradation (component failure handling)</subtask>
+        <subtask id="6.5">Test metrics collection</subtask>
+      </subtasks>
+    </task>
+
+    <task id="7" status="pending">
+      <title>Phase 7: Integration Testing</title>
+      <subtasks>
+        <subtask id="7.1">Test multi-component pipeline with full metadata tracking</subtask>
+        <subtask id="7.2">Test with BELLE-2 transcription output</subtask>
+        <subtask id="7.3">Test with WhisperX transcription output</subtask>
+        <subtask id="7.4">Validate metrics aggregation accuracy</subtask>
+      </subtasks>
+    </task>
+
+    <task id="8" status="pending">
+      <title>Phase 8: Documentation</title>
+      <subtasks>
+        <subtask id="8.1">Write configuration guide for pipeline setup</subtask>
+        <subtask id="8.2">Document common pipeline recipes (use cases)</subtask>
+        <subtask id="8.3">Document error handling behavior</subtask>
+        <subtask id="8.4">Update architecture.md with pipeline integration details</subtask>
+      </subtasks>
+    </task>
+  </tasks>
+
+  <prerequisites>
+    <prerequisite story_id="4.1" status="done">Multi-Model Production Architecture Design - Celery routing implemented</prerequisite>
+    <prerequisite story_id="4.2" status="done">Model-Agnostic VAD Preprocessing - VADManager component complete</prerequisite>
+    <prerequisite story_id="4.3" status="done">Model-Agnostic Timestamp Refinement - TimestampRefiner component complete</prerequisite>
+    <prerequisite story_id="4.4" status="done">Model-Agnostic Segment Splitting - SegmentSplitter component complete</prerequisite>
+  </prerequisites>
+
+  <architecture_context>
+    <overview>
+      Epic 4 implements a multi-model transcription framework with composable enhancement components.
+      Story 4.5 provides the orchestration layer (EnhancementPipeline) that composes individual
+      components (VAD, Refiner, Splitter) into configurable processing pipelines.
+
+      The architecture follows a component-based design where:
+      - Each component implements a common interface (is_available(), process(), get_metrics())
+      - Components are model-agnostic (work with BELLE-2 and WhisperX outputs)
+      - Pipeline orchestrates component execution and metadata aggregation
+      - Configuration determines which components are active and in what order
+    </overview>
+
+    <key_components>
+      <component name="EnhancementPipeline" location="backend/app/ai_services/enhancement/pipeline.py">
+        Main pipeline orchestrator. Chains components in configurable order, aggregates metadata,
+        handles errors gracefully.
+      </component>
+
+      <component name="VADManager" location="backend/app/ai_services/enhancement/vad_manager.py" status="implemented">
+        Voice Activity Detection component. Filters silence from transcription segments.
+        Supports Silero VAD (torch.hub) and WebRTC VAD engines.
+      </component>
+
+      <component name="TimestampRefiner" location="backend/app/ai_services/enhancement/timestamp_refiner.py" status="implemented">
+        Timestamp boundary refinement component. Populates char/word timing arrays,
+        refines segment boundaries using energy-based detection.
+      </component>
+
+      <component name="SegmentSplitter" location="backend/app/ai_services/enhancement/segment_splitter.py" status="implemented">
+        Segment splitting/merging component. Splits long segments (>7s) at natural boundaries,
+        merges short segments (<1s), preserves timing metadata.
+      </component>
+    </key_components>
+
+    <data_flow>
+      <step>1. Transcription service (BELLE-2/WhisperX) produces raw segments</step>
+      <step>2. EnhancementPipeline.process(segments, audio_path) called</step>
+      <step>3. Pipeline iterates through configured components in order</step>
+      <step>4. Each component processes segments and returns enhanced version</step>
+      <step>5. Pipeline aggregates enhancements_applied metadata from all components</step>
+      <step>6. Pipeline collects timing metrics from each component</step>
+      <step>7. Return enhanced segments + aggregated metadata to caller</step>
+    </data_flow>
+
+    <integration_points>
+      <point location="backend/app/ai_services/belle2_service.py">
+        BELLE-2 transcription service will call EnhancementPipeline after model inference
+      </point>
+      <point location="backend/app/ai_services/whisperx_service.py">
+        WhisperX transcription service will call EnhancementPipeline after model inference
+      </point>
+      <point location="backend/app/config.py">
+        Configuration settings: ENHANCEMENT_PIPELINE_ENABLED, ENHANCEMENT_PIPELINE_COMPONENTS
+      </point>
+    </integration_points>
+
+    <architectural_decisions>
+      <decision id="pipeline-composition-pattern">
+        Use list-based composition (List[Component]) rather than class inheritance or mixins.
+        Rationale: Simpler, more flexible, easier to configure dynamically.
+      </decision>
+
+      <decision id="error-handling-strategy">
+        Component failures should not crash entire pipeline. Continue with original segments
+        from last successful component. Rationale: Graceful degradation for production reliability.
+      </decision>
+
+      <decision id="metadata-aggregation">
+        Pipeline aggregates enhancements_applied from all components into single list.
+        Format: ["vad_silero", "timestamp_refine", "segment_split"]
+        Rationale: Enables end-to-end traceability of applied enhancements.
+      </decision>
+    </architectural_decisions>
+  </architecture_context>
+
+  <existing_code>
+    <directory path="backend/app/ai_services/enhancement">
+      <file name="__init__.py">
+        Exports: BaseRefiner, BaseSegmentSplitter, SegmentSplitter, TimestampRefiner, VADManager
+      </file>
+
+      <file name="base_refiner.py">
+        Abstract base class for refinement components.
+        Methods: is_available(), refine(segments, audio_path), get_metrics()
+      </file>
+
+      <file name="base_segment_splitter.py">
+        Abstract base class for segment splitter components.
+        Methods: is_available(), split(segments), get_metrics()
+      </file>
+
+      <file name="vad_manager.py" status="implemented">
+        Voice Activity Detection manager. Filters silence using Silero or WebRTC VAD.
+      </file>
+
+      <file name="timestamp_refiner.py" status="implemented">
+        Implements BaseRefiner interface. Populates char/word timing, refines boundaries.
+      </file>
+
+      <file name="segment_splitter.py" status="implemented">
+        Implements BaseSegmentSplitter interface. Splits long segments, merges short ones.
+      </file>
+    </directory>
+
+    <directory path="backend/app/ai_services">
+      <file name="schema.py">
+        TypedDict definitions: CharTiming, WordTiming, BaseSegment, EnhancedSegment,
+        TranscriptionMetadata, TranscriptionResult.
+
+        Critical for Story 4.5:
+        - EnhancedSegment.enhancements_applied: List[str] - tracks applied enhancements
+        - TranscriptionMetadata - tracks global processing metadata
+      </file>
+
+      <file name="config.py">
+        Configuration settings for VAD and SEGMENT_SPLITTER components.
+        Story 4.5 needs to add: ENHANCEMENT_PIPELINE_ENABLED, ENHANCEMENT_PIPELINE_COMPONENTS
+      </file>
+    </directory>
+
+    <interfaces>
+      <interface name="BaseRefiner">
+        <method>is_available() -> bool</method>
+        <method>refine(segments: SegmentCollection, audio_path: str, **kwargs) -> List[EnhancedSegment]</method>
+        <method>get_metrics() -> Dict[str, Any]</method>
+      </interface>
+
+      <interface name="BaseSegmentSplitter">
+        <method>is_available() -> bool</method>
+        <method>split(segments: SegmentList, **kwargs) -> SegmentList</method>
+        <method>get_metrics() -> Dict[str, Any]</method>
+      </interface>
+
+      <interface name="VADManager">
+        <method>is_available() -> bool</method>
+        <method>filter_segments(segments: List[EnhancedSegment], audio_path: str) -> List[EnhancedSegment]</method>
+        <method>get_metrics() -> Dict[str, Any]</method>
+      </interface>
+    </interfaces>
+  </existing_code>
+
+  <dependencies>
+    <backend>
+      <dependency name="fastapi" version="0.120.0" usage="Web framework"/>
+      <dependency name="pydantic" version="2.10.3" usage="Data validation, Settings"/>
+      <dependency name="celery" version="5.5.3" usage="Task queue for async transcription"/>
+      <dependency name="redis" version="5.2.1" usage="Celery broker and result backend"/>
+
+      <!-- Enhancement component dependencies -->
+      <dependency name="webrtcvad" version="2.0.10" usage="WebRTC VAD engine"/>
+      <dependency name="librosa" version=">=0.10.0" usage="Audio processing for timestamp refinement"/>
+      <dependency name="scipy" version="1.11.4" usage="Signal processing for energy-based detection"/>
+      <dependency name="numpy" version="<2.1.0" usage="Numerical operations"/>
+
+      <!-- Testing -->
+      <dependency name="pytest" version="7.4.4" usage="Testing framework"/>
+      <dependency name="pytest-mock" version="3.12.0" usage="Mocking for unit tests"/>
+      <dependency name="pytest-cov" version="4.1.0" usage="Code coverage"/>
+    </backend>
+  </dependencies>
+
+  <testing_standards>
+    <unit_tests>
+      <location>backend/tests/</location>
+      <framework>pytest</framework>
+      <coverage_target>80%</coverage_target>
+
+      <test_categories>
+        <category name="Component Composition">
+          Test EnhancementPipeline correctly chains multiple components
+        </category>
+        <category name="Execution Order">
+          Test components execute in declared order
+        </category>
+        <category name="Metadata Aggregation">
+          Test enhancements_applied list aggregates from all components
+        </category>
+        <category name="Error Handling">
+          Test graceful degradation when component fails
+        </category>
+        <category name="Metrics Collection">
+          Test pipeline collects and aggregates metrics from all components
+        </category>
+      </test_categories>
+
+      <existing_test_patterns>
+        <pattern file="test_timestamp_refiner.py">
+          Unit tests for TimestampRefiner component. Test metadata population, timing accuracy.
+        </pattern>
+        <pattern file="test_segment_splitter_*.py">
+          Multiple test files covering splitter logic: merge, punctuation, text length, performance.
+        </pattern>
+        <pattern file="test_enhancement_vad_manager.py">
+          Unit tests for VADManager. Test multi-engine support, fallback logic.
+        </pattern>
+      </existing_test_patterns>
+    </unit_tests>
+
+    <integration_tests>
+      <test_scenarios>
+        <scenario>Multi-component pipeline with BELLE-2 output</scenario>
+        <scenario>Multi-component pipeline with WhisperX output</scenario>
+        <scenario>Validate metadata tracking end-to-end</scenario>
+        <scenario>Validate metrics aggregation accuracy</scenario>
+      </test_scenarios>
+    </integration_tests>
+  </testing_standards>
+
+  <configuration>
+    <environment_variables>
+      <!-- Existing component configs (from Stories 4.2-4.4) -->
+      <var name="VAD_ENGINE" default="auto" values="auto|silero|webrtc"/>
+      <var name="VAD_SILERO_THRESHOLD" default="0.5" range="0.0-1.0"/>
+      <var name="VAD_SILERO_MIN_SILENCE_MS" default="700"/>
+      <var name="VAD_WEBRTC_AGGRESSIVENESS" default="2" range="0-3"/>
+      <var name="SEGMENT_SPLITTER_ENABLED" default="true"/>
+      <var name="SEGMENT_SPLITTER_MAX_DURATION" default="7.0"/>
+      <var name="SEGMENT_SPLITTER_MAX_CHARS" default="200"/>
+      <var name="SEGMENT_SPLITTER_CHAR_DURATION_SEC" default="0.4"/>
+
+      <!-- New pipeline configs (Story 4.5) -->
+      <var name="ENHANCEMENT_PIPELINE_ENABLED" default="true">
+        Enable/disable entire enhancement pipeline
+      </var>
+      <var name="ENHANCEMENT_PIPELINE_COMPONENTS" default="vad,refine,split">
+        Comma-separated list of components to apply in order.
+        Valid values: vad, refine, split
+        Examples: "vad" (VAD only), "vad,refine" (no splitting), "" (no enhancements)
+      </var>
+    </environment_variables>
+
+    <pipeline_recipes>
+      <recipe name="full-enhancement" components="vad,refine,split">
+        Complete enhancement pipeline. Filters silence, refines timestamps, splits long segments.
+        Use for: Production transcription with high quality requirements
+      </recipe>
+
+      <recipe name="vad-only" components="vad">
+        VAD preprocessing only. Filters silence but preserves raw model timestamps.
+        Use for: Quick transcription, testing VAD effectiveness
+      </recipe>
+
+      <recipe name="vad-refine" components="vad,refine">
+        VAD + timestamp refinement. No segment splitting.
+        Use for: Applications where original segment boundaries are preferred
+      </recipe>
+
+      <recipe name="no-enhancement" components="">
+        Raw model output. No enhancements applied.
+        Use for: Debugging, comparing model outputs, performance testing
+      </recipe>
+    </pipeline_recipes>
+  </configuration>
+
+  <technical_constraints>
+    <constraint id="model-agnostic">
+      Pipeline must work with both BELLE-2 and WhisperX transcription outputs.
+      All components receive standardized EnhancedSegment format.
+    </constraint>
+
+    <constraint id="performance">
+      Pipeline overhead should be ≤25% of transcription time (NFR-E4-002).
+      Example: 30-minute transcription allows max 7.5 minutes for enhancements.
+    </constraint>
+
+    <constraint id="backward-compatibility">
+      EnhancedSegment extends BaseSegment. Simple consumers using {start, end, text} continue to work.
+    </constraint>
+
+    <constraint id="error-isolation">
+      Component failures must not crash entire pipeline. Graceful degradation required.
+    </constraint>
+  </technical_constraints>
+
+  <implementation_notes>
+    <note priority="high">
+      Pipeline composition uses list-based approach: EnhancementPipeline(components=[VADManager(), TimestampRefiner(), SegmentSplitter()])
+      Factory function create_pipeline_from_config() parses ENHANCEMENT_PIPELINE_COMPONENTS string.
+    </note>
+
+    <note priority="high">
+      Each component's enhancements_applied metadata must be aggregated into single list.
+      Example: VAD adds "vad_silero", Refiner adds "timestamp_refine", Splitter adds "segment_split".
+      Final list: ["vad_silero", "timestamp_refine", "segment_split"]
+    </note>
+
+    <note priority="medium">
+      Error handling pattern: try/except around component.process(), log exception, continue with
+      segments from last successful component. Mark failed component in metrics.
+    </note>
+
+    <note priority="medium">
+      Metrics aggregation: Collect timing metrics per component via time.time() measurements.
+      Format: {"vad_time": 1.2, "refine_time": 3.5, "split_time": 0.8, "total_time": 5.5}
+    </note>
+
+    <note priority="low">
+      Consider adding is_available() check for entire pipeline. If critical component unavailable,
+      pipeline could fall back to raw model output.
+    </note>
+  </implementation_notes>
+
+  <related_documentation>
+    <doc type="architecture" path="docs/architecture.md">
+      System architecture. See §831-868 for multi-model enhancement architecture.
+    </doc>
+
+    <doc type="tech-spec" path="docs/sprint-artifacts/tech-spec-epic-4.md">
+      Epic 4 technical specification. See §61-183 for detailed enhancement component design.
+    </doc>
+
+    <doc type="story" path="docs/sprint-artifacts/4-2-model-agnostic-vad-preprocessing.md">
+      Story 4.2: VADManager component implementation and metadata schema
+    </doc>
+
+    <doc type="story" path="docs/sprint-artifacts/4-3-model-agnostic-timestamp-refinement.md">
+      Story 4.3: TimestampRefiner component implementation
+    </doc>
+
+    <doc type="story" path="docs/sprint-artifacts/4-4-model-agnostic-segment-splitting.md">
+      Story 4.4: SegmentSplitter component implementation
+    </doc>
+
+    <doc type="epic" path="docs/epics.md">
+      Epic 4 overview and story breakdown. See Story 4.5 for high-level requirements.
+    </doc>
+  </related_documentation>
+
+  <development_workflow>
+    <step n="1">Read this context file completely</step>
+    <step n="2">Review prerequisite story files (4.2-4.4) to understand component interfaces</step>
+    <step n="3">Review existing component implementations in backend/app/ai_services/enhancement/</step>
+    <step n="4">Review EnhancedSegment schema in backend/app/ai_services/schema.py</step>
+    <step n="5">Implement EnhancementPipeline class following tasks in sequence</step>
+    <step n="6">Write unit tests for each phase</step>
+    <step n="7">Write integration tests with real audio samples</step>
+    <step n="8">Update documentation (configuration guide, pipeline recipes)</step>
+    <step n="9">Run full test suite: pytest backend/tests/ -v</step>
+    <step n="10">Update story file with completion notes and DoD checklist</step>
+  </development_workflow>
+
+  <success_criteria>
+    <criteria>All 8 acceptance criteria met</criteria>
+    <criteria>Unit test coverage ≥80% for new pipeline code</criteria>
+    <criteria>Integration tests pass with both BELLE-2 and WhisperX</criteria>
+    <criteria>Pipeline presets work as documented ("vad", "vad,refine", "vad,refine,split", "")</criteria>
+    <criteria>Error handling verified with component failure scenarios</criteria>
+    <criteria>Metadata aggregation validated end-to-end</criteria>
+    <criteria>Configuration guide and pipeline recipes documented</criteria>
+    <criteria>No regression in existing tests (test_timestamp_refiner.py, test_segment_splitter_*.py, test_enhancement_vad_manager.py)</criteria>
+  </success_criteria>
+</story-context>
