@@ -3,9 +3,84 @@ Pydantic models for request/response validation
 Will be populated in subsequent stories
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any, Literal
 import re
+
+
+class VADConfig(BaseModel):
+    """VAD (Voice Activity Detection) configuration"""
+    enabled: bool = Field(default=True, description="Enable VAD component")
+    aggressiveness: int = Field(default=3, ge=0, le=3, description="VAD aggressiveness level (0-3)")
+
+
+class RefineConfig(BaseModel):
+    """Timestamp refinement configuration"""
+    enabled: bool = Field(default=True, description="Enable timestamp refinement component")
+    search_window_ms: int = Field(default=200, gt=0, le=500, description="Search window in milliseconds (1-500)")
+
+
+class SplitConfig(BaseModel):
+    """Segment splitting configuration"""
+    enabled: bool = Field(default=True, description="Enable segment splitting component")
+    max_duration: float = Field(default=7.0, gt=0, le=15.0, description="Maximum segment duration in seconds (0.1-15.0)")
+    max_chars: int = Field(default=200, gt=0, le=500, description="Maximum characters per segment (1-500)")
+
+
+class EnhancementConfigRequest(BaseModel):
+    """Enhancement pipeline configuration for API requests
+
+    Configuration for VAD preprocessing, timestamp refinement, and segment splitting.
+    Passed via POST /upload endpoint as optional JSON parameter.
+
+    Examples:
+        {
+            "pipeline": "vad,refine,split",
+            "vad": {"enabled": true, "aggressiveness": 3},
+            "refine": {"enabled": true, "search_window_ms": 200},
+            "split": {"enabled": true, "max_duration": 7.0, "max_chars": 200}
+        }
+    """
+    pipeline: Optional[str] = Field(default="vad,refine,split", description="Comma-separated list of pipeline components")
+    vad: Optional[VADConfig] = Field(default_factory=VADConfig, description="VAD component configuration")
+    refine: Optional[RefineConfig] = Field(default_factory=RefineConfig, description="Timestamp refinement configuration")
+    split: Optional[SplitConfig] = Field(default_factory=SplitConfig, description="Segment splitting configuration")
+
+    @field_validator("pipeline")
+    @classmethod
+    def validate_pipeline_components(cls, v):
+        """Validate that pipeline components are valid"""
+        if v is None:
+            return v
+
+        valid_components = {"vad", "refine", "split"}
+        components = [c.strip() for c in v.split(",") if c.strip()]
+
+        invalid = set(components) - valid_components
+        if invalid:
+            raise ValueError(
+                f"Invalid pipeline component(s): {list(invalid)}. "
+                f"Valid components: {list(valid_components)}"
+            )
+
+        return v
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "pipeline": "vad,refine,split",
+                    "vad": {"enabled": True, "aggressiveness": 3},
+                    "refine": {"enabled": True, "search_window_ms": 200},
+                    "split": {"enabled": True, "max_duration": 7.0, "max_chars": 200}
+                },
+                {
+                    "pipeline": "vad,split",
+                    "vad": {"enabled": True, "aggressiveness": 2}
+                }
+            ]
+        }
+    }
 
 
 class UploadResponse(BaseModel):

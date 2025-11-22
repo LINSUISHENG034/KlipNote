@@ -23,3 +23,21 @@ export interface Segment {
 export interface TranscriptionResult {
   segments: Segment[]
 }
+
+// Enhancement configuration (matches backend EnhancementConfigRequest)
+export interface EnhancementConfig {
+  pipeline?: string  // e.g. "vad,refine,split"
+  vad?: {
+    enabled?: boolean
+    aggressiveness?: number  // 0-3
+  }
+  refine?: {
+    enabled?: boolean
+    search_window_ms?: number  // milliseconds
+  }
+  split?: {
+    enabled?: boolean
+    max_duration?: number  // seconds
+    max_chars?: number
+  }
+}

@@ -27,6 +27,22 @@ cp source.txt dest.txt
 # Use Edit tool to modify files
 ```
 
-## ⚠️ CRITICAL: Use `uv` for environment management
+---
 
-**IMPORTANT:** Belle2 and WhisperX **rely on** (or **use**) different **environments**. **Belle2 uses** the environment at `backend/.venv`, and **WhisperX uses** the environment at `backend/.venv-whisperx`.
+## 🛠️ Project Environment Management: Using `uv` (For Senior Developers)
+
+* **Tool:** This project utilizes **`uv`** for ultra-fast package and virtual environment management.
+* **Execution Standard:** All Python script execution *must* be performed using **`uv run`** to ensure the correct environment and dependencies are loaded.
+
+### ⚠️ Critical Environment Isolation
+
+Due to **dependency conflicts**, different models are configured in **isolated virtual environments**. You **must** specify the correct environment path when running related scripts:
+
+| Model | Virtual Environment Path | Example Execution Command |
+| :--- | :--- | :--- |
+| **Belle2** | `backend/.venv` | `uv run --with backend/.venv python your_script.py` |
+| **WhisperX** | `backend/.venv-whisperx` | `uv run --with backend/.venv-whisperx python another_script.py` |
+
+> **Key Action:** Always use `uv run --with [PATH]` for running scripts. Avoid direct `python` calls.
+
+---

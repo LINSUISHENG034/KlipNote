@@ -13,6 +13,8 @@ Epic 4 operationalizes the multi-model architecture foundation established in Ep
 
 This epic transforms KlipNote from a single-model MVP into a production-grade multi-model platform where users and administrators can select optimal transcription engines and enhancement configurations based on content characteristics (language, audio quality, use case). The deliverable provides strategic flexibility: support multiple models today, easily integrate future models (SenseVoice, Faster-Whisper, Deepgram) tomorrow, and continuously refine quality through model-agnostic enhancements.
 
+**Epic 4 Extension (Stories 4.7-4.9):** Following completion of core enhancement framework (Stories 4.1-4.6), Epic 4 extends to include API enablement layer. Stories 4.7-4.9 expose enhancement pipeline configuration via public API, provide HTTP-based developer tools for testing, and validate cross-model performance. This completes the transition from internal implementation to usable feature accessible to both developers and end users.
+
 ## Objectives and Scope
 
 **In Scope:**
@@ -22,7 +24,9 @@ This epic transforms KlipNote from a single-model MVP into a production-grade mu
 - Composable enhancement pipeline framework (chain components in configurable order)
 - Multi-model quality validation and regression testing framework
 - Environment isolation strategy preventing PyTorch dependency conflicts
-- MVP model selection decision and Epic 4 implementation handoff documentation
+- **API enablement layer:** Enhancement configuration exposed via POST /upload endpoint (Story 4.7)
+- **HTTP-based CLI tools:** Developer testing tools independent of AI environments (Story 4.8)
+- **Cross-model testing & documentation:** Quality validation using CLI tools, final documentation updates (Story 4.9)
 
 **Out of Scope (Deferred to Future Epics):**
 - Additional transcription models beyond BELLE-2 and WhisperX (SenseVoice, Faster-Whisper, Deepgram)
@@ -388,8 +392,14 @@ Epic 3 Complete
       Story 4.6: Multi-Model Quality Validation Framework
         ← Prerequisites: 4.1 (deployment) + 4.5 (pipeline)
         ↓
-      Story 4.7: MVP Model Selection & Handoff
-        ← Prerequisites: 4.6 (validation complete)
+      Story 4.7: Enhancement API Layer Development
+        ← Prerequisites: 4.6 (quality validation complete)
+        ↓
+      Story 4.8: HTTP CLI Tool Development
+        ← Prerequisites: 4.7 (API layer complete)
+        ↓
+      Story 4.9: Model Testing & Documentation
+        ← Prerequisites: 4.8 (CLI tool complete)
 ```
 
 #### Multi-Model Job Processing Flow
@@ -1053,44 +1063,137 @@ services:
 - Runs validation on same audio corpus through both workers
 - Verifies metrics generated for both
 
-### Story 4.7: MVP Model Selection & Epic 4 Handoff Preparation
+### Story 4.7: Enhancement API Layer Development
 
-**AC-4.7-1:** MVP model selection decision documented
-- `docs/decisions/mvp-model-selection.md` records:
-  - Selected model (BELLE-2 or WhisperX) based on Story 3.2c data
-  - Rationale: CER/WER scores, segment quality, processing speed
-  - Trade-offs accepted
+**AC-4.7-1:** POST /upload accepts optional `enhancement_config` JSON parameter (form field)
+- Endpoint signature updated to accept `enhancement_config: Optional[str]` parameter
+- Parameter accepted as JSON string in multipart form data
+- Backward compatible: omitting parameter uses environment configuration
 
-**AC-4.7-2:** Selected model configured as production default
-- `DEFAULT_TRANSCRIPTION_MODEL` environment variable set in production `.env`
-- Docker Compose configured with selected model's worker
-- Non-selected model's worker commented out (but preserved for Epic 4)
+**AC-4.7-2:** EnhancementFactory.create_pipeline() supports config_dict injection
+- `create_pipeline()` function accepts optional `config_dict` parameter
+- Configuration priority implemented: API param > env vars > defaults
+- Factory parses config and instantiates components accordingly
 
-**AC-4.7-3:** Non-selected model documented for Epic 4 integration
-- `docs/epic4-handoff.md` documents:
-  - How to enable second model (uncomment worker, set routing logic)
-  - Configuration needed for multi-model deployment
+**AC-4.7-3:** Pydantic model validation for enhancement_config structure
+- `EnhancementConfigRequest` Pydantic model validates JSON structure
+- Validates pipeline component names ("vad", "refine", "split")
+- Validates parameter ranges (e.g., VAD threshold 0.0-1.0)
+- Invalid configurations return 400 Bad Request with clear error messages
 
-**AC-4.7-4:** Epic 4 roadmap finalized with story priorities
-- `docs/epic4-roadmap.md` confirms Stories 4.1-4.6 sequence
-- Estimates: 10-15 days total implementation time
+**AC-4.7-4:** API tests cover enhancement_config parameter scenarios
+- Valid configuration with all components
+- Valid configuration with partial components (e.g., only VAD)
+- Invalid JSON format (returns 400)
+- Invalid pipeline component names (returns 400)
+- Invalid parameter values (returns 400 with specific error)
 
-**AC-4.7-5:** Technical debt documented: areas where single-model shortcuts were taken
-- `docs/technical-debt.md` lists:
-  - Hardcoded model selection in upload endpoint (should be configurable per-job in future)
-  - No user-facing model selection UI
-  - Enhancement pipeline config requires restart (not hot-reloadable)
+**AC-4.7-5:** Error responses include clear messages indicating which parameter is invalid
+- Example: "Invalid pipeline component 'invalid_component'. Valid components: vad, refine, split"
+- Example: "VAD threshold must be between 0.0 and 1.0"
+- HTTP 400 status code for all validation errors
 
-**AC-4.7-6:** Handoff documentation: what Epic 4 implementers need to know
-- `docs/epic4-handoff.md` includes:
-  - Architecture overview
-  - Parallel development track strategy
-  - Critical integration points
-  - Testing requirements
+**AC-4.7-6:** TypeScript type definitions updated (if frontend integration planned)
+- `frontend/src/types/api.ts` includes `EnhancementConfig` interface (optional)
+- Matches backend Pydantic model structure
 
-**AC-4.7-7:** MVP deployment guide updated with selected model
-- `docs/deployment/mvp-deployment.md` reflects single-model configuration
-- GPU requirements specified for selected model (CUDA 11.8 or 12.x)
+**AC-4.7-7:** Backward compatible: missing enhancement_config uses env vars
+- Integration test validates: omitting parameter → uses environment variables
+- No breaking changes to existing API contracts
+
+**AC-4.7-8:** Configuration priority implemented and tested
+- Test validates: API parameter overrides environment variable
+- Test validates: Environment variable overrides default value
+- Documentation updated in architecture.md
+
+**Estimated Effort:** 1-2 hours
+
+---
+
+### Story 4.8: HTTP CLI Tool Development
+
+**AC-4.8-1:** Create `backend/app/cli/klip_client.py` with 4 commands
+- `upload`: Upload file with optional model and enhancement_config
+- `status`: Poll job status with optional --watch flag
+- `result`: Fetch transcription result with optional --output file
+- `test-flow`: Automated end-to-end test (upload → poll → fetch → validate)
+
+**AC-4.8-2:** Dependencies: requests/httpx only (no PyTorch/transformers)
+- `requirements.txt` or separate `requirements-cli.txt` includes HTTP client library
+- No AI model dependencies in CLI tool
+- Environment-independent: works without .venv or .venv-whisperx activation
+
+**AC-4.8-3:** Support for enhancement_config parameter in upload command
+- Command-line argument: `--config '{"pipeline":"vad,split"}'`
+- JSON string passed to API as enhancement_config parameter
+- Example usage documented in CLI help and README
+
+**AC-4.8-4:** --watch flag for status polling
+- Status command with `--watch` polls every 3 seconds until completion/failure
+- Prints progress updates to console
+- Exits on completion or error
+
+**AC-4.8-5:** JSON output format for result command
+- `--output` flag saves result to file
+- Default: prints JSON to stdout (can pipe to jq)
+- Format matches API response structure
+
+**AC-4.8-6:** Automated test-flow validates end-to-end workflow
+- Upload succeeds and returns job_id
+- Status polling works (prints progress updates)
+- Result fetch succeeds
+- Basic validation (segments exist, format correct)
+
+**AC-4.8-7:** README documentation with usage examples
+- `backend/app/cli/README.md` includes:
+  - Installation instructions
+  - Command usage for each subcommand
+  - Enhancement config examples
+  - Troubleshooting common errors (connection refused, timeout, etc.)
+
+**Estimated Effort:** 2-3 hours
+
+---
+
+### Story 4.9: Model Testing & Documentation
+
+**AC-4.9-1:** Run `klip_client.py test-flow` for Belle2 with test samples
+- zh_medium_audio1 (medium-length Chinese audio)
+- zh_short_video1 (short video sample)
+- Record: response time, CER/WER results, segment statistics
+
+**AC-4.9-2:** Run `klip_client.py test-flow` for WhisperX with same samples
+- Same test corpus as Belle2
+- Compare results side-by-side
+
+**AC-4.9-3:** Compare results using enhancement configurations
+- Baseline (no enhancements)
+- VAD only
+- VAD + refinement
+- Full pipeline (VAD + refinement + splitting)
+
+**AC-4.9-4:** Document findings in decision log
+- Side-by-side metric comparison table
+- Enhancement pipeline effectiveness analysis
+- Recommendation for default configuration
+- File location: `docs/decisions/enhancement-pipeline-effectiveness.md`
+
+**AC-4.9-5:** Update main README.md with CLI tools section
+- Developer Tools overview
+- klip_client.py installation
+- Common usage examples
+- Link to detailed CLI README
+
+**AC-4.9-6:** Update architecture.md Developer Tools section
+- Verify completeness of Developer Tools section added in Phase 1
+- Ensure alignment with actual CLI implementation
+
+**AC-4.9-7:** Verify all test results meet quality baselines
+- CER ≤ 10% for Chinese audio
+- WER ≤ 15% for Chinese audio
+- Segment length compliance ≥ 90% (1-7s, ≤200 chars)
+
+**Estimated Effort:** 1 hour
 
 ## Traceability Mapping
 
@@ -1102,7 +1205,9 @@ services:
 | AC-4.4-1 to AC-4.4-8 | Detailed Design § Enhancement Component Architecture | SegmentSplitter | Unit tests (edge cases) + Quality validation (95% compliance) |
 | AC-4.5-1 to AC-4.5-8 | Detailed Design § Workflows and Sequencing | EnhancementPipeline, create_pipeline() factory | Integration tests (all pipeline combinations) + Error injection tests |
 | AC-4.6-1 to AC-4.6-8 | Dependencies § Integration Testing Strategy | QualityValidator, CLI tools | Regression tests (Epic 3 baselines) + Cross-model comparison |
-| AC-4.7-1 to AC-4.7-7 | System Architecture Alignment § MVP Strategy | Configuration, Documentation | Manual verification (deployment guide accuracy, Docker config) |
+| AC-4.7-1 to AC-4.7-8 | APIs and Interfaces § Extended Upload Endpoint | POST /upload enhancement_config parameter | API tests (valid/invalid configurations), backward compatibility tests |
+| AC-4.8-1 to AC-4.8-7 | Developer Tools § HTTP CLI Tool | klip_client.py (upload, status, result, test-flow) | End-to-end CLI tests, environment independence validation |
+| AC-4.9-1 to AC-4.9-7 | Test Strategy § Multi-Model Integration | Belle2/WhisperX cross-model testing | Quality baseline validation, documentation review |
 | NFR-E4-001 to NFR-E4-005 | NFR § Performance | All workers | Performance benchmarks (Story 4.6) |
 | NFR-E4-006 to NFR-E4-009 | NFR § Security | Docker isolation, Model integrity | Security review (Story 4.1) + Checksum validation tests |
 | NFR-E4-010 to NFR-E4-014 | NFR § Reliability | Worker failure handling, Graceful degradation | Chaos tests (kill worker during processing), Rollback procedure validation |

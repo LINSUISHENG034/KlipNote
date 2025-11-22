@@ -437,16 +437,16 @@ class TestUploadEndpointCeleryIntegration:
         assert response.status_code == 200
         job_id = response.json()["job_id"]
 
-        # Verify task.delay() was called
-        mock_transcribe_task.delay.assert_called_once()
+        # Verify task.apply_async() was called
+        mock_transcribe_task.apply_async.assert_called_once()
 
-        # Verify task received correct job_id
-        call_args = mock_transcribe_task.delay.call_args[0]
-        assert call_args[0] == job_id  # First argument is job_id
+        # Verify task received correct job_id and file_path
+        call = mock_transcribe_task.apply_async.call_args
+        args = call.kwargs.get("args") or []
+        assert args[0] == job_id  # First argument is job_id
 
-        # Verify task received correct file_path
         expected_path = str(Path(config.settings.UPLOAD_DIR) / job_id / "original.mp3")
-        assert call_args[1] == expected_path  # Second argument is file_path
+        assert args[1] == expected_path  # Second argument is file_path
 
     @patch("app.main.transcribe_audio")
     @patch("app.main.RedisService")
@@ -508,8 +508,8 @@ class TestUploadEndpointCeleryIntegration:
         assert response.status_code == 200
 
         # Verify task was called with file path that exists
-        call_args = mock_transcribe_task.delay.call_args[0]
-        file_path = call_args[1]
+        call = mock_transcribe_task.apply_async.call_args
+        file_path = (call.kwargs.get("args") or [None, None])[1]
 
         # File should actually exist (saved by FileHandler)
         assert Path(file_path).exists()
@@ -752,3 +752,130 @@ class TestStatusResultIntegrationWithUpload:
         assert "not yet complete" in result_response.json()["detail"].lower()
 
 
+class TestEnhancementConfig:
+    """Test suite for enhancement_config parameter in POST /upload endpoint"""
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_with_valid_enhancement_config(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
+        """Test valid enhancement config accepted and passed to task (AC-4.7-1)"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Valid enhancement config
+        config = {
+            "pipeline": "vad,split",
+            "vad": {"enabled": True, "aggressiveness": 2},
+            "split": {"enabled": True, "max_duration": 5.0}
+        }
+        import json
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+            data={"enhancement_config": json.dumps(config)}
+        )
+
+        assert response.status_code == 200
+        assert "job_id" in response.json()
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_with_invalid_json_returns_400(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
+        """Test invalid JSON format returns 400 Bad Request (AC-4.7-4)"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+            data={"enhancement_config": "{invalid json format}"}
+        )
+
+        assert response.status_code == 400
+        assert "Invalid JSON" in response.json()["detail"]
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_with_invalid_component_returns_clear_error(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
+        """Test invalid component name returns clear error message (AC-4.7-5)"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        config = {"pipeline": "vad,invalid_component,split"}
+        import json
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+            data={"enhancement_config": json.dumps(config)}
+        )
+
+        assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert "invalid_component" in detail
+        assert "Valid components" in detail
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_with_invalid_parameter_range_returns_specific_error(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
+        """Test out-of-range parameter values return specific error (AC-4.7-5)"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Aggressiveness out of range (must be 0-3)
+        config = {"vad": {"enabled": True, "aggressiveness": 5}}
+        import json
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+            data={"enhancement_config": json.dumps(config)}
+        )
+
+        assert response.status_code == 400
+        assert "aggressiveness" in response.json()["detail"]
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_without_enhancement_config_uses_env_defaults(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
+        """Test backward compatibility - missing config uses env vars (AC-4.7-7)"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        monkeypatch.setattr(config.settings, "ENHANCEMENT_PIPELINE", "vad,refine")
+        mock_validate_duration.return_value = None
+
+        # Upload without enhancement_config (should use env vars)
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", b"fake audio", "audio/mpeg")}
+        )
+
+        assert response.status_code == 200
+        # Task was queued successfully (env config used)
+        mock_transcribe_task.apply_async.assert_called_once()
+
+    @patch("app.main.transcribe_audio")
+    @patch("app.services.file_handler.FileHandler.validate_duration")
+    def test_upload_with_partial_config_uses_defaults(self, mock_validate_duration, mock_transcribe_task, fake_redis_client, test_client, tmp_path, monkeypatch):
+        """Test partial config only overrides specified fields (AC-4.7-4)"""
+        from app import config
+        monkeypatch.setattr(config.settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+        mock_validate_duration.return_value = None
+
+        # Only VAD configured, others use defaults
+        config = {"vad": {"enabled": True, "aggressiveness": 1}}
+        import json
+
+        response = test_client.post(
+            "/upload",
+            files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+            data={"enhancement_config": json.dumps(config)}
+        )
+
+        assert response.status_code == 200
+        assert "job_id" in response.json()

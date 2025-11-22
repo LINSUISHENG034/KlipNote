@@ -20,6 +20,11 @@ This document tracks technical debt, improvements, and follow-up items identifie
 | 2025-11-17 | 4.5 | 4 | Enhancement | Low | TBD | Open | Add Protocol or ABC base class for enhancement components to improve type safety and catch interface violations at static analysis time. |
 | 2025-11-17 | 4.5 | 4 | Enhancement | Low | TBD | Open | Add production telemetry for pipeline metrics tracking. Current implementation collects metrics but doesn't persist them for analysis. |
 | 2025-11-17 | 4.5 | 4 | Documentation | Low | TBD | Open | Add architecture diagrams showing enhancement pipeline flow and component interaction patterns. |
+| 2026-07-02 | 4.7 | 4 | Bug | High | TBD | Open | Import EnhancementConfigRequest in upload handler so enhancement_config requests return 400 instead of 500; unblock AC1/AC5. |
+| 2026-07-02 | 4.7 | 4 | Bug | High | TBD | Open | Fix enhancement pipeline defaults to use defined settings (or add missing ones) so env/default path works when enhancement_config is omitted; restore AC7/AC8. |
+| 2026-07-02 | 4.7 | 4 | Testing | Medium | TBD | Open | Align Celery enqueue call and tests (apply_async vs delay) to make /upload tests meaningful and passing. |
+| 2026-07-02 | 4.7 | 4 | Enhancement | Medium | TBD | Open | Add EnhancementConfig TypeScript interface and wire to API client types to keep frontend/backed contracts aligned. |
+| 2026-07-02 | 4.7 | 4 | Testing | Medium | TBD | Open | Strengthen config priority tests with assertions and settings patching to validate API > env > defaults. |
 
 ---
 

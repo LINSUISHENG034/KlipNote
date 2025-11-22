@@ -186,7 +186,13 @@ def save_model_metadata(
     retry_backoff_max=600,  # Max 10 minutes
     retry_jitter=True
 )
-def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] = None) -> Dict[str, Any]:
+def transcribe_audio(
+    self,
+    job_id: str,
+    file_path: str,
+    language: Optional[str] = None,
+    enhancement_config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     Transcribe audio file using BELLE-2 (Chinese) or WhisperX with fallback
 
@@ -202,6 +208,7 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         job_id: Unique job identifier (UUID v4)
         file_path: Path to audio file to transcribe
         language: Language code ('zh', 'en', etc.) or None for auto-detect
+        enhancement_config: Optional enhancement pipeline configuration dict
 
     Returns:
         Dictionary with transcription result:
@@ -319,7 +326,10 @@ def transcribe_audio(self, job_id: str, file_path: str, language: Optional[str] 
         pipeline_metrics = None
         if pipeline_enabled:
             try:
-                pipeline = create_pipeline()
+                # Create pipeline with API-provided config (if available)
+                pipeline = create_pipeline(config_dict=enhancement_config)
+                config_source = "API" if enhancement_config else "environment"
+                logger.info(f"[Job {job_id}] Enhancement pipeline created from {config_source}")
             except ValueError as config_error:
                 logger.error(
                     "[Job %s] Invalid enhancement pipeline config: %s",

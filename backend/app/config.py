@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     )
 
     # Epic 4: Unified VAD + metadata schema configuration
+    VAD_ENABLED: bool = Field(
+        default=True,
+        description="Feature flag for VAD component (used by enhancement factory defaults).",
+    )
     VAD_ENGINE: Literal["auto", "silero", "webrtc"] = Field(
         default="auto",
         description="Unified VAD engine preference. Auto chooses Silero when available, else WebRTC.",
@@ -92,6 +96,16 @@ class Settings(BaseSettings):
         default=True,
         description="Return TranscriptionResult payloads (segments + metadata) by default.",
     )
+    REFINE_ENABLED: bool = Field(
+        default=True,
+        description="Feature flag for timestamp refinement component (enhancement factory defaults).",
+    )
+    REFINE_SEARCH_WINDOW_MS: int = Field(
+        default=200,
+        ge=50,
+        le=500,
+        description="Search window (milliseconds) for timestamp refinement defaults.",
+    )
     SEGMENT_SPLITTER_ENABLED: bool = Field(
         default=True,
         description="Feature flag for SegmentSplitter enhancement component (Story 4.4).",
@@ -114,6 +128,20 @@ class Settings(BaseSettings):
     ENABLE_ENHANCEMENTS: bool = Field(
         default=True,
         description="Global kill switch for enhancement pipeline integration.",
+    )
+    SPLIT_ENABLED: bool = Field(
+        default=True,
+        description="Feature flag for segment splitting component (enhancement factory defaults).",
+    )
+    SPLIT_MAX_DURATION: float = Field(
+        default=7.0,
+        ge=0.1,
+        description="Default maximum segment duration (seconds) when splitting is enabled.",
+    )
+    SPLIT_MAX_CHARS: int = Field(
+        default=200,
+        ge=1,
+        description="Default maximum character count per segment when splitting is enabled.",
     )
     ENHANCEMENT_PIPELINE: str = Field(
         default="vad,refine,split",

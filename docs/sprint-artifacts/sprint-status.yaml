@@ -71,7 +71,7 @@ development_status:
   3-6-quality-validation-framework: moved-to-epic-4
   epic-3-retrospective: completed
 
-  epic-4: contexted
+  epic-4: in_progress
   4-1-multi-model-production-architecture: done
   4-1b-frontend-model-selection: done
   4-2-model-agnostic-vad-preprocessing: done
@@ -79,4 +79,7 @@ development_status:
   4-4-model-agnostic-segment-splitting: done
   4-5-enhancement-pipeline-composition: done
   4-6-multi-model-quality-validation: done
+  4-7-enhancement-api-layer: done
+  4-8-http-cli-tool-development: todo
+  4-9-model-testing-and-documentation: todo
   epic-4-retrospective: optional

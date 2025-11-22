@@ -37,6 +37,7 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 - **FR002:** System shall support common media formats including MP3, MP4, WAV, M4A, and other formats supported by FFmpeg
 - **FR003:** System shall process uploaded media files using empirically validated transcription model (BELLE-2 or WhisperX selected for MVP based on Epic 3 A/B comparison; both models validated, multi-model support planned for post-MVP Epic 4) with word-level timestamps, automatically detecting and preserving the original audio language
 - **FR003b:** System shall optimize Chinese/Mandarin transcription quality as primary use case with segment lengths suitable for subtitle editing workflows (typically 1-7 seconds per segment, maximum ~200 characters)
+- **FR003c:** System shall expose enhancement pipeline configuration via API parameters, enabling dynamic control of VAD, timestamp refinement, and segment splitting components on a per-request basis
 - **FR004:** System shall queue multiple transcription jobs and process them sequentially using available GPU resources
 
 **Transcription Display & Management**
@@ -72,6 +73,8 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 - **NFR001: Performance** - Transcription processing shall complete at 1-2x real-time speed (1 hour audio = 30-60 min processing). UI shall load in <3 seconds, media playback shall start within 2 seconds, and timestamp seeking shall respond in <1 second.
 
 - **NFR002: Usability** - Non-technical users shall complete the upload → review → export workflow without documentation or technical assistance. System shall provide clear error messages and visual feedback throughout all operations.
+
+- **NFR002b: Developer Productivity** - Developers shall be able to test complete API workflows using HTTP-based CLI tools without environment-specific setup complexity or virtual environment switching
 
 - **NFR003: Reliability** - System shall achieve 90%+ transcription completion rate (successful upload → export). Browser-based state shall prevent data loss during normal operation including page refresh and accidental navigation, with clear warnings for potentially destructive actions like leaving during upload.
 
@@ -221,20 +224,22 @@ KlipNote solves this by combining state-of-the-art transcription accuracy with a
 - **Stories:** 4 stories (3.1, 3.2a, 3.2b, 3.2c); 3 stories cancelled (3.3-3.5)
 - **Deliverable:** ✅ Both models validated, pluggable architecture proven, foundation for multi-model framework
 
-**Epic 4: Multi-Model Transcription Framework & Composable Enhancements** 📋 POST-MVP
+**Epic 4: Multi-Model Transcription Framework & Composable Enhancements** ✅ MVP (Enhanced)
 - Production multi-model architecture with model-agnostic enhancement components (VAD, timestamp refinement, segment splitting)
-- **Estimated Stories:** 7 stories (4.1-4.7)
-- **Deliverable:** Multi-model framework supporting 2+ transcription engines with composable enhancement pipeline
+- **Estimated Stories:** 9 stories (4.1-4.9)
+- **Deliverable:** Multi-model framework supporting 2+ transcription engines with composable enhancement pipeline and API enablement
 
-**MVP Scope:** Epics 1-3 + **Validated** Single Model Selection
+**MVP Scope:** Epics 1-4 (Core Enhancement Framework + API Layer)
 - Epic 1: Foundation & Core Transcription Workflow ✅ COMPLETE
 - Epic 2: Integrated Review & Export Experience ✅ COMPLETE
 - Epic 3: Chinese Transcription Model Selection ✅ COMPLETE
-- Epic 4 (Partial): Stories 4.6b + 4.7
-  - Story 4.6b: Hand-verified accuracy baselines (quality checkpoint)
-  - Story 4.7: MVP model selection decision (data-driven choice)
+- Epic 4 Stories 4.1-4.6: ✅ COMPLETE (Enhancement components)
+- Epic 4 Stories 4.7-4.9: 🔄 IN PROGRESS (API enablement)
+  - Story 4.7: Enhancement API layer (exposure via /upload endpoint)
+  - Story 4.8: HTTP CLI tools (developer productivity)
+  - Story 4.9: Model testing & documentation
 
-**Post-MVP:** Epic 4 Remainder (Multi-Model Production Deployment)
+**Post-MVP:** Frontend UI enhancement controls, advanced presets, multi-model production
 
 > **Note:** Detailed epic breakdown with full story specifications is available in [epics.md](./epics.md)
 

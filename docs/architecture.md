@@ -2154,11 +2154,45 @@ export async function fetchTranscriptionStatus(jobId: string): Promise<StatusRes
 
 | Method | Endpoint | Purpose | Request Body | Response |
 |--------|----------|---------|--------------|----------|
-| POST | `/upload` | Upload media file | `multipart/form-data` with `file` field | `{"job_id": "uuid"}` |
+| POST | `/upload` | Upload media file | `multipart/form-data` with `file` field, optional `model` field, optional `enhancement_config` field | `{"job_id": "uuid"}` |
 | GET | `/status/{job_id}` | Get job status | None | `{"status": "...", "progress": 0-100, ...}` |
 | GET | `/result/{job_id}` | Get transcription | None | `{"segments": [{start, end, text}]}` |
 | GET | `/media/{job_id}` | Stream media file | None (Range headers) | Media file with Range support |
 | POST | `/export/{job_id}` | Export with edits | `{"segments": [...], "format": "srt"\|"txt"}` | File download |
+
+### API Endpoint: POST /upload (Enhanced)
+
+**Parameters:**
+- `file` (required, multipart): Media file
+- `model` (optional, form): belle2|whisperx|auto (default: auto)
+- `language` (optional, form): zh|en|auto (default: auto)
+- `enhancement_config` (optional, form): JSON string for enhancement configuration
+
+**enhancement_config Structure:**
+```json
+{
+  "pipeline": "vad,refine,split",
+  "vad": {
+    "engine": "silero",
+    "threshold": 0.5,
+    "min_silence_duration": 1.0
+  },
+  "refine": {
+    "enabled": true
+  },
+  "split": {
+    "max_duration": 7.0,
+    "max_chars": 200
+  }
+}
+```
+
+**Configuration Priority:**
+1. API `enhancement_config` parameter (highest)
+2. Environment variables (.env)
+3. Default values (lowest)
+
+**Backward Compatibility:** Omitting `enhancement_config` uses environment configuration
 
 **Status Codes:**
 - `200 OK`: Successful request
@@ -2825,6 +2859,101 @@ pytest -m accuracy --cov=app.ai_services --cov-report=term-missing
 1. Review this architecture document
 2. Proceed to Epic 1.1: Project scaffolding (run starter commands, setup git submodules)
 3. Implement stories sequentially using this architecture as the consistency contract
+
+---
+
+## Developer Tools & Testing Infrastructure
+
+### HTTP-based CLI Tool: klip_client.py
+
+**Purpose:** Enable API workflow testing and cross-model validation without environment-specific dependencies
+
+**Architecture:**
+- **Location:** `backend/app/cli/klip_client.py`
+- **Dependencies:** `requests` or `httpx` (no PyTorch/transformers)
+- **Independence:** Decoupled from Belle2 (.venv) and WhisperX (.venv-whisperx)
+
+**Commands:**
+```bash
+# Upload with enhancement configuration
+python klip_client.py upload \
+  --file test-audio.mp3 \
+  --model belle2 \
+  --config '{"pipeline":"vad,split","split":{"max_duration":5.0}}'
+
+# Poll job status
+python klip_client.py status <job_id> [--watch]
+
+# Fetch transcription result
+python klip_client.py result <job_id> [--output result.json]
+
+# Automated end-to-end test
+python klip_client.py test-flow --file test-audio.mp3
+```
+
+**Benefits:**
+1. **Environment Independence:** No virtual environment switching
+2. **Production Testing:** Tests actual Docker containers via HTTP
+3. **Developer Productivity:** Rapid iteration on API changes
+4. **CI/CD Integration:** Automated workflow validation
+
+**Configuration Priority Decision Record:**
+
+**Decision Date:** 2025-11-22
+**Context:** Enhancement pipeline configuration can come from multiple sources
+
+**Priority:**
+1. API `enhancement_config` parameter (highest priority)
+2. Environment variables (.env file)
+3. Code default values (lowest priority)
+
+**Rationale:**
+- API parameter → per-request dynamic control
+- Environment variables → service-level defaults (operational configuration)
+- Code defaults → reasonable fallback options
+
+**Example:**
+```python
+# .env: VAD_THRESHOLD=0.5
+# API request: {"vad": {"threshold": 0.7}}
+# Result: Uses 0.7 (API priority)
+```
+
+**Impact:** No breaking changes, only adds new capabilities
+
+**API Error Handling:**
+
+Invalid enhancement_config examples and responses:
+```json
+// Invalid pipeline component
+{
+  "pipeline": "invalid_component",
+  "error": "Invalid pipeline component 'invalid_component'. Valid components: vad, refine, split"
+}
+
+// Invalid VAD engine
+{
+  "vad": {"engine": "nonexistent"},
+  "error": "Invalid VAD engine 'nonexistent'. Valid engines: silero, webrtc, auto"
+}
+
+// Invalid threshold range
+{
+  "vad": {"threshold": 1.5},
+  "error": "VAD threshold must be between 0.0 and 1.0"
+}
+```
+
+**HTTP Response:**
+- Status: 400 Bad Request
+- Clear error message indicating which parameter is invalid
+- Suggestion for valid values when applicable
+
+**API Endpoint Usage (Story 4.7):**
+- Endpoint: `POST /upload` (multipart/form-data).
+- Optional form field `enhancement_config` (JSON string) controlling `pipeline`, `vad`, `refine`, `split` components; omit to use env/defaults.
+- Example: `curl -X POST http://localhost:8000/upload -F "file=@audio.mp3" -F 'enhancement_config={"pipeline":"vad,split","vad":{"aggressiveness":2}}'`
+- Validation: invalid JSON or component/parameter values return 400 with descriptive detail; priority remains API > env > defaults.
 
 ---
 

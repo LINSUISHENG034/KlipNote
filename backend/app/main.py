@@ -3,6 +3,8 @@ FastAPI application initialization
 Main entry point for the web service
 """
 
+from typing import Optional
+
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
@@ -10,8 +12,15 @@ from pathlib import Path
 import re
 import logging
 import os
+from pydantic import ValidationError
 from app.config import settings
-from app.models import UploadResponse, StatusResponse, TranscriptionResult, ExportRequest
+from app.models import (
+    UploadResponse,
+    StatusResponse,
+    TranscriptionResult,
+    ExportRequest,
+    EnhancementConfigRequest,
+)
 from app.services.file_handler import FileHandler
 from app.services.redis_service import RedisService
 from app.services import export_service
@@ -64,7 +73,8 @@ async def health_check():
 async def upload_file(
     file: UploadFile = File(...),
     model: str = Form(default=None),
-    language: str = Form(default=None)
+    language: str = Form(default=None),
+    enhancement_config: Optional[str] = Form(default=None)
 ):
     """
     Upload audio/video file for transcription
@@ -84,6 +94,10 @@ async def upload_file(
       - Per-request parameter overrides default
     - **language** (optional): Language hint (ISO code: "zh", "en", etc.)
       - Used for auto-routing when model="auto"
+    - **enhancement_config** (optional): JSON string for enhancement pipeline configuration
+      - Controls VAD preprocessing, timestamp refinement, and segment splitting
+      - Configuration priority: API param > env vars > defaults
+      - Example: '{"pipeline": "vad,split", "vad": {"enabled": true, "aggressiveness": 2}}'
 
     **Example Request:**
     ```bash
@@ -91,15 +105,15 @@ async def upload_file(
     curl -X POST "http://localhost:8000/upload" \\
          -F "file=@/path/to/audio.mp3"
 
-    # Explicit model selection
+    # With custom enhancement configuration
     curl -X POST "http://localhost:8000/upload" \\
          -F "file=@/path/to/audio.mp3" \\
-         -F "model=belle2"
+         -F 'enhancement_config={"pipeline": "vad,split", "vad": {"enabled": true, "aggressiveness": 2}}'
 
-    # Auto-selection with language hint
+    # Explicit model selection with language
     curl -X POST "http://localhost:8000/upload" \\
          -F "file=@/path/to/audio.mp3" \\
-         -F "model=auto" \\
+         -F "model=belle2" \\
          -F "language=zh"
     ```
 
@@ -111,7 +125,7 @@ async def upload_file(
     ```
 
     **Error Responses:**
-    - **400**: Invalid format, duration exceeds 2 hours, or invalid model selection
+    - **400**: Invalid format, duration exceeds 2 hours, invalid model selection, or invalid enhancement_config
     - **413**: File size exceeds 2GB limit
     - **500**: Storage or processing error
     """
@@ -130,6 +144,27 @@ async def upload_file(
 
         # Initialize Redis service
         redis_service = RedisService()
+
+        # Parse and validate enhancement config (if provided)
+        parsed_config = None
+        config_source = "environment"  # Default source
+        if enhancement_config:
+            try:
+                import json
+                config_dict = json.loads(enhancement_config)
+                parsed_config = EnhancementConfigRequest(**config_dict)
+                config_source = "API"
+                logger.info(f"Parsed enhancement config from API: {parsed_config.model_dump()}")
+            except json.JSONDecodeError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid JSON in enhancement_config: {str(e)}"
+                )
+            except (ValueError, ValidationError) as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid enhancement configuration: {str(e)}"
+                )
 
         # Epic 4: Multi-Model Production Architecture
         # Determine which Celery queue to route transcription task
@@ -150,10 +185,12 @@ async def upload_file(
         # Queue Celery task for transcription on the selected worker queue
         logger.info(
             f"Routing transcription job {job_id} to queue '{queue_name}' "
-            f"(model: {selected_model}, language: {language or 'auto-detect'})"
+            f"(model: {selected_model}, language: {language or 'auto-detect'}, "
+            f"enhancement: {config_source})"
         )
         transcribe_audio.apply_async(
             args=[job_id, file_path, language],
+            kwargs={"enhancement_config": parsed_config.model_dump() if parsed_config else None},
             queue=queue_name
         )
 
@@ -179,6 +216,10 @@ async def upload_file(
     except RuntimeError as e:
         # FFprobe execution errors
         raise HTTPException(status_code=500, detail=f"Media validation error: {str(e)}")
+
+    except HTTPException:
+        # Allow intentional HTTP errors to propagate
+        raise
 
     except Exception as e:
         # Catch-all for unexpected errors

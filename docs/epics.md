@@ -787,6 +787,106 @@ So that I can objectively compare configurations and measure pipeline effectiven
 
 ---
 
+### Story 4.7: Enhancement API Layer Development
+
+**User Story:**
+As a developer,
+I want to control enhancement pipeline configuration via API parameters,
+So that I can dynamically adjust VAD/refine/split settings per transcription request.
+
+**Acceptance Criteria:**
+1. POST /upload accepts optional `enhancement_config` JSON parameter (form field)
+2. EnhancementFactory.create_pipeline() supports config_dict injection
+3. Configuration priority implemented: API param > env vars > defaults
+4. Backward compatible: missing enhancement_config uses env vars
+5. Pydantic model validation for enhancement_config structure
+6. API tests cover enhancement_config parameter scenarios:
+   - Valid configuration with all components
+   - Valid configuration with partial components (e.g., only VAD)
+   - Invalid JSON format (returns 400)
+   - Invalid pipeline component names (returns 400)
+   - Invalid parameter values (e.g., threshold outside 0.0-1.0, returns 400)
+7. TypeScript type definitions updated (if frontend integration planned)
+8. Error responses include clear messages indicating which parameter is invalid
+
+**Estimated Effort:** 1-2 hours
+
+**Prerequisites:** Story 4.6 (quality validation complete)
+
+---
+
+### Story 4.8: HTTP CLI Tool Development
+
+**User Story:**
+As a developer,
+I want an HTTP-based CLI tool to test API workflows,
+So that I can validate end-to-end transcription without virtual environment switching.
+
+**Acceptance Criteria:**
+1. Create `backend/app/cli/klip_client.py` with commands:
+   - `upload`: Upload file with optional model and enhancement_config
+   - `status`: Poll job status with optional --watch flag
+   - `result`: Fetch transcription result with optional --output file
+   - `test-flow`: Automated end-to-end test (upload → poll → fetch → validate)
+2. Dependencies: requests/httpx only (no PyTorch/transformers)
+3. Support for enhancement_config parameter in upload command:
+   ```bash
+   python klip_client.py upload --file test.mp3 --config '{"pipeline":"vad,split"}'
+   ```
+4. --watch flag for status polling: updates every 3 seconds until completion/failure
+5. JSON output format for result command (can pipe to jq or save to file)
+6. Automated test-flow validates:
+   - Upload succeeds and returns job_id
+   - Status polling works (prints progress updates)
+   - Result fetch succeeds
+   - Basic validation (segments exist, format correct)
+7. README documentation with usage examples in `backend/app/cli/README.md`:
+   - Installation instructions
+   - Command usage for each subcommand
+   - Enhancement config examples
+   - Troubleshooting common errors
+
+**Estimated Effort:** 2-3 hours
+
+**Prerequisites:** Story 4.7 (API layer complete)
+
+---
+
+### Story 4.9: Model Testing & Documentation
+
+**User Story:**
+As a product manager,
+I want validated test results for Belle2 and WhisperX using the new CLI tool,
+So that I can make a data-driven model selection decision.
+
+**Acceptance Criteria:**
+1. Run `klip_client.py test-flow` for Belle2 with test samples:
+   - zh_medium_audio1 (medium-length Chinese audio)
+   - zh_short_video1 (short video sample)
+   - Record: response time, CER/WER results, segment statistics
+2. Run `klip_client.py test-flow` for WhisperX with same samples
+3. Compare results using enhancement configurations:
+   - Baseline (no enhancements)
+   - VAD only
+   - VAD + refinement
+   - Full pipeline (VAD + refinement + splitting)
+4. Document findings in decision log with:
+   - Side-by-side metric comparison table
+   - Enhancement pipeline effectiveness analysis
+   - Recommendation for default configuration
+5. Update main README.md with CLI tools section:
+   - Developer Tools overview
+   - klip_client.py installation
+   - Common usage examples
+6. Update architecture.md Developer Tools section (verify completeness)
+7. Verify all test results meet quality baselines (CER ≤ 10%, WER ≤ 15%)
+
+**Estimated Effort:** 1 hour
+
+**Prerequisites:** Story 4.8 (CLI tool complete)
+
+---
+
 **Epic 4 Estimated Timeline:** 10-15 days (post-MVP)
 
 **Epic 4 Dependencies:**

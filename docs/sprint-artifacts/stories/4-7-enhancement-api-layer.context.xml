@@ -1,0 +1,199 @@
+<story-context id=".bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>7</storyId>
+    <title>Enhancement API Layer Development</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-22</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/stories/4-7-enhancement-api-layer.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>a developer</asA>
+    <iWant>to control enhancement pipeline configuration via API parameters</iWant>
+    <soThat>I can dynamically adjust VAD/refine/split settings per transcription request</soThat>
+    <tasks>
+      - Task 1: Extend POST /upload endpoint to accept enhancement_config parameter (AC: 1, 7)
+      - Task 2: Create Pydantic validation model for enhancement_config (AC: 3, 5)
+      - Task 3: Extend EnhancementFactory to support config_dict injection (AC: 2, 8)
+      - Task 4: Update transcription tasks to use API-provided config (AC: 2, 8)
+      - Task 5: Write API tests for enhancement_config parameter (AC: 4)
+      - Task 6: Test configuration priority implementation (AC: 8)
+      - Task 7: Update TypeScript type definitions (AC: 6)
+      - Task 8: Write documentation (AC: 1-8)
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    1. POST /upload accepts optional `enhancement_config` JSON parameter (form field)
+    2. EnhancementFactory.create_pipeline() supports config_dict injection
+    3. Pydantic model validation for enhancement_config structure
+    4. API tests cover enhancement_config parameter scenarios
+    5. Error responses include clear messages indicating which parameter is invalid
+    6. TypeScript type definitions updated (if frontend integration planned)
+    7. Backward compatible: missing enhancement_config uses env vars
+    8. Configuration priority implemented and tested: API param > env vars > defaults
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/PRD.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR003c - Enhancement Pipeline Configuration via API</section>
+        <snippet>System shall expose enhancement pipeline configuration via API parameters, enabling dynamic control of VAD, timestamp refinement, and segment splitting components on a per-request basis</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Story 4.7: Enhancement API Layer Development</section>
+        <snippet>Completes Epic 4 enhancement framework by exposing pipeline configuration via public API. Enables developers to control VAD preprocessing, timestamp refinement, and segment splitting on a per-request basis. Configuration priority: API param > env vars > defaults.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>System Architecture</title>
+        <section>Configuration Management</section>
+        <snippet>Configuration promotion workflow: dev .env → docker-compose.yaml. API-level configuration enables runtime control without server restarts.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/stories/4-5-enhancement-pipeline-composition.md</path>
+        <title>Story 4.5 - Enhancement Pipeline Composition</title>
+        <section>Learnings and Implementation</section>
+        <snippet>EnhancementPipeline established with factory pattern (create_pipeline). Configuration via environment variables. Story 4.7 extends to support API-level config injection.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/stories/4-6-multi-model-quality-validation.md</path>
+        <title>Story 4.6 - Multi-Model Quality Validation</title>
+        <section>Pydantic Validation Patterns</section>
+        <snippet>Pydantic models with field validators proven effective (85-100% coverage). Field validators raise ValueError with descriptive messages. HTTP 400 for validation errors.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>backend/app/main.py</path>
+        <kind>endpoint</kind>
+        <symbol>upload_file</symbol>
+        <lines>63-185</lines>
+        <reason>POST /upload endpoint - needs enhancement_config parameter added as optional Form field. Currently accepts file, model, language parameters.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/ai_services/enhancement/factory.py</path>
+        <kind>factory</kind>
+        <symbol>create_pipeline</symbol>
+        <lines>24-51</lines>
+        <reason>Factory function that creates EnhancementPipeline - needs config_dict parameter support for API-provided configuration. Currently only supports pipeline_config string.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/tasks/transcription.py</path>
+        <kind>task</kind>
+        <symbol>transcribe_audio</symbol>
+        <lines>N/A</lines>
+        <reason>Celery task that calls create_pipeline() - needs to pass enhancement_config from API to factory function.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/models.py</path>
+        <kind>models</kind>
+        <symbol>*Config classes</symbol>
+        <lines>N/A</lines>
+        <reason>Pydantic models for request validation - need EnhancementConfigRequest model with VADConfig, RefineConfig, SplitConfig nested models.</reason>
+      </artifact>
+      <artifact>
+        <path>backend/tests/test_upload_endpoint.py</path>
+        <kind>test</kind>
+        <symbol>test_upload_*</symbol>
+        <lines>N/A</lines>
+        <reason>Existing upload endpoint tests - extend with enhancement_config parameter test scenarios (valid/invalid configs).</reason>
+      </artifact>
+      <artifact>
+        <path>backend/app/config.py</path>
+        <kind>config</kind>
+        <symbol>Settings</symbol>
+        <lines>N/A</lines>
+        <reason>Application configuration with enhancement pipeline environment variables. Reference for default values in API validation model.</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <python>
+        <package name="fastapi" version=">=0.100.0" reason="Form field handling for multipart/form-data" />
+        <package name="pydantic" version=">=2.0.0" reason="Validation models with field validators" />
+        <package name="celery" version=">=5.5.3" reason="Task queue for async transcription" />
+      </python>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    - **Backward Compatibility**: enhancement_config parameter MUST be optional. Missing parameter defaults to environment variable configuration (existing behavior preserved).
+    - **Configuration Priority**: Explicit hierarchy - API parameter > environment variables > default values. Priority logic must be tested.
+    - **Validation Error Messages**: Pydantic validation errors must include clear indication of which parameter is invalid (e.g., "Invalid pipeline component 'xyz'. Valid: vad, refine, split").
+    - **No Breaking API Changes**: POST /upload response format unchanged. Only add optional request parameter.
+    - **Component Naming**: Pipeline components must use exact names: "vad", "refine", "split" (case-insensitive, validated).
+    - **Parameter Ranges**: VAD aggressiveness (0-3), refine search_window_ms (>0, <=500), split max_duration (>0, <=15.0), split max_chars (>0, <=500).
+    - **Error Status Codes**: All validation errors return HTTP 400 (Bad Request), not 500.
+    - **Logging**: Configuration source (API vs env) must be logged for debugging.
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>POST /upload (extended)</name>
+      <kind>REST endpoint</kind>
+      <signature>
+        POST /upload
+        Form fields:
+          - file: UploadFile (required)
+          - model: str (optional, default=None)
+          - language: str (optional, default=None)
+          - enhancement_config: str (optional, JSON string)
+        Response: {"job_id": "uuid"}
+      </signature>
+      <path>backend/app/main.py:63-185</path>
+    </interface>
+    <interface>
+      <name>EnhancementConfigRequest (new)</name>
+      <kind>Pydantic model</kind>
+      <signature>
+        class EnhancementConfigRequest(BaseModel):
+            pipeline: Optional[str] = "vad,refine,split"
+            vad: Optional[VADConfig] = VADConfig()
+            refine: Optional[RefineConfig] = RefineConfig()
+            split: Optional[SplitConfig] = SplitConfig()
+      </signature>
+      <path>backend/app/models.py (to be added)</path>
+    </interface>
+    <interface>
+      <name>create_pipeline (extended)</name>
+      <kind>factory function</kind>
+      <signature>
+        def create_pipeline(
+            pipeline_config: Optional[str] = None,
+            config_dict: Optional[Dict[str, Any]] = None
+        ) -> EnhancementPipeline
+      </signature>
+      <path>backend/app/ai_services/enhancement/factory.py:24</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing follows pytest patterns established in Epic 4. API tests use FastAPI TestClient with multipart form data. Configuration priority tests verify hierarchy (API > env > defaults). Pydantic validation tests check field validators and error messages. Integration tests validate end-to-end workflow with API-provided configuration.
+    </standards>
+    <locations>
+      - backend/tests/test_upload_endpoint.py (extend with enhancement_config scenarios)
+      - backend/tests/test_enhancement_factory.py (new - config priority tests)
+      - backend/tests/test_models.py (extend with EnhancementConfigRequest validation)
+    </locations>
+    <ideas>
+      - AC-1: Test valid enhancement_config with all components → verify pipeline created correctly
+      - AC-3: Test invalid JSON format → expect HTTP 400 with "Invalid JSON" message
+      - AC-3: Test invalid component name → expect HTTP 400 with clear component list
+      - AC-3: Test out-of-range parameter values → expect HTTP 400 with specific error
+      - AC-4: Test missing enhancement_config → verify env vars used (backward compatibility)
+      - AC-7: Test partial config (only VAD) → verify other components use defaults
+      - AC-8: Test API param overrides env var → verify API value takes precedence
+      - AC-8: Test env var overrides default → verify environment value used when no API param
+      - Integration: Upload with enhancement_config → verify transcription applies config → check result metadata
+    </ideas>
+  </tests>
+</story-context>
