@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light"> <!-- 默认浅色模式 -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KlipNote - AI 音频转录原型</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 Inter 字体 (来自 Design 1) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind 配置 (来自 Design 1 的配色) -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+                        mono: ['Menlo', 'Courier New', 'monospace'],
+                    },
+                    // 融合 Design 1 的调色板
+                    colors: {
+                        'light-bg': '#FFFFFF',
+                        'light-container': '#F5F5F7', // 稍微调整以匹配 design2 的 F5F5F7
+                        'light-border': '#E0E0E0',
+                        'light-text': '#1D1D1F', // 稍微调整以匹配 design2 的 1D1D1F
+                        'light-text-secondary': '#6E6E73', // 稍微调整以匹配 design2 的 6E6E73
+                        
+                        'dark-bg': '#1F2022', // (来自 D1)
+                        'dark-container': '#2A2B2E', // (来自 D1)
+                        'dark-border': '#424242', // (来自 D1)
+                        'dark-text': '#F5F5F5', // (来自 D1)
+                        'dark-text-secondary': '#9E9E9E', // (来自 D1)
+                        
+                        'brand': '#005AEE', // (来自 D2 的浅色模式品牌色)
+                        'brand-hover': '#0045b6', // (来自 D2 的浅色模式品牌色)
+                        
+                        'dark-brand': '#3A76F7', // (来自 D2 的深色模式品牌色)
+                        'dark-brand-hover': '#5a91f7', // (来自 D2 的深色模式品牌色)
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- 自定义基础样式 (来自 Design 1) -->
+    <style type="text/tailwindcss">
+        @layer base {
+            html {
+                -webkit-tap-highlight-color: transparent;
+            }
+            body {
+                @apply bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text transition-colors duration-300 antialiased;
+            }
+            /* 滚动条样式 */
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                @apply bg-light-container dark:bg-dark-container;
+            }
+            ::-webkit-scrollbar-thumb {
+                @apply bg-light-border dark:bg-dark-border rounded-full;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                @apply bg-light-text-secondary dark:bg-dark-text-secondary;
+            }
+            /* contenteditable 的占位符 */
+            [contenteditable="true"]:empty:before {
+                content: attr(data-placeholder);
+                @apply text-light-text-secondary dark:text-dark-text-secondary opacity-50;
+                pointer-events: none;
+            }
+            
+            /* **新增**: 旋转 details summary 箭头 */
+            details[open] > summary svg {
+                @apply rotate-90;
+            }
+        }
+        @layer components {
+            /* 按钮基础样式 (融合 D1 和 D2) */
+            .btn {
+                @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2;
+            }
+            .btn-primary {
+                @apply btn bg-brand text-white hover:bg-brand-hover dark:bg-dark-brand dark:hover:bg-dark-brand-hover;
+            }
+            .btn-secondary {
+                @apply btn bg-light-container dark:bg-dark-container text-light-text dark:text-dark-text border border-light-border dark:border-dark-border hover:bg-light-border dark:hover:bg-dark-border;
+            }
+            .btn-ghost {
+                @apply btn bg-transparent text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-container dark:hover:bg-dark-container hover:text-light-text dark:hover:text-dark-text;
+            }
+            .btn-icon {
+                 @apply btn-ghost p-2 rounded-full;
+            }
+            /* 表单样式 (来自 D1) */
+            .form-input {
+                @apply w-full rounded-lg border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg p-2.5 text-light-text dark:text-dark-text focus:border-brand dark:focus:border-dark-brand focus:ring-brand dark:focus:ring-dark-brand;
+            }
+            /* 下拉框箭头 (来自 D2) */
+            .form-select {
+                @apply form-input appearance-none;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236E6E73'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 0.75rem center;
+                background-size: 1.25rem;
+            }
+            .dark .form-select {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%239E9E9E'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E");
+            }
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <!-- 1. 应用主容器 (来自 D2 结构) -->
+    <div id="klipnote-app" class="flex flex-col h-screen overflow-hidden">
+        
+        <!-- 2. 顶部导航栏 (Header) -->
+        <header class="sticky top-0 z-30 w-full bg-light-bg/80 dark:bg-dark-bg/80 backdrop-blur-sm border-b border-light-border dark:border-dark-border flex-shrink-0">
+            <nav class="flex items-center justify-between max-w-screen-2xl mx-auto px-4 md:px-6 h-16">
+                <!-- Logo (来自 D1) -->
+                <div id="logo" class="flex items-center space-x-2 cursor-pointer" title="返回上传页">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7 text-brand dark:text-dark-brand">
+                        <path d="M11.25 4.533A9.707 9.707 0 0 0 6 3a9.735 9.735 0 0 0-3.25.555.75.75 0 0 0-.5.707v14.506a.75.75 0 0 0 .5.707c1.03.353 2.09.555 3.25.555 3.39 0 6.5-1.001 9-2.652V6.75a9.06 9.06 0 0 1-3.75-2.217Z" />
+                        <path d="M12.75 4.533V18.25a8.217 8.217 0 0 1-1.5.184V5.105a9.06 9.06 0 0 1 1.5-.572Z" />
+                        <path d="M13.5 18.434V5.105a9.06 9.06 0 0 1 1.5-.572V18.25a8.217 8.217 0 0 1-1.5.184Z" />
+                        <path d="M15.75 18.25V4.533a9.06 9.06 0 0 1 1.5-.572V18.434a8.217 8.217 0 0 1-1.5-.184Z" />
+                        <path d="M18 18.434V6.75a9.06 9.06 0 0 1 3.75-2.217v13.901a.75.75 0 0 1-.5.707 9.735 9.735 0 0 1-3.25.555c-1.16 0-2.22-.202-3.25-.555a.75.75 0 0 1-.5-.707V18.25c.789.141 1.6.221 2.423.254.271.01.542.016.814.016.094 0 .187 0 .28-.002.093 0 .187-.002.28-.005.187-.003.374-.008.56-.014Z" />
+                    </svg>
+                    <h1 class="text-xl font-bold text-light-text dark:text-dark-text hidden md:block">KlipNote</h1>
+                </div>
+                
+                <!-- 右侧操作 -->
+                <div class="flex items-center space-x-2">
+                    <!-- 编辑器按钮 (来自 D2, 默认隐藏) -->
+                    <div id="editor-nav-buttons" class="hidden items-center space-x-2">
+                        <button class="btn btn-secondary text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                            <span class="hidden md:inline">TXT</span>
+                        </button>
+                        <button class="btn btn-secondary text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                            <span class="hidden md:inline">SRT</span>
+                        </button>
+                        <button id="export-modal-trigger" class="btn btn-primary text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" /></svg>
+                            <span class="hidden md:inline">导出...</span>
+                        </button>
+                    </div>
+
+                    <!-- 分隔线 -->
+                    <div id="editor-nav-divider" class="hidden w-px h-6 bg-light-border dark:bg-dark-border mx-2"></div>
+                    
+                    <!-- 移动端侧边栏开关 (来自 D1, 默认隐藏) -->
+                    <button id="sidebar-toggle-btn" class="btn-icon md:hidden hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                        </svg>
+                    </button>
+
+                    <!-- 切换主题 (来自 D1) -->
+                    <button id="theme-toggle" class="btn-icon">
+                        <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-6.364-.386 1.591-1.591M3 12H.75m.386-6.364 1.591 1.591" />
+                        </svg>
+                        <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 hidden">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+                        </svg>
+                    </button>
+                    
+                    <!-- 用户头像 (来自 D2) -->
+                    <button class="btn-icon">
+                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                         </svg>
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- 3. 主内容区域 (用于视图切换) -->
+        <main class="flex-1 overflow-hidden">
+
+            <!-- 
+              ==========================================
+              页面 1: 上传页 (已按要求修改)
+              ==========================================
+            -->
+            <div id="upload-view" class="flex flex-col items-center justify-center h-full p-4 md:p-6 overflow-y-auto">
+                <div class="w-full max-w-2xl">
+                    <div class="w-full bg-light-container dark:bg-dark-container rounded-lg shadow-lg p-6 md:p-8">
+                        
+                        <!-- 拖放区域 -->
+                        <div id="drop-zone" class="border-2 border-dashed border-light-text-secondary/50 dark:border-dark-text-secondary/50 rounded-lg p-10 md:p-16 text-center cursor-pointer hover:border-brand dark:hover:border-dark-brand hover:bg-brand/10 dark:hover:bg-dark-brand/10 transition-colors">
+                            <input type="file" id="file-input" class="hidden" accept="audio/*,video/*" multiple>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto text-light-text-secondary dark:text-dark-text-secondary">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+                            </svg>
+                            <p id="dropzone-text" class="mt-4 text-lg font-medium text-light-text dark:text-dark-text">拖放或点击上传文件</p>
+                            <p class="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">支持 MP3, WAV, M4A, MP4 等</p>
+                        </div>
+
+                        <!-- 配置面板 (修改后) -->
+                        <div class="w-full mt-6 space-y-4">
+                            <!-- 1. 并排下拉框 (新) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="model-select" class="block text-sm font-medium mb-1.5 text-light-text dark:text-dark-text">转录模型</label>
+                                    <select id="model-select" class="form-select">
+                                        <option>转录模型: Belle2 (推荐)</option>
+                                        <option>转录模型: WhisperX (高精度)</option>
+                                        <option>转录模型: FastWhisper (快速)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="language-select" class="block text-sm font-medium mb-1.5 text-light-text dark:text-dark-text">音频语言</label>
+                                    <select id="language-select" class="form-select">
+                                        <option value="auto">自动检测</option>
+                                        <option value="zh">中文 (Mandarin)</option>
+                                        <option value="en">英文 (English)</option>
+                                        <option value="ja">日语 (Japanese)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 2. 高级选项 (折叠) (新) -->
+                            <details id="advanced-options" class="pt-2">
+                                <summary class="list-none cursor-pointer text-sm font-medium text-light-text dark:text-dark-text flex items-center gap-1 select-none">
+                                    <svg class="w-4 h-4 transition-transform duration-200 text-light-text-secondary dark:text-dark-text-secondary" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                    </svg>
+                                    高级选项
+                                </summary>
+                                <!-- 3. 复选框内容 (来自 Design 1) -->
+                                <fieldset class="mt-4 space-y-3 pl-5 border-l border-light-border dark:border-dark-border ml-2">
+                                    <div class="relative flex items-start">
+                                        <div class="flex h-6 items-center">
+                                            <input id="vad-checkbox" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand">
+                                        </div>
+                                        <div class="ml-3 text-sm leading-6">
+                                            <label for="vad-checkbox" class="font-medium text-light-text dark:text-dark-text cursor-pointer">VAD 预处理</label>
+                                            <p class="text-xs text-light-text-secondary dark:text-dark-text-secondary">自动切分静音片段，提高长音频准确率。</p>
+                                        </div>
+                                    </div>
+                                    <div class="relative flex items-start">
+                                        <div class="flex h-6 items-center">
+                                            <input id="timestamp-checkbox" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand">
+                                        </div>
+                                        <div class="ml-3 text-sm leading-6">
+                                            <label for="timestamp-checkbox" class="font-medium text-light-text dark:text-dark-text cursor-pointer">时间戳精炼</label>
+                                            <p class="text-xs text-light-text-secondary dark:text-dark-text-secondary">提供毫秒级精准时间戳。</p>
+                                        </div>
+                                    </div>
+                                </fieldset>
+                            </details>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <button id="start-btn" class="btn-primary w-full mt-8 py-3 text-base font-semibold" disabled>
+                            <span>开始转录</span>
+                            <svg id="loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="animate-spin h-5 w-5 text-white hidden ml-2">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 
+              ==========================================
+              页面 2: 编辑页 (未修改)
+              ==========================================
+            -->
+            <div id="editor-view" class="hidden flex flex-col h-full">
+                
+                <!-- 4.1 音频播放器 (来自 D2, 置顶) -->
+                <section class="flex-shrink-0 flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 bg-light-container dark:bg-dark-container border-b border-light-border dark:border-dark-border">
+                    <div class="flex items-center space-x-1">
+                        <button id="play-pause-btn" class="btn-icon text-light-text dark:text-dark-text">
+                            <!-- Play Icon -->
+                            <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                                <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
+                            </svg>
+                            <!-- Pause Icon -->
+                            <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 hidden">
+                                <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <button class="btn-icon" title="后退5秒">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-6 6m0 0l-6-6m6 6V9a6 6 0 0 1 12 0v3" /></svg>
+                        </button>
+                        <button class="btn-icon" title="快进5秒">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>
+                        </button>
+                    </div>
+                    <span class="font-mono text-sm text-light-text-secondary dark:text-dark-text-secondary">00:05.87</span>
+                    <div class="flex-1 h-1.5 bg-light-border dark:bg-dark-border rounded-full cursor-pointer group">
+                        <div class="h-full w-[30%] bg-brand dark:bg-dark-brand rounded-full relative">
+                             <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-brand dark:bg-dark-brand rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                    </div>
+                    <span class="font-mono text-sm text-light-text-secondary dark:text-dark-text-secondary">03:20.10</span>
+                    <button class="btn-icon" title="播放设置">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456c.476-.178.98.123 1.11.61l1.42 2.461c.128.487-.07 1.016-.53 1.22l-1.086.495c-.34.156-.55.505-.55.882v.11c0 .377.21.726.55.882l1.086.495c.46.204.658.733.53 1.22l-1.42 2.461c-.13.487-.634.788-1.11.61l-1.217-.456c-.354-.133-.75-.072-1.075.124a6.57 6.57 0 0 1-.22.127c-.332.183-.582.496-.645.87l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.075-.124l-1.217.456c-.475.178-.979-.123-1.11-.61l-1.42-2.461c-.128-.487.07-1.016.53-1.22l1.086-.495c.34-.156.55-.505.55-.882v-.11c0-.377-.21-.726-.55-.882l-1.086-.495c-.46-.204-.658-.733-.53-1.22l1.42-2.461c.13-.487.634.788 1.11-.61l1.217.456c.354.133.75.072 1.075-.124.073-.044.146-.087.22-.127.332-.183.582-.496.645-.87l.213-1.281Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    </button>
+                </section>
+
+                <!-- 4.2 编辑器主容器 (来自 D2, 可滚动) -->
+                <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                    
+                    <!-- 转录编辑区 (左侧) -->
+                    <div id="transcript-editor" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+                        
+                        <!-- Segment 1 -->
+                        <div class="flex flex-col md:flex-row gap-2 md:gap-5">
+                            <div class="w-full md:w-24 flex-shrink-0 font-mono text-sm text-light-text-secondary dark:text-dark-text-secondary md:pt-2 cursor-pointer hover:text-brand dark:hover:text-dark-brand" title="点击跳转到 00:00.12">
+                                00:00.12<span class="hidden md:inline"><br>00:05.87</span>
+                            </div>
+                            <div contenteditable="true" data-placeholder="编辑文本..." class="w-full text-base text-light-text dark:text-dark-text leading-relaxed outline-none focus:bg-light-container/80 dark:focus:bg-dark-container/80 rounded-md px-2 py-1.5 -ml-2 -mt-1.5">
+                                你的学习和工作方式其实是完全错误的。大量的经历和时间都因为你们的...
+                            </div>
+                        </div>
+                        
+                        <!-- Segment 2 -->
+                        <div class="flex flex-col md:flex-row gap-2 md:gap-5">
+                            <div class="w-full md:w-24 flex-shrink-0 font-mono text-sm text-light-text-secondary dark:text-dark-text-secondary md:pt-2 cursor-pointer hover:text-brand dark:hover:text-dark-brand" title="点击跳转到 00:05.88">
+                                00:05.88<span class="hidden md:inline"><br>00:11.59</span>
+                            </div>
+                            <div contenteditable="true" data-placeholder="编辑文本..." class="w-full text-base text-light-text dark:text-dark-text leading-relaxed outline-none focus:bg-light-container/80 dark:focus:bg-dark-container/80 rounded-md px-2 py-1.5 -ml-2 -mt-1.5">
+                                错。非常的可惜。如果你没有准备好提升自己可以先花走。我会通过这个...
+                            </div>
+                        </div>
+
+                        <!-- Segment 3 -->
+                        <div class="flex flex-col md:flex-row gap-2 md:gap-5">
+                            <div class="w-full md:w-24 flex-shrink-0 font-mono text-sm text-light-text-secondary dark:text-dark-text-secondary md:pt-2 cursor-pointer hover:text-brand dark:hover:text-dark-brand" title="点击跳转到 00:11.60">
+                                00:11.60<span class="hidden md:inline"><br>00:17.31</span>
+                            </div>
+                            <div contenteditable="true" data-placeholder="编辑文本..." class="w-full text-base text-light-text dark:text-dark-text leading-relaxed outline-none focus:bg-light-container/80 dark:focus:bg-dark-container/80 rounded-md px-2 py-1.5 -ml-2 -mt-1.5">
+                                频将一个刚被研究出来的最高效学习工作的秘诀普及到大家的技能包里。为...
+                            </div>
+                        </div>
+
+                        <!-- Segment 4 -->
+                        <div class="flex flex-col md:flex-row gap-2 md:gap-5">
+                            <div class="w-full md:w-24 flex-shrink-0 font-mono text-sm text-light-text-secondary dark:text-dark-text-secondary md:pt-2 cursor-pointer hover:text-brand dark:hover:text-dark-brand" title="点击跳转到 00:17.32">
+                                00:17.32<span class="hidden md:inline"><br>00:18.71</span>
+                            </div>
+                            <div contenteditable="true" data-placeholder="编辑文本..." class="w-full text-base text-light-text dark:text-dark-text leading-relaxed outline-none focus:bg-light-container/80 dark:focus:bg-dark-container/80 rounded-md px-2 py-1.5 -ml-2 -mt-1.5">
+                                能不能达到成功的关键,
+                            </div>
+                        </div>
+                        
+                        <!-- 更多内容... -->
+
+                    </div>
+                    
+                    <!-- 侧边栏 (右侧) (来自 D2 内容, D1 行为) -->
+                    <aside id="sidebar" class="fixed inset-y-0 right-0 z-40 w-full md:w-72 lg:w-80 h-full md:sticky md:top-16 md:h-[calc(100vh-8rem)]
+                                            flex flex-col bg-light-container dark:bg-dark-container border-l border-light-border dark:border-dark-border
+                                            transform translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+                        
+                        <!-- 移动端头部 -->
+                        <div class="flex items-center justify-between p-4 border-b border-light-border dark:border-dark-border md:hidden">
+                            <h2 class="font-semibold text-light-text dark:text-dark-text">详情</h2>
+                            <button id="sidebar-close-btn" class="btn-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- 侧边栏内容 (来自 D2) -->
+                        <div class="flex-1 overflow-y-auto p-6 space-y-8">
+                            <!-- 说话人模块 -->
+                            <div>
+                                <h4 class="flex items-center gap-2 text-sm font-semibold text-light-text dark:text-dark-text border-b border-light-border dark:border-dark-border pb-2 mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A9.06 9.06 0 0 1 6 18.719m12 0a9.06 9.06 0 0 0-6-2.18c-2.17 0-4.207.576-5.963 1.584m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                                    说话人
+                                </h4>
+                                <ul class="space-y-2">
+                                    <li class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full bg-brand dark:bg-dark-brand"></span>
+                                        <input type="text" value="Speaker 1" class="form-input text-sm !p-1.5 flex-1 !bg-light-bg dark:!bg-dark-bg">
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                                        <input type="text" value="Speaker 2" class="form-input text-sm !p-1.5 flex-1 !bg-light-bg dark:!bg-dark-bg">
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <!-- 质量指标模块 -->
+                            <div>
+                                <h4 class="flex items-center gap-2 text-sm font-semibold text-light-text dark:text-dark-text border-b border-light-border dark:border-dark-border pb-2 mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                                    质量指标
+                                </h4>
+                                <ul class="text-sm space-y-1.5">
+                                    <li class="flex justify-between">
+                                        <span class="text-light-text-secondary dark:text-dark-text-secondary">WER (词错率):</span>
+                                        <span class="font-medium text-light-text dark:text-dark-text">95%</span>
+                                    </li>
+                                    <li class="flex justify-between">
+                                        <span class="text-light-text-secondary dark:text-dark-text-secondary">时间戳精度:</span>
+                                        <span class="font-medium text-light-text dark:text-dark-text">OK</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </aside>
+                </main>
+            </div>
+            
+            <!-- 移动端侧边栏遮罩 -->
+            <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-black/30 hidden md:hidden" aria-hidden="true"></div>
+
+        </main>
+    </div>
+
+    <!-- 5. 导出模态框 (来自 D1 样式, D2 内容) -->
+    <div id="export-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <!-- 遮罩 -->
+        <div id="modal-overlay" class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+
+        <!-- 模态框内容 -->
+        <div class="relative z-10 w-full max-w-lg bg-light-container dark:bg-dark-container rounded-lg shadow-xl overflow-hidden">
+            <!-- 头部 -->
+            <div class="flex items-center justify-between p-4 border-b border-light-border dark:border-dark-border">
+                <h2 class="text-lg font-semibold text-light-text dark:text-dark-text">高级导出选项</h2>
+                <button id="modal-close-btn" class="btn-icon -mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 主体 (来自 D2 内容) -->
+            <div id="modal-options" class="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                <!-- 格式选择 -->
+                <fieldset>
+                    <legend class="text-sm font-medium mb-2 text-light-text dark:text-dark-text">选择格式:</legend>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center p-3 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border has-[:checked]:border-brand dark:has-[:checked]:border-dark-brand has-[:checked]:ring-2 has-[:checked]:ring-brand/50 dark:has-[:checked]:ring-dark-brand/50 cursor-pointer">
+                            <input type="radio" name="export-format" value="txt" class="h-4 w-4 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand" checked>
+                            <span class="ml-3 text-sm font-medium">.txt (纯文本)</span>
+                        </label>
+                        <label class="flex items-center p-3 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border has-[:checked]:border-brand dark:has-[:checked]:border-dark-brand has-[:checked]:ring-2 has-[:checked]:ring-brand/50 dark:has-[:checked]:ring-dark-brand/50 cursor-pointer">
+                            <input type="radio" name="export-format" value="srt" class="h-4 w-4 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand">
+                            <span class="ml-3 text-sm font-medium">.srt (字幕)</span>
+                        </label>
+                        <label class="flex items-center p-3 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border has-[:checked]:border-brand dark:has-[:checked]:border-dark-brand has-[:checked]:ring-2 has-[:checked]:ring-brand/50 dark:has-[:checked]:ring-dark-brand/50 cursor-pointer">
+                            <input type="radio" name="export-format" value="json" class="h-4 w-4 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand">
+                            <span class="ml-3 text-sm font-medium">.json (原始数据)</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <!-- 包含内容 -->
+                <fieldset>
+                    <legend class="text-sm font-medium mb-2 text-light-text dark:text-dark-text">包含内容:</legend>
+                    <div class="space-y-3">
+                        <div class="relative flex items-start">
+                            <div class="flex h-6 items-center">
+                                <input id="opt-timestamps" name="export-options" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand">
+                            </div>
+                            <div class="ml-3 text-sm leading-6">
+                                <label for="opt-timestamps" class="font-medium text-light-text dark:text-dark-text cursor-pointer">包含时间戳</label>
+                            </div>
+                        </div>
+                        <div class="relative flex items-start">
+                            <div class="flex h-6 items-center">
+                                <input id="opt-speakers" name="export-options" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand">
+                            </div>
+                            <div class="ml-3 text-sm leading-6">
+                                <label for="opt-speakers" class="font-medium text-light-text dark:text-dark-text cursor-pointer">包含说话人标签</label>
+                            </div>
+                        </div>
+                        <div class="relative flex items-start">
+                            <div class="flex h-6 items-center">
+                                <input id="opt-quality" name="export-options" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-brand dark:text-dark-brand focus:ring-brand dark:focus:ring-dark-brand">
+                            </div>
+                            <div class="ml-3 text-sm leading-6">
+                                <label for="opt-quality" class="font-medium text-light-text dark:text-dark-text cursor-pointer">包含质量指标</label>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- 预览 -->
+                <div>
+                    <legend class="text-sm font-medium mb-2 text-light-text dark:text-dark-text">预览:</legend>
+                    <pre id="export-preview" class="w-full h-24 overflow-y-auto p-3 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary"></pre>
+                </div>
+            </div>
+
+            <!-- 页脚 -->
+            <div class="flex justify-end p-4 bg-light-bg/50 dark:bg-dark-bg/50 border-t border-light-border dark:border-dark-border space-x-3">
+                <button id="modal-cancel-btn" class="btn-secondary">取消</button>
+                <button id="modal-download-btn" class="btn-primary">下载文件</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 逻辑 (融合 D1 和 D2) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 模拟数据 ---
+            const mockTranscript = [
+                { start: "00:00.12", end: "00:05.87", speaker: "Speaker 1", text: "你的学习和工作方式其实是完全错误的。大量的经历和时间都因为你们的..." },
+                { start: "00:05.88", end: "00:11.59", speaker: "Speaker 1", text: "错。非常的可惜。如果你没有准备好提升自己可以先花走。我会通过这个..." },
+                { start: "00:11.60", end: "00:17.31", speaker: "Speaker 2", text: "频将一个刚被研究出来的最高效学习工作的秘诀普及到大家的技能包里。为..." },
+            ];
+            
+            // --- 状态管理 ---
+            let currentFile = null;
+            let isPlaying = false;
+
+            // --- DOM 元素 ---
+            const $ = (selector) => document.querySelector(selector);
+            const $$ = (selector) => document.querySelectorAll(selector);
+
+            // 全局
+            const htmlEl = document.documentElement;
+            const logo = $('#logo');
+            const themeToggle = $('#theme-toggle');
+            const themeIconLight = $('#theme-icon-light');
+            const themeIconDark = $('#theme-icon-dark');
+            const editorNav = $('#editor-nav-buttons');
+            const editorNavDivider = $('#editor-nav-divider');
+
+            // 视图
+            const uploadView = $('#upload-view');
+            const editorView = $('#editor-view');
+
+            // 上传页
+            const dropZone = $('#drop-zone');
+            const dropzoneText = $('#dropzone-text');
+            const fileInput = $('#file-input');
+            const startBtn = $('#start-btn');
+            const loadingSpinner = $('#loading-spinner');
+
+            // 编辑页
+            const sidebarToggleBtn = $('#sidebar-toggle-btn');
+            const sidebar = $('#sidebar');
+            const sidebarCloseBtn = $('#sidebar-close-btn');
+            const sidebarOverlay = $('#sidebar-overlay');
+            const playPauseBtn = $('#play-pause-btn');
+            const playIcon = $('#play-icon');
+            const pauseIcon = $('#pause-icon');
+
+            // 导出模态框
+            const exportModal = $('#export-modal');
+            const exportModalTrigger = $('#export-modal-trigger');
+            const modalOverlay = $('#modal-overlay');
+            const modalCloseBtn = $('#modal-close-btn');
+            const modalCancelBtn = $('#modal-cancel-btn');
+            const modalOptions = $('#modal-options');
+            const exportPreview = $('#export-preview');
+
+            // --- 1. 视图切换 (来自 D2) ---
+            function showView(viewName) {
+                if (viewName === 'editor') {
+                    uploadView.classList.add('hidden');
+                    editorView.classList.remove('hidden');
+                    // 显示编辑器相关按钮
+                    editorNav.classList.remove('hidden');
+                    editorNav.classList.add('flex'); // 确保 flex 生效
+                    editorNavDivider.classList.remove('hidden');
+                    sidebarToggleBtn.classList.remove('hidden');
+                } else {
+                    uploadView.classList.remove('hidden');
+                    editorView.classList.add('hidden');
+                    // 隐藏编辑器相关按钮
+                    editorNav.classList.add('hidden');
+                    editorNav.classList.remove('flex');
+                    editorNavDivider.classList.add('hidden');
+                    sidebarToggleBtn.classList.add('hidden');
+                }
+            }
+            
+            // 点击 Logo 返回上传页
+            logo.addEventListener('click', () => showView('upload'));
+
+            // --- 2. 主题切换 (来自 D1) ---
+            function setTheme(theme) {
+                if (theme === 'dark') {
+                    htmlEl.classList.add('dark');
+                    themeIconLight.classList.add('hidden');
+                    themeIconDark.classList.remove('hidden');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    htmlEl.classList.remove('dark');
+                    themeIconLight.classList.remove('hidden');
+                    themeIconDark.classList.add('hidden');
+                    localStorage.setItem('theme', 'light');
+                }
+            }
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = htmlEl.classList.contains('dark') ? 'light' : 'dark';
+                setTheme(currentTheme);
+            });
+            // 初始化主题
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                setTheme('dark');
+            } else {
+                setTheme('light');
+            }
+
+            // --- 3. 上传页逻辑 (来自 D1) ---
+            function handleFiles(files) {
+                if (files.length > 0) {
+                    currentFile = files[0]; // 简化，只处理第一个文件
+                    dropzoneText.innerHTML = `已选择: <strong class="text-light-text dark:text-dark-text">${currentFile.name}</strong>`;
+                    startBtn.disabled = false;
+                    dropZone.classList.remove('border-red-500');
+                } else {
+                    currentFile = null;
+                    dropzoneText.textContent = '拖放或点击上传文件';
+                    startBtn.disabled = true;
+                }
+            }
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('bg-brand/10', 'border-brand', 'dark:border-dark-brand'));
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('bg-brand/10', 'border-brand', 'dark:border-dark-brand'));
+            });
+            dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+
+            // 开始转录
+            startBtn.addEventListener('click', () => {
+                if (!currentFile) return;
+
+                startBtn.disabled = true;
+                startBtn.querySelector('span').textContent = '转录中...';
+                loadingSpinner.classList.remove('hidden');
+
+                // 模拟 AI 转录
+                setTimeout(() => {
+                    showView('editor');
+                    // 恢复按钮状态
+                    startBtn.disabled = false;
+                    startBtn.querySelector('span').textContent = '开始转录';
+                    loadingSpinner.classList.add('hidden');
+                    // 重置上传区
+                    handleFiles([]);
+                }, 1500);
+            });
+
+            // --- 4. 编辑页逻辑 ---
+            
+            // 播放/暂停 (来自 D1)
+            playPauseBtn.addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                playIcon.classList.toggle('hidden', isPlaying);
+                pauseIcon.classList.toggle('hidden', !isPlaying);
+            });
+
+            // 移动端侧边栏 (来自 D1)
+            sidebarToggleBtn.addEventListener('click', () => {
+                sidebar.classList.remove('translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            });
+            sidebarCloseBtn.addEventListener('click', () => {
+                sidebar.classList.add('translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            });
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.add('translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            });
+
+            // --- 5. 导出模态框逻辑 (D1 行为, D2 内容) ---
+            function openModal() { exportModal.classList.remove('hidden'); updateExportPreview(); }
+            function closeModal() { exportModal.classList.add('hidden'); }
+
+            exportModalTrigger.addEventListener('click', openModal);
+            modalCloseBtn.addEventListener('click', closeModal);
+            modalCancelBtn.addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', closeModal);
+
+            // 更新导出预览 (适配 D2 的选项)
+            function updateExportPreview() {
+                const format = modalOptions.querySelector('input[name="export-format"]:checked').value;
+                const includeTimestamps = $('#opt-timestamps').checked;
+                const includeSpeakers = $('#opt-speakers').checked;
+
+                let previewText = '';
+
+                mockTranscript.forEach((item, index) => {
+                    if (format === 'srt') {
+                        previewText += `${index + 1}\n`;
+                        previewText += `${item.start.replace('.', ',')} --> ${item.end.replace('.', ',')}\n`;
+                        if (includeSpeakers) {
+                            previewText += `(${item.speaker}) `;
+                        }
+                        previewText += `${item.text}\n\n`;
+                    } else if (format === 'txt') {
+                        if (includeSpeakers) {
+                            previewText += `${item.speaker}: `;
+                        }
+                        if (includeTimestamps) {
+                            previewText += `[${item.start}] `;
+                        }
+                        previewText += `${item.text}\n`;
+                    } else if (format === 'json') {
+                        if(index === 0) previewText += "[\n";
+                        previewText += `  {\n`;
+                        previewText += `    "start": "${item.start}",\n`;
+                        if (includeSpeakers) previewText += `    "speaker": "${item.speaker}",\n`;
+                        previewText += `    "text": "${item.text.substring(0, 30)}..."\n`;
+                        previewText += `  }${index === mockTranscript.length - 1 ? "" : ","}\n`;
+                        if(index === mockTranscript.length - 1) previewText += "]\n";
+                    }
+                });
+                
+                exportPreview.textContent = previewText;
+            }
+            
+            // 监听模态框选项变化
+            modalOptions.addEventListener('change', updateExportPreview);
+
+            // 默认显示上传视图
+            showView('upload');
+
+        });
+    </script>
+</body>
+</html>
